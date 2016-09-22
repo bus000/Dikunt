@@ -9,14 +9,19 @@ module Bot
 import Data.List
 import Network
 import System.IO
-import System.Exit
 import Control.Monad.Reader
-import Control.Exception
 import Text.Printf
 
+server :: String
 server = "irc.freenode.org"
+
+port :: Integer
 port = 6667
+
+chan :: String
 chan = "#dikufags"
+
+nick :: String
 nick = "dikunt"
 
 type Net = ReaderT Bot IO
@@ -47,7 +52,6 @@ listen h = forever $ do
     io (putStrLn s)
     if ping s then pong s else eval (clean s)
   where
-    forever a = a >> forever a
     clean = drop 1 . dropWhile (/= ':') . drop 1
     ping x = "PING :" `isPrefixOf` x
     pong x = write "PONG" (':' : drop 6 x)
