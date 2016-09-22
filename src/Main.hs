@@ -5,20 +5,28 @@ import Network
 import System.Exit
 import System.IO
 import Text.Printf
+import System.Environment
+import System.Exit
 
 server = "irc.freenode.org"
 port = 6667
 chan   = "#dikufags"
 nick   = "dikunt"
 
+
 main = do
+    (password:args) <- getArgs
     h <- connectTo server (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
     write h "NICK" nick
     write h "USER" (nick++" 0 * :tutorial bot")
+    -- TODO: Verify identification
+    write h "PRIVMSG NickServ : IDENTIFY dikunt" password
     write h "JOIN" chan
-    writeMessage h "HEJ FAGS"
+    writeMessage h "Debugging"
     listen h
+
+
 
 write :: Handle -> String -> String -> IO ()
 write h s t = do
@@ -36,6 +44,7 @@ handleMessage h ('d':'i':'k':'u':'n':'t':':':' ':s) = do
 handleMessage h s = do
     print "fail"
     print s
+
 
 listen :: Handle -> IO ()
 listen h = forever $ do
