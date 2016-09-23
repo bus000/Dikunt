@@ -25,24 +25,29 @@ nick :: String
 nick = "dikunt"
 
 type Net = ReaderT Bot IO
-data Bot = Bot { socket :: Handle }
+data Bot = Bot
+  { socket :: Handle
+  , password :: String
+  }
 
 disconnect :: Bot -> IO ()
 disconnect = hClose . socket
 
-connect :: IO Bot
-connect = do
+connect :: String -> IO Bot
+connect pass = do
     h <- connectTo server (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
-    return (Bot h)
+    return (Bot h pass)
 
 loop :: Bot -> IO ()
 loop st = runReaderT run st
 
 run :: Net ()
 run = do
+    pass <- asks password
     write "NICK" nick
     write "USER" (nick ++ " 0 * :tutorial bot")
+    write "PRIVMSG NickServ : IDENTIFY dikunt" pass
     write "JOIN" chan
     asks socket >>= listen
 
