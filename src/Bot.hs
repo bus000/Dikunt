@@ -83,6 +83,7 @@ replaceOutput = unwords . map replace . words
     replace "Magnus" = "Glorious"
     replace "August" = "Motherless"
     replace "Oleks" = "Yoda"
+    replace "10/10" = "Haskell"
     replace str = str
 
 io :: IO a -> Net a
