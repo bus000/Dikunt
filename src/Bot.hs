@@ -67,13 +67,22 @@ eval str
     | otherwise = return ()
 
 privmsg :: String -> Net ()
-privmsg s = write "PRIVMSG" (chan ++ " :" ++ s)
+privmsg s = write "PRIVMSG" (chan ++ " :" ++ (replaceOutput s))
 
 write :: String -> String -> Net ()
 write s t = do
     h <- asks socket
     io $ hPrintf h "%s %s\r\n" s t
     io $ printf    "> %s %s\n" s t
+
+replaceOutput :: String -> String
+replaceOutput = unwords . map replace . words
+  where
+    replace "Mark" = "ShortGuy"
+    replace "Jan" = "Tjekkeren"
+    replace "Magnus" = "Glorious"
+    replace "August" = "Motherless"
+    replace str = str
 
 io :: IO a -> Net a
 io = liftIO
