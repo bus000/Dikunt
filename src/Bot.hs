@@ -86,8 +86,9 @@ replaceOutput = unwords . map replace . words
     replace "Jan" = "Tjekkeren"
     replace "Magnus" = "Glorious"
     replace "August" = "Motherless"
-    replace "Oleks" = "Yoda"
-    replace "10/10" = "Haskell"
+    replace "Oleks" = "Joleks"
+    replace "10/10" = "AT&T Syntax"
+    replace "ha!" = "HAHAHAHAHAHHAHA!"
 --    replace "(y)" = picture $ "./pictures/thumbs_up.jpg" []
     replace str = str
 
