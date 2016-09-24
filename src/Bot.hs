@@ -12,6 +12,10 @@ import System.IO
 import Control.Monad.Reader
 import Text.Printf
 
+-- Bot modules
+import AsciiPicture
+
+
 server :: String
 server = "irc.freenode.org"
 
@@ -82,8 +86,10 @@ replaceOutput = unwords . map replace . words
     replace "Jan" = "Tjekkeren"
     replace "Magnus" = "Glorious"
     replace "August" = "Motherless"
-    replace "Oleks" = "Yoda"
-    replace "10/10" = "Haskell"
+    replace "Oleks" = "Joleks"
+    replace "10/10" = "knæhøj karse"
+    replace "ha!" = "HAHAHAHAHAHHAHA!"
+--    replace "(y)" = picture $ "./pictures/thumbs_up.jpg" []
     replace str = str
 
 io :: IO a -> Net a
