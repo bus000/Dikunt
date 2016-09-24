@@ -27,7 +27,7 @@ chan :: String
 chan = "#dikufags"
 
 nick :: String
-nick = "dikunt"
+nick = "dikunt_debug"
 
 type Net = ReaderT Bot IO
 data Bot = Bot
@@ -57,7 +57,7 @@ run = do
     pass <- asks password
     write "NICK" nick
     write "USER" (nick ++ " 0 * :tutorial bot")
-    write "PRIVMSG NickServ : IDENTIFY dikunt" pass
+    write ("PRIVMSG NickServ : IDENTIFY "++nick) pass
     write "JOIN" chan
     asks socket >>= listen
 
