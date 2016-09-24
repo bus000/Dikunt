@@ -14,6 +14,7 @@ import Control.Monad.Reader
 import Text.Printf
 
 -- Bot modules
+import Functions.WordReplacer (replaceWords)
 import Functions.AsciiPicture (runAsciiPicture)
 import Functions.Parrot (parrot)
 
@@ -42,7 +43,7 @@ type BotFunction = String -> IO (Maybe String)
 {- | List of all the crazy things Dikunt can do! The first of these actions to
  - return a value is chosen as the action for an incoming request. -}
 functions :: [BotFunction]
-functions = [parrot]
+functions = [parrot, replaceWords]
 
 disconnect :: Bot -> IO ()
 disconnect = hClose . socket
@@ -83,25 +84,13 @@ eval str fs = do
         _ -> return ()
 
 privmsg :: String -> Net ()
-privmsg s = write "PRIVMSG" (chan ++ " :" ++ (replaceOutput s))
+privmsg s = write "PRIVMSG" (chan ++ " :" ++ s)
 
 write :: String -> String -> Net ()
 write s t = do
     h <- asks socket
     io $ hPrintf h "%s %s\r\n" s t
     io $ printf    "> %s %s\n" s t
-
-replaceOutput :: String -> String
-replaceOutput = unwords . map replace . words
-  where
-    replace "Mark" = "ShortGuy"
-    replace "Jan" = "Tjekkeren"
-    replace "Magnus" = "Glorious"
-    replace "August" = "Motherless"
-    replace "Oleks" = "Joleks"
-    replace "10/10" = "knæhøj karse"
-    replace "ha!" = "HAHAHAHAHAHHAHA!"
-    replace str = str
 
 io :: IO a -> Net a
 io = liftIO
