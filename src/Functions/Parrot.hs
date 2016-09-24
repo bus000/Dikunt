@@ -1,4 +1,4 @@
-module Parrot
+module Functions.Parrot
   ( parrot
   ) where
 

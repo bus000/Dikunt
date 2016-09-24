@@ -14,8 +14,8 @@ import Control.Monad.Reader
 import Text.Printf
 
 -- Bot modules
-import AsciiPicture (runAsciiPicture)
-import Parrot (parrot)
+import Functions.AsciiPicture (runAsciiPicture)
+import Functions.Parrot (parrot)
 
 server :: String
 server = "irc.freenode.org"
