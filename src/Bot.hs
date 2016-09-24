@@ -6,6 +6,7 @@ module Bot
   , loop
   ) where
 
+import Data.Maybe
 import Data.List
 import Network
 import System.IO
@@ -13,8 +14,8 @@ import Control.Monad.Reader
 import Text.Printf
 
 -- Bot modules
-import AsciiPicture
-
+import AsciiPicture (runAsciiPicture)
+import Parrot (parrot)
 
 server :: String
 server = "irc.freenode.org"
@@ -33,6 +34,11 @@ data Bot = Bot
   { socket :: Handle
   , password :: String
   }
+
+type BotFunction = String -> IO (Maybe String)
+
+functions :: [BotFunction]
+functions = [parrot, runAsciiPicture]
 
 disconnect :: Bot -> IO ()
 disconnect = hClose . socket
@@ -59,16 +65,18 @@ listen :: Handle -> Net ()
 listen h = forever $ do
     s <- init `fmap` io (hGetLine h)
     io (putStrLn s)
-    if ping s then pong s else eval (clean s)
+    if ping s then pong s else eval (clean s) functions
   where
     clean = drop 1 . dropWhile (/= ':') . drop 1
     ping x = "PING :" `isPrefixOf` x
     pong x = write "PONG" (':' : drop 6 x)
 
-eval :: String -> Net ()
-eval str
-    | "dikunt: " `isPrefixOf` str = privmsg (drop 8 str)
-    | otherwise = return ()
+eval :: String -> [BotFunction] -> Net ()
+eval str fs = do
+    results <- io $ sequence (map (\x -> x str) fs)
+    case catMaybes results of
+        (res:_) -> privmsg res
+        _ -> return ()
 
 privmsg :: String -> Net ()
 privmsg s = write "PRIVMSG" (chan ++ " :" ++ (replaceOutput s))
@@ -89,7 +97,6 @@ replaceOutput = unwords . map replace . words
     replace "Oleks" = "Joleks"
     replace "10/10" = "knæhøj karse"
     replace "ha!" = "HAHAHAHAHAHHAHA!"
---    replace "(y)" = picture $ "./pictures/thumbs_up.jpg" []
     replace str = str
 
 io :: IO a -> Net a
