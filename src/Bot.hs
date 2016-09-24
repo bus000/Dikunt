@@ -35,10 +35,14 @@ data Bot = Bot
   , password :: String
   }
 
+{- | Defines a Dikunt action. All new Dikunt features should implement a
+ - function of this type and report in the functions list. -}
 type BotFunction = String -> IO (Maybe String)
 
+{- | List of all the crazy things Dikunt can do! The first of these actions to
+ - return a value is chosen as the action for an incoming request. -}
 functions :: [BotFunction]
-functions = [parrot, runAsciiPicture]
+functions = [parrot]
 
 disconnect :: Bot -> IO ()
 disconnect = hClose . socket
