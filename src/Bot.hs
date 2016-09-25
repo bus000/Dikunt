@@ -18,21 +18,14 @@ import Functions.AsciiPicture (runAsciiPicture)
 import Functions.Parrot (parrot)
 import Functions.WordReplacer (replaceWords)
 
-server :: String
-server = "irc.freenode.org"
-
 port :: Integer
 port = 6667
-
-chan :: String
-chan = "#dikufags"
-
-nick :: String
-nick = "dikunt_debug"
 
 type Net = ReaderT Bot IO
 data Bot = Bot
   { socket :: Handle
+  , nickname :: String
+  , channel  :: String
   , password :: String
   }
 
@@ -48,11 +41,11 @@ functions = [parrot, replaceWords]
 disconnect :: Bot -> IO ()
 disconnect = hClose . socket
 
-connect :: String -> IO Bot
-connect pass = do
-    h <- connectTo server (PortNumber (fromIntegral port))
+connect :: String -> String -> String -> String -> IO Bot
+connect serv chan nick pass = do
+    h <- connectTo serv (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
-    return (Bot h pass)
+    return (Bot h nick chan pass)
 
 loop :: Bot -> IO ()
 loop st = runReaderT run st
@@ -60,6 +53,8 @@ loop st = runReaderT run st
 run :: Net ()
 run = do
     pass <- asks password
+    nick <- asks nickname
+    chan <- asks channel
     write "NICK" nick
     write "USER" (nick ++ " 0 * :tutorial bot")
     write ("PRIVMSG NickServ : IDENTIFY "++nick) pass
@@ -84,10 +79,13 @@ eval str fs = do
         _ -> return ()
 
 privmsg :: String -> Net ()
-privmsg s = mapM_ (write "PRIVMSG") ls
-  where
-    begin = chan ++ " :"
-    ls = map (begin ++) (lines s)
+privmsg s = do
+    chan <- asks channel
+
+    let begin = chan ++ " :"
+        ls = map (begin ++) (lines s)
+
+    mapM_ (write "PRIVMSG") ls
 
 write :: String -> String -> Net ()
 write s t = do

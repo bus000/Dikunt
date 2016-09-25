@@ -7,7 +7,7 @@ import System.Console.CmdArgs
 
 data Dikunt = Dikunt
   { server   :: String
-  , username :: String
+  , nickname :: String
   , password :: String
   , channel  :: String
   } deriving (Data, Typeable, Show, Eq)
@@ -15,7 +15,7 @@ data Dikunt = Dikunt
 dikunt :: Dikunt
 dikunt = Dikunt
   { server = "irc.freenode.org" &= help "Server to connect to"
-  , username = "dikunt" &= help "Username to use"
+  , nickname = "dikunt" &= help "Nick to use"
   , password = def &= help "Password to use"
   , channel = "#dikufags" &= help "Channel to connect to"
   } &=
@@ -28,6 +28,9 @@ mode = cmdArgs dikunt
 main :: IO ()
 main = do
     arguments <- mode
-    let pass = password arguments
+    let serv = server arguments
+        pass = password arguments
+        nick = nickname arguments
+        chan = channel arguments
 
-    bracket (Bot.connect pass) Bot.disconnect Bot.loop
+    bracket (Bot.connect serv chan nick pass) Bot.disconnect Bot.loop
