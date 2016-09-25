@@ -14,10 +14,10 @@ data Dikunt = Dikunt
 
 dikunt :: Dikunt
 dikunt = Dikunt
-  { server = def &= help "Server to connect to"
-  , username = def &= help "Username to use"
+  { server = "irc.freenode.org" &= help "Server to connect to"
+  , username = "dikunt" &= help "Username to use"
   , password = def &= help "Password to use"
-  , channel = def &= help "Channel to connect to"
+  , channel = "#dikufags" &= help "Channel to connect to"
   } &=
     help "Bot to run on IRC channels" &=
     summary "Dikunt v0.0.0.0 (C) Magnus Stavngaard"
@@ -27,7 +27,7 @@ mode = cmdArgs dikunt
 
 main :: IO ()
 main = do
-    args <- mode
-    let pass = password args
+    arguments <- mode
+    let pass = password arguments
 
     bracket (Bot.connect pass) Bot.disconnect Bot.loop
