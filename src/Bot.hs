@@ -6,17 +6,17 @@ module Bot
   , loop
   ) where
 
-import Data.Maybe
+import Control.Monad.Reader
 import Data.List
+import Data.Maybe
 import Network
 import System.IO
-import Control.Monad.Reader
 import Text.Printf
 
 -- Bot modules
-import Functions.WordReplacer (replaceWords)
 import Functions.AsciiPicture (runAsciiPicture)
 import Functions.Parrot (parrot)
+import Functions.WordReplacer (replaceWords)
 
 server :: String
 server = "irc.freenode.org"
@@ -28,7 +28,7 @@ chan :: String
 chan = "#dikufags"
 
 nick :: String
-nick = "dikunt"
+nick = "dikunt_debug"
 
 type Net = ReaderT Bot IO
 data Bot = Bot
@@ -62,7 +62,7 @@ run = do
     pass <- asks password
     write "NICK" nick
     write "USER" (nick ++ " 0 * :tutorial bot")
-    write "PRIVMSG NickServ : IDENTIFY dikunt" pass
+    write ("PRIVMSG NickServ : IDENTIFY "++nick) pass
     write "JOIN" chan
     asks socket >>= listen
 
@@ -84,7 +84,10 @@ eval str fs = do
         _ -> return ()
 
 privmsg :: String -> Net ()
-privmsg s = write "PRIVMSG" (chan ++ " :" ++ s)
+privmsg s = mapM_ (write "PRIVMSG") ls
+  where
+    begin = chan ++ " :"
+    ls = map (begin ++) (lines s)
 
 write :: String -> String -> Net ()
 write s t = do

@@ -3,13 +3,12 @@ module Functions.AsciiPicture
   ) where
 
 import System.Process
+import System.Exit
 
 runAsciiPicture :: String -> IO (Maybe String)
-runAsciiPicture = undefined
-
--- TODO: This should handle URLs aswell
-picture :: String -> String -> IO String
-picture img [] = picture img "--size=20x10"
-picture (img) (sz) = do
-    s <- readProcess "/usr/bin/jp2a" [img, sz] []
-    return $ s
+runAsciiPicture img = do
+    (e,s,_) <- readProcessWithExitCode "/usr/bin/jp2a" [img, "--size=25x10","--background=light"] []
+    --putStrLn s
+    if e /= ExitSuccess
+        then return $ Nothing
+        else return $ Just s
