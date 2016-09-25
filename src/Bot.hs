@@ -48,7 +48,7 @@ connect serv chan nick pass = do
     return (Bot h nick chan pass)
 
 loop :: Bot -> IO ()
-loop st = runReaderT run st
+loop = runReaderT run
 
 run :: Net ()
 run = do
@@ -73,7 +73,7 @@ listen h = forever $ do
 
 eval :: String -> [BotFunction] -> Net ()
 eval str fs = do
-    results <- io $ sequence (map (\x -> x str) fs)
+    results <- io $ mapM (\x -> x str) fs
     case catMaybes results of
         (res:_) -> privmsg res
         _ -> return ()

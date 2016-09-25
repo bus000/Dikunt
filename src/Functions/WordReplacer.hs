@@ -21,7 +21,7 @@ replacementVals = map snd replacementList
 
 replaceWords :: String -> IO (Maybe String)
 replaceWords str
-    | any ((flip elem) replacementKeys) (words str) =
+    | any (`elem` replacementKeys) (words str) =
         return . Just . unwords . map replace . words $ str
     | otherwise = return Nothing
   where

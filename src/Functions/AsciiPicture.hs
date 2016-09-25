@@ -10,5 +10,5 @@ runAsciiPicture img = do
     (e,s,_) <- readProcessWithExitCode "/usr/bin/jp2a" [img, "--size=25x10","--background=light"] []
     --putStrLn s
     if e /= ExitSuccess
-        then return $ Nothing
+        then return Nothing
         else return $ Just s
