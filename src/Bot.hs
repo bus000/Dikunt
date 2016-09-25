@@ -42,7 +42,7 @@ type BotFunction = String -> IO (Maybe String)
 {- | List of all the crazy things Dikunt can do! The first of these actions to
  - return a value is chosen as the action for an incoming request. -}
 functions :: [BotFunction]
-functions = [parrot]
+functions = [parrot, runAsciiPicture]
 
 disconnect :: Bot -> IO ()
 disconnect = hClose . socket
@@ -83,13 +83,17 @@ eval str fs = do
         _ -> return ()
 
 privmsg :: String -> Net ()
-privmsg s = write "PRIVMSG" (chan ++ " :" ++ (replaceOutput s))
+
+-- XXX: Socket is probably full/unflushed/ or stuck in whatever state.
+privmsg s = last $ map (\l -> (write "PRIVMSG" (chan ++ " :" ++ l))) (lines s)
 
 write :: String -> String -> Net ()
 write s t = do
     h <- asks socket
-    io $ hPrintf h "%s %s\r\n" s t
-    io $ printf    "> %s %s\n" s t
+    io $ hPutStrLn h $ (s++" "++t++"\r\n")
+    io $ hPutStrLn h $ ("debug")
+    io $ putStrLn ("> "++s++" "++t)
+    io $ putStrLn ("local debug")
 
 replaceOutput :: String -> String
 replaceOutput = unwords . map replace . words
