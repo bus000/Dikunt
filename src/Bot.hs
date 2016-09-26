@@ -14,36 +14,29 @@ import System.IO
 import Text.Printf
 
 -- Bot modules
+import BotTypes
+    ( Net
+    , BotFunction
+    , Bot
+    , socket
+    , nickname
+    , password
+    , bot
+    , channel
+    , saveLastMsg
+    , saveMsg
+    )
 import Functions.AsciiPicture (runAsciiPicture)
-import Functions.Parrot (parrot)
-import Functions.WordReplacer (replaceWords)
+import Functions.Parrot (runParrot)
+import Functions.WordReplacer (runReplaceWords)
 
 port :: Integer
 port = 6667
 
-type Net = StateT Bot IO
-data Bot = Bot
-  { socket      :: Handle
-  , nickname    :: String
-  , channel     :: String
-  , password    :: String
-  , lastMessage :: Maybe String
-  }
-
-saveLastMsg :: String -> Net ()
-saveLastMsg msg = do
-    st <- get
-    let st' = st { lastMessage = Just msg }
-    put st'
-
-{- | Defines a Dikunt action. All new Dikunt features should implement a
- - function of this type and report in the functions list. -}
-type BotFunction = String -> IO (Maybe String)
-
 {- | List of all the crazy things Dikunt can do! The first of these actions to
  - return a value is chosen as the action for an incoming request. -}
 functions :: [BotFunction]
-functions = [parrot, runAsciiPicture, replaceWords]
+functions = [runParrot, runAsciiPicture, runReplaceWords]
 
 disconnect :: Bot -> IO ()
 disconnect = hClose . socket
@@ -52,10 +45,10 @@ connect :: String -> String -> String -> String -> IO Bot
 connect serv chan nick pass = do
     h <- connectTo serv (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
-    return (Bot h nick chan pass Nothing) {- TODO: smart constructor. -}
+    return $ bot h nick chan pass
 
 loop :: Bot -> IO ()
-loop bot = runStateT run bot >> return ()
+loop b = runStateT run b >> return ()
 
 run :: Net ()
 run = do
@@ -75,16 +68,17 @@ listen = forever $ do
     st <- get
     let h = socket st
     s <- fmap init (liftIO $ hGetLine h)
-    if ping s then pong s else eval (clean s) functions
+    saveMsg (clean s)
+    if ping s then pong s else eval functions
     saveLastMsg s
   where
     clean = drop 1 . dropWhile (/= ':') . drop 1
     ping x = "PING :" `isPrefixOf` x
     pong x = write "PONG" (':' : drop 6 x)
 
-eval :: String -> [BotFunction] -> Net ()
-eval str fs = do
-    results <- liftIO $ mapM (\x -> x str) fs
+eval :: [BotFunction] -> Net ()
+eval fs = do
+    results <- sequence fs
     case catMaybes results of
         (res:_) -> privmsg res
         _ -> return ()

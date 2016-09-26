@@ -1,6 +1,8 @@
 module Functions.WordReplacer
-  ( replaceWords
+  ( runReplaceWords
   ) where
+
+import qualified BotTypes as BT
 
 replacementList :: [(String, String)]
 replacementList =
@@ -19,7 +21,7 @@ replacementKeys = map fst replacementList
 replacementVals :: [String]
 replacementVals = map snd replacementList
 
-replaceWords :: String -> IO (Maybe String)
+replaceWords :: String -> BT.Net (Maybe String)
 replaceWords str
     | any (`elem` replacementKeys) (words str) =
         return . Just . unwords . map replace . words $ str
@@ -28,3 +30,8 @@ replaceWords str
     replace word = case lookup word replacementList of
         Just replacement -> replacement
         _ -> word
+
+runReplaceWords :: BT.BotFunction
+runReplaceWords = do
+    str <- BT.getValue BT.message
+    replaceWords str
