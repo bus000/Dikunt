@@ -1,6 +1,5 @@
 FEATURES:
 
-    Dikunt should be able to correct the last previous message by taking a vim
-    like search and replace command.
-
-    Dikunt should be able to generate ascii art from an image given as a URL.
+    Dikunt should be able to make ascii art of a set of predefined images.
+    This will allow users to not find a url every time they need to make a
+    reaction.
