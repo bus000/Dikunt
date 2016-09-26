@@ -16,4 +16,3 @@ parrot nick str
     | (nick ++ ": ") `isPrefixOf` str =
         return $ Just (drop (length $ nick ++ ": ") str)
     | otherwise = return Nothing
-
