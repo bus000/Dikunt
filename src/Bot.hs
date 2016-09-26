@@ -34,7 +34,7 @@ import Functions.Fix (runFix)
 {- | List of all the crazy things Dikunt can do! The first of these actions to
  - return a value is chosen as the action for an incoming request. -}
 functions :: [BotFunction]
-functions = [runParrot, runAsciiPicture, runFix, runReplaceWords]
+functions = [runAsciiPicture, runFix, runParrot, runReplaceWords]
 
 disconnect :: Bot -> IO ()
 disconnect = hClose . socket
