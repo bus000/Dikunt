@@ -72,7 +72,7 @@ listen = forever $ do
     s <- fmap init (liftIO $ hGetLine h)
     saveMsg (clean s)
     if ping s then pong s else eval functions
-    saveLastMsg s
+    saveLastMsg (clean s)
   where
     clean = drop 1 . dropWhile (/= ':') . dropWhile (/= '#') . drop 1
     ping x = "PING :" `isPrefixOf` x
