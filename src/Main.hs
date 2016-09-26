@@ -22,7 +22,9 @@ dikunt = Dikunt
     , port = 6667 &= help "Port to connect to"
     } &=
         help "Bot to run on IRC channels" &=
-        summary "Dikunt v0.0.0.0 (C) Magnus Stavngaard"
+        summary "Dikunt v0.0.0.0 (C) Magnus Stavngaard" &=
+        helpArg [explicit, name "h"] &=
+        versionArg [explicit, name "v"]
 
 mode :: IO Dikunt
 mode = cmdArgs dikunt
