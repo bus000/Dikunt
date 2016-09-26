@@ -6,6 +6,7 @@ module Bot
   , loop
   ) where
 
+import Control.Monad
 import Control.Monad.State
 import Data.List
 import Data.Maybe
@@ -48,7 +49,7 @@ connect serv chan nick pass = do
     return $ bot h nick chan pass
 
 loop :: Bot -> IO ()
-loop b = runStateT run b >> return ()
+loop b = void $ runStateT run b
 
 run :: Net ()
 run = do

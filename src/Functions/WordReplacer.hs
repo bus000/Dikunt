@@ -18,9 +18,6 @@ replacementList =
 replacementKeys :: [String]
 replacementKeys = map fst replacementList
 
-replacementVals :: [String]
-replacementVals = map snd replacementList
-
 replaceWords :: String -> BT.Net (Maybe String)
 replaceWords str
     | any (`elem` replacementKeys) (words str) =
