@@ -2,7 +2,6 @@ module Bot
   ( connect
   , disconnect
   , Bot
-  , run
   , loop
   ) where
 
