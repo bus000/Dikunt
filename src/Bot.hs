@@ -6,7 +6,7 @@ module Bot
   , loop
   ) where
 
-import Control.Monad.Reader
+import Control.Monad.State
 import Data.List
 import Data.Maybe
 import Network
@@ -21,13 +21,20 @@ import Functions.WordReplacer (replaceWords)
 port :: Integer
 port = 6667
 
-type Net = ReaderT Bot IO
+type Net = StateT Bot IO
 data Bot = Bot
-  { socket :: Handle
-  , nickname :: String
-  , channel  :: String
-  , password :: String
+  { socket      :: Handle
+  , nickname    :: String
+  , channel     :: String
+  , password    :: String
+  , lastMessage :: Maybe String
   }
+
+saveLastMsg :: String -> Net ()
+saveLastMsg msg = do
+    st <- get
+    let st' = st { lastMessage = Just msg }
+    put st'
 
 {- | Defines a Dikunt action. All new Dikunt features should implement a
  - function of this type and report in the functions list. -}
@@ -45,27 +52,31 @@ connect :: String -> String -> String -> String -> IO Bot
 connect serv chan nick pass = do
     h <- connectTo serv (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
-    return (Bot h nick chan pass)
+    return (Bot h nick chan pass Nothing) {- TODO: smart constructor. -}
 
 loop :: Bot -> IO ()
-loop = runReaderT run
+loop bot = runStateT run bot >> return ()
 
 run :: Net ()
 run = do
-    pass <- asks password
-    nick <- asks nickname
-    chan <- asks channel
+    st <- get
+    let pass = password st
+        nick = nickname st
+        chan = channel st
+
     write "NICK" nick
     write "USER" (nick ++ " 0 * :tutorial bot")
-    write ("PRIVMSG NickServ : IDENTIFY "++nick) pass
+    write ("PRIVMSG NickServ : IDENTIFY " ++ nick) pass
     write "JOIN" chan
-    asks socket >>= listen
+    listen
 
-listen :: Handle -> Net ()
-listen h = forever $ do
-    s <- init `fmap` io (hGetLine h)
-    io (putStrLn s)
+listen :: Net ()
+listen = forever $ do
+    st <- get
+    let h = socket st
+    s <- fmap init (liftIO $ hGetLine h)
     if ping s then pong s else eval (clean s) functions
+    saveLastMsg s
   where
     clean = drop 1 . dropWhile (/= ':') . drop 1
     ping x = "PING :" `isPrefixOf` x
@@ -73,14 +84,15 @@ listen h = forever $ do
 
 eval :: String -> [BotFunction] -> Net ()
 eval str fs = do
-    results <- io $ mapM (\x -> x str) fs
+    results <- liftIO $ mapM (\x -> x str) fs
     case catMaybes results of
         (res:_) -> privmsg res
         _ -> return ()
 
 privmsg :: String -> Net ()
 privmsg s = do
-    chan <- asks channel
+    st <- get
+    let chan = channel st
 
     let begin = chan ++ " :"
         ls = map (begin ++) (lines s)
@@ -89,9 +101,7 @@ privmsg s = do
 
 write :: String -> String -> Net ()
 write s t = do
-    h <- asks socket
-    io $ hPrintf h "%s %s\r\n" s t
-    io $ printf    "> %s %s\n" s t
-
-io :: IO a -> Net a
-io = liftIO
+    st <- get
+    let h = socket st
+    liftIO $ hPrintf h "%s %s\r\n" s t
+    liftIO $ printf    "> %s %s\n" s t
