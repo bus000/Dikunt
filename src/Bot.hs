@@ -43,7 +43,7 @@ type BotFunction = String -> IO (Maybe String)
 {- | List of all the crazy things Dikunt can do! The first of these actions to
  - return a value is chosen as the action for an incoming request. -}
 functions :: [BotFunction]
-functions = [parrot, replaceWords]
+functions = [parrot, runAsciiPicture, replaceWords]
 
 disconnect :: Bot -> IO ()
 disconnect = hClose . socket
