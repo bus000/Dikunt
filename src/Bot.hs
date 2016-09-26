@@ -30,6 +30,7 @@ import BotTypes
 import Functions.AsciiPicture (runAsciiPicture)
 import Functions.Parrot (runParrot)
 import Functions.WordReplacer (runReplaceWords)
+import Functions.Fix (runFix)
 
 port :: Integer
 port = 6667
@@ -37,7 +38,7 @@ port = 6667
 {- | List of all the crazy things Dikunt can do! The first of these actions to
  - return a value is chosen as the action for an incoming request. -}
 functions :: [BotFunction]
-functions = [runParrot, runAsciiPicture, runReplaceWords]
+functions = [runParrot, runAsciiPicture, runFix, runReplaceWords]
 
 disconnect :: Bot -> IO ()
 disconnect = hClose . socket
