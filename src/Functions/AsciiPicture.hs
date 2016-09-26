@@ -1,5 +1,5 @@
 module Functions.AsciiPicture
-  ( runAsciiPicture,
+  ( runAsciiPicture
   ) where
 
 import Control.Monad.State
@@ -18,7 +18,7 @@ asciiPicture str
     | "asciiart: http" `isPrefixOf` str = do
         let url = drop (length "asciiart: ") str
         (e,s,_) <- liftIO $ readProcessWithExitCode "/usr/bin/jp2a"
-            [url, "--size=25x10","--background=light"] []
+            [url, "--size=40x40","--background=light"] []
         if e /= ExitSuccess
             then return Nothing
             else return $ Just s

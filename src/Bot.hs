@@ -5,6 +5,7 @@ module Bot
   , loop
   ) where
 
+import Control.Concurrent
 import Control.Monad
 import Control.Monad.State
 import Data.List
@@ -89,7 +90,11 @@ privmsg s = do
     let begin = chan ++ " :"
         ls = map (begin ++) (lines s)
 
-    mapM_ (write "PRIVMSG") ls
+    mapM_ writeLine ls
+  where
+    writeLine msg = do
+        write "PRIVMSG" msg
+        liftIO $ threadDelay 1000000
 
 write :: String -> String -> Net ()
 write s t = do
