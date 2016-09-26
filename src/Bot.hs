@@ -72,7 +72,7 @@ listen = forever $ do
     if ping s then pong s else eval functions
     saveLastMsg s
   where
-    clean = drop 1 . dropWhile (/= ':') . drop 1
+    clean = drop 1 . dropWhile (/= ':') . dropWhile (/= '#') . drop 1
     ping x = "PING :" `isPrefixOf` x
     pong x = write "PONG" (':' : drop 6 x)
 
