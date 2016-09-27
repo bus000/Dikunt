@@ -41,7 +41,7 @@ asciiPicture str
   where
     doAsciiGeneration url = do
         (e,s,_) <- liftIO $ readProcessWithExitCode "/usr/bin/jp2a"
-            [url, "--size=40x30","--background=light"] []
+            [url, "--width=80","--background=light"] []
         if e /= ExitSuccess
             then return Nothing
             else return $ Just s
