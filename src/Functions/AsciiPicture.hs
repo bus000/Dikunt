@@ -2,16 +2,19 @@ module Functions.AsciiPicture
   ( runAsciiPicture
   ) where
 
-import Control.Monad.State
-import System.Process
-import System.Exit
-import Data.List
 import qualified BotTypes as BT
+import Control.Monad.State
+import Data.List
+import System.Exit
+import System.Process
 
-dickbut :: String
-dickbut = "https://static1.fjcdn.com/thumbnails/comments/" ++
+dickbutt :: String
+dickbutt = "https://static1.fjcdn.com/thumbnails/comments/" ++
     "Dickbut+for+everybody+zentertainments+gets+a+dickbut+_" ++
     "fc88e4d586c873f470964fab580a9518.jpg"
+thumbsUp :: String
+thumbsUp = "http://clipartix.com/wp-content/uploads/2016/04/Thumbs-up" ++
+    "-clipart-cliparts-for-you.jpg"
 
 
 runAsciiPicture :: BT.BotFunction
@@ -21,7 +24,8 @@ runAsciiPicture = do
 
 asciiPicture :: String -> BT.Net (Maybe String)
 asciiPicture str
-    | "asciiart: dickbut" `isPrefixOf` str = doAsciiGeneration dickbut
+    | "asciiart: dickbutt" `isPrefixOf` str = doAsciiGeneration dickbutt
+    | "asciiart: (y)" `isPrefixOf` str = doAsciiGeneration thumbsUp
     | "asciiart: http" `isPrefixOf` str =
         doAsciiGeneration $ drop (length "asciiart: ") str
     | otherwise = return Nothing
