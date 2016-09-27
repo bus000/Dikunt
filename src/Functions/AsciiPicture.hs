@@ -27,7 +27,7 @@ asciiPicture :: String -> BT.Net (Maybe String)
 asciiPicture str
     | "asciiart: dickbutt" `isPrefixOf` str = doAsciiGeneration dickbutt
     | "asciiart: (y)" `isPrefixOf` str = doAsciiGeneration thumbsUp
-    | "asciiart: pepe" `isPrefixOf` = doAsciiGeneration pepe
+    | "asciiart: pepe" `isPrefixOf` str = doAsciiGeneration pepe
     | "asciiart: http" `isPrefixOf` str =
         doAsciiGeneration $ drop (length "asciiart: ") str
     | otherwise = return Nothing
