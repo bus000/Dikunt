@@ -6,3 +6,6 @@ FEATURES:
 
     Dikunt should be able to give breaking news on request. The command could
     for example be "dikunt: breaking"
+
+    Dikunt should be able to display a list of features and a help string for
+    each of the features when requested.
