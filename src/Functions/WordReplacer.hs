@@ -15,6 +15,8 @@ replacementList =
     , ("ha!", "HAHAHAHAHAHHAHA!")
     , ("Mads", "Twin")
     , ("Troels", "Twin")
+    , ("tjekker", "kontrollerer")
+    , ("Tjekker", "Kontrollerer")
     ]
 
 replacementKeys :: [String]
