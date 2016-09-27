@@ -3,3 +3,6 @@ FEATURES:
     Dikunt should be able to make ascii art of a set of predefined images.
     This will allow users to not find a url every time they need to make a
     reaction.
+
+    Dikunt should be able to give breaking news on request. The command could
+    for example be "dikunt: breaking"
