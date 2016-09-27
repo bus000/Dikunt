@@ -17,7 +17,7 @@ replacementList =
     , ("Troels", "Twin")
     , ("tjekker", "kontrollerer")
     , ("Tjekker", "Kontrollerer")
-    , ("tjekke", "kontrollerer")
+    , ("tjekke", "kontrollere")
     ]
 
 replacementKeys :: [String]
