@@ -6,14 +6,16 @@ import qualified BotTypes as BT
 
 replacementList :: [(String, String)]
 replacementList =
-  [ ("Mark", "ShortGuy")
-  , ("Jan", "Tjekkeren")
-  , ("Magnus", "Glorious")
-  , ("August", "Motherless")
-  , ("Oleks", "Joleks")
-  , ("10/10", "knæhøj karse")
-  , ("ha!", "HAHAHAHAHAHHAHA!")
-  ]
+    [ ("Mark", "ShortGuy")
+    , ("Jan", "Tjekkeren")
+    , ("Magnus", "Glorious")
+    , ("August", "Motherless")
+    , ("Oleks", "Joleks")
+    , ("10/10", "knæhøj karse")
+    , ("ha!", "HAHAHAHAHAHHAHA!")
+    , ("Mads", "Twin")
+    , ("Troels", "Twin")
+    ]
 
 replacementKeys :: [String]
 replacementKeys = map fst replacementList
