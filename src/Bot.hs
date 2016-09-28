@@ -2,11 +2,12 @@ module Bot
   ( connect
   , disconnect
   , Bot
-  , run
   , loop
   ) where
 
-import Control.Monad.Reader
+import Control.Concurrent
+import Control.Monad
+import Control.Monad.State
 import Data.List
 import Data.Maybe
 import Network
@@ -14,84 +15,90 @@ import System.IO
 import Text.Printf
 
 -- Bot modules
+import BotTypes
+    ( Net
+    , BotFunction
+    , Bot
+    , socket
+    , nickname
+    , password
+    , bot
+    , channel
+    , saveLastMsg
+    , saveMsg
+    )
 import Functions.AsciiPicture (runAsciiPicture)
-import Functions.Parrot (parrot)
-import Functions.WordReplacer (replaceWords)
-
-port :: Integer
-port = 6667
-
-type Net = ReaderT Bot IO
-data Bot = Bot
-  { socket :: Handle
-  , nickname :: String
-  , channel  :: String
-  , password :: String
-  }
-
-{- | Defines a Dikunt action. All new Dikunt features should implement a
- - function of this type and report in the functions list. -}
-type BotFunction = String -> IO (Maybe String)
+import Functions.Parrot (runParrot)
+import Functions.WordReplacer (runReplaceWords)
+import Functions.Fix (runFix)
 
 {- | List of all the crazy things Dikunt can do! The first of these actions to
  - return a value is chosen as the action for an incoming request. -}
 functions :: [BotFunction]
-functions = [parrot, replaceWords]
+functions = [runAsciiPicture, runFix, runParrot, runReplaceWords]
 
 disconnect :: Bot -> IO ()
 disconnect = hClose . socket
 
-connect :: String -> String -> String -> String -> IO Bot
-connect serv chan nick pass = do
+connect :: String -> String -> String -> String -> Integer -> IO Bot
+connect serv chan nick pass port = do
     h <- connectTo serv (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
-    return (Bot h nick chan pass)
+    return $ bot h nick chan pass
 
 loop :: Bot -> IO ()
-loop st = runReaderT run st
+loop b = void $ runStateT run b
 
 run :: Net ()
 run = do
-    pass <- asks password
-    nick <- asks nickname
-    chan <- asks channel
+    st <- get
+    let pass = password st
+        nick = nickname st
+        chan = channel st
+
     write "NICK" nick
     write "USER" (nick ++ " 0 * :tutorial bot")
-    write ("PRIVMSG NickServ : IDENTIFY "++nick) pass
+    write ("PRIVMSG NickServ : IDENTIFY " ++ nick) pass
     write "JOIN" chan
-    asks socket >>= listen
+    listen
 
-listen :: Handle -> Net ()
-listen h = forever $ do
-    s <- init `fmap` io (hGetLine h)
-    io (putStrLn s)
-    if ping s then pong s else eval (clean s) functions
+listen :: Net ()
+listen = forever $ do
+    st <- get
+    let h = socket st
+    s <- fmap init (liftIO $ hGetLine h)
+    saveMsg (clean s)
+    if ping s then pong s else eval functions
+    saveLastMsg (clean s)
   where
-    clean = drop 1 . dropWhile (/= ':') . drop 1
+    clean = drop 1 . dropWhile (/= ':') . dropWhile (/= '#') . drop 1
     ping x = "PING :" `isPrefixOf` x
     pong x = write "PONG" (':' : drop 6 x)
 
-eval :: String -> [BotFunction] -> Net ()
-eval str fs = do
-    results <- io $ sequence (map (\x -> x str) fs)
+eval :: [BotFunction] -> Net ()
+eval fs = do
+    results <- sequence fs
     case catMaybes results of
         (res:_) -> privmsg res
         _ -> return ()
 
 privmsg :: String -> Net ()
 privmsg s = do
-    chan <- asks channel
+    st <- get
+    let chan = channel st
 
     let begin = chan ++ " :"
         ls = map (begin ++) (lines s)
 
-    mapM_ (write "PRIVMSG") ls
+    mapM_ writeLine ls
+  where
+    writeLine msg = do
+        write "PRIVMSG" msg
+        liftIO $ threadDelay 1000000
 
 write :: String -> String -> Net ()
 write s t = do
-    h <- asks socket
-    io $ hPrintf h "%s %s\r\n" s t
-    io $ printf    "> %s %s\n" s t
-
-io :: IO a -> Net a
-io = liftIO
+    st <- get
+    let h = socket st
+    liftIO $ hPrintf h "%s %s\r\n" s t
+    liftIO $ printf    "> %s %s\n" s t
