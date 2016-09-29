@@ -24,7 +24,9 @@ executable Dikunt
                        mtl >=2.2.1,
                        process >=1.2,
                        cmdargs >=0.10.14,
-                       MissingH >=1.4.0.1
+                       MissingH >=1.4.0.1,
+                       safe >=0.3.9,
+                       regex-posix >=0.95.2
   GHC-Options:         -Wall
   hs-source-dirs:      src
   default-language:    Haskell2010

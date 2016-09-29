@@ -28,9 +28,9 @@ import BotTypes
     , saveMsg
     )
 import Functions.AsciiPicture (runAsciiPicture)
+import Functions.Fix (runFix)
 import Functions.Parrot (runParrot)
 import Functions.WordReplacer (runReplaceWords)
-import Functions.Fix (runFix)
 
 {- | List of all the crazy things Dikunt can do! The first of these actions to
  - return a value is chosen as the action for an incoming request. -}
@@ -67,20 +67,23 @@ listen = forever $ do
     st <- get
     let h = socket st
     s <- fmap init (liftIO $ hGetLine h)
-    saveMsg (clean s)
+    saveMsg s
     if ping s then pong s else eval functions
     saveLastMsg (clean s)
   where
-    clean = drop 1 . dropWhile (/= ':') . dropWhile (/= '#') . drop 1
     ping x = "PING :" `isPrefixOf` x
     pong x = write "PONG" (':' : drop 6 x)
 
 eval :: [BotFunction] -> Net ()
 eval fs = do
-    results <- sequence fs
-    case catMaybes results of
-        (res:_) -> privmsg res
-        _ -> return ()
+    message <- getValue message
+    case message of
+        Just message' -> do
+            results <- sequence fs
+            case catMaybes results of
+                (res:_) -> privmsg res
+                _ -> return ()
+        Nothing -> return ()
 
 privmsg :: String -> Net ()
 privmsg s = do
