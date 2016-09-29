@@ -17,8 +17,10 @@ runAsciiText = do
 asciiText :: String -> BT.Net (Maybe String)
 asciiText str
     | "asciitext: " `isPrefixOf` str = do
-        (e,s,_) <- liftIO $ readProcessWithExitCode "/usr/bin/toilet" [str] []
+        (e,s,_) <- liftIO $ readProcessWithExitCode "/usr/bin/toilet" [str'] []
         if e /= ExitSuccess
             then return Nothing
             else return $ Just s
     | otherwise = return Nothing
+  where
+    str' = drop (length "asciitext: ") str
