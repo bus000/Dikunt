@@ -32,11 +32,13 @@ import Functions.AsciiText (runAsciiText)
 import Functions.Fix (runFix)
 import Functions.Parrot (runParrot)
 import Functions.WordReplacer (runReplaceWords)
+import Functions.Trump (runTrump)
 
 {- | List of all the crazy things Dikunt can do! The first of these actions to
  - return a value is chosen as the action for an incoming request. -}
 functions :: [BotFunction]
-functions = [runAsciiPicture, runAsciiText, runFix, runParrot, runReplaceWords]
+functions = [runAsciiPicture, runAsciiText, runTrump, runFix, runParrot,
+    runReplaceWords]
 
 disconnect :: Bot -> IO ()
 disconnect = hClose . socket
