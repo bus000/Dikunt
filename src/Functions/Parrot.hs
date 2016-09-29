@@ -6,10 +6,9 @@ import Data.List
 import qualified BotTypes as BT
 
 runParrot :: BT.BotFunction
-runParrot = do
-    str <- BT.getValue BT.message
+runParrot msg = do
     nick <- BT.getValue BT.nickname
-    parrot nick str
+    parrot nick (BT.messageString msg)
 
 parrot :: String -> String -> BT.Net (Maybe String)
 parrot nick str

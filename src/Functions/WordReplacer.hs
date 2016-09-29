@@ -34,6 +34,4 @@ replaceWords str
         _ -> word
 
 runReplaceWords :: BT.BotFunction
-runReplaceWords = do
-    str <- BT.getValue BT.message
-    replaceWords str
+runReplaceWords msg = replaceWords (BT.messageString msg)

@@ -11,6 +11,11 @@ module BotTypes
     , message
     , lastMessage
     , saveMsg
+    , senderNick
+    , senderIP
+    , command
+    , messageString
+    , currentMessage
     ) where
 
 import Control.Monad.State
@@ -64,7 +69,7 @@ getValue f = get >>= \st -> return $ f st
 
 message :: String -> Maybe Message
 message str = case matchGroups of
-    [[_, user, ip, com, chan, msg]] -> do
+    [[_, user, ip, com, _, msg]] -> do
         com' <- ircMode com
         return $ Message user ip com' msg
     _ -> Nothing

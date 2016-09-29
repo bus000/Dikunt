@@ -25,9 +25,7 @@ justRight = "http://static3.depositphotos.com/1001914/142/i/950/" ++
     "depositphotos_1429391-Hand-sign-ok.jpg"
 
 runAsciiPicture :: BT.BotFunction
-runAsciiPicture = do
-    str <- BT.getValue BT.message
-    asciiPicture str
+runAsciiPicture msg = asciiPicture $ BT.messageString msg
 
 asciiPicture :: String -> BT.Net (Maybe String)
 asciiPicture str

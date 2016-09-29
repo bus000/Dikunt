@@ -1,9 +1,9 @@
 module Bot
-  ( connect
-  , disconnect
-  , Bot
-  , loop
-  ) where
+    ( connect
+    , disconnect
+    , Bot
+    , loop
+    ) where
 
 import Control.Concurrent
 import Control.Monad
@@ -24,8 +24,9 @@ import BotTypes
     , password
     , bot
     , channel
-    , saveLastMsg
     , saveMsg
+    , getValue
+    , currentMessage
     )
 import Functions.AsciiPicture (runAsciiPicture)
 import Functions.Fix (runFix)
@@ -69,17 +70,16 @@ listen = forever $ do
     s <- fmap init (liftIO $ hGetLine h)
     saveMsg s
     if ping s then pong s else eval functions
-    saveLastMsg (clean s)
   where
     ping x = "PING :" `isPrefixOf` x
     pong x = write "PONG" (':' : drop 6 x)
 
 eval :: [BotFunction] -> Net ()
 eval fs = do
-    message <- getValue message
+    message <- getValue currentMessage
     case message of
         Just message' -> do
-            results <- sequence fs
+            results <- mapM (\f -> f message') fs
             case catMaybes results of
                 (res:_) -> privmsg res
                 _ -> return ()
