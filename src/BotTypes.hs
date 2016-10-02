@@ -19,12 +19,12 @@ import System.IO
 
 type Net = StateT Bot IO
 data Bot = Bot
-    { socket      :: Handle
-    , nickname    :: String
-    , channel     :: String
-    , password    :: String
-    , message     :: String
-    , lastMessage :: Maybe String
+    { socket       :: Handle
+    , nickname     :: String
+    , channel      :: String
+    , password     :: String
+    , message      :: String
+    , lastMessage  :: Maybe String
     }
 
 {- | Defines a Dikunt action. All new Dikunt features should implement a
