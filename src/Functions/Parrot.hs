@@ -8,7 +8,7 @@ import qualified BotTypes as BT
 runParrot :: BT.BotFunction
 runParrot msg = do
     nick <- BT.getValue BT.nickname
-    parrot nick (BT.messageString msg)
+    parrot nick (BT.privMsgMessage msg)
 
 parrot :: String -> String -> BT.Net (Maybe String)
 parrot nick str

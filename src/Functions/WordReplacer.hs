@@ -34,4 +34,4 @@ replaceWords str
         _ -> word
 
 runReplaceWords :: BT.BotFunction
-runReplaceWords msg = replaceWords (BT.messageString msg)
+runReplaceWords msg = replaceWords (BT.privMsgMessage msg)
