@@ -20,10 +20,10 @@ import Control.Applicative ((<|>))
 
 type Net = StateT Bot IO
 data Bot = Bot
-    { socket         :: Handle
-    , nickname       :: String
-    , channel        :: String
-    , password       :: String
+    { socket   :: Handle
+    , nickname :: String
+    , channel  :: String
+    , password :: String
     }
 
 bot :: Handle -> String -> String -> String -> Bot
