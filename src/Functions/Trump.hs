@@ -24,9 +24,11 @@ trump :: Random.StdGen -> IO String
 trump gen = do
     content <- readFile trumpFile
     let ws = words content
-        trumpText = take 200 $ run 2 ws 0 gen
+        trumpText = run 2 ws 0 gen
+        trumpText' = drop 1 $ dropWhile (\str -> not ('.' `elem` str)) trumpText
+        sentence = (takeWhile ('.' /=) (unwords trumpText')) ++ '.'
 
-    return $ unwords trumpText
+    return $ "Friends, delegates and fellow Americans: " ++ sentence
 
 trumpFile :: FilePath
 trumpFile = "./data/trump.txt"
