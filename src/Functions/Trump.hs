@@ -11,9 +11,10 @@ import qualified System.Random as Random
 
 runTrump :: BT.BotFunction
 runTrump msg = do
+    nick <- BT.getValue BT.nickname
     let str = BT.privMsgMessage msg
     gen <- liftIO Random.newStdGen
-    if "dikunt: trump" `isPrefixOf` str
+    if (nick ++ ": trump") `isPrefixOf` str
     then do
         res <- liftIO $ trump gen
         return $ Just res
