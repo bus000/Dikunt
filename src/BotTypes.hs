@@ -9,9 +9,6 @@ module BotTypes
     , channel
     , password
     , message
-    , lastMessage
-    , currentMessage
-
     , Message(..)
     ) where
 
@@ -27,12 +24,10 @@ data Bot = Bot
     , nickname       :: String
     , channel        :: String
     , password       :: String
-    , currentMessage :: Maybe Message
-    , lastMessage    :: Maybe Message
     }
 
 bot :: Handle -> String -> String -> String -> Bot
-bot h n c p = Bot h n c p Nothing Nothing
+bot h n c p = Bot h n c p
 
 getValue :: (Bot -> a) -> Net a
 getValue f = get >>= \st -> return $ f st
