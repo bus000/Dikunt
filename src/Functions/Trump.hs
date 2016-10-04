@@ -26,7 +26,7 @@ trump gen = do
     let ws = words content
         trumpText = run 2 ws 0 gen
         trumpText' = drop 1 $ dropWhile (\str -> not ('.' `elem` str)) trumpText
-        sentence = (takeWhile ('.' /=) (unwords trumpText')) ++ '.'
+        sentence = (takeWhile ('.' /=) (unwords trumpText')) ++ "."
 
     return $ "Friends, delegates and fellow Americans: " ++ sentence
 
