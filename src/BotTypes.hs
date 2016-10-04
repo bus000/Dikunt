@@ -10,19 +10,16 @@ module BotTypes
     , password
     , message
     , lastMessage
-    , saveMsg
-    , senderNick
-    , senderIP
-    , command
-    , messageString
     , currentMessage
+
+    , Message(..)
     ) where
 
 import Control.Monad.State
 import System.IO
-import Text.Regex.Posix ((=~))
-import Data.Char (toUpper, isSpace)
-import Safe (readMay)
+import Text.Regex.PCRE ((=~))
+import Safe (readMay, atMay)
+import Control.Applicative ((<|>))
 
 type Net = StateT Bot IO
 data Bot = Bot
@@ -34,6 +31,12 @@ data Bot = Bot
     , lastMessage    :: Maybe Message
     }
 
+bot :: Handle -> String -> String -> String -> Bot
+bot h n c p = Bot h n c p Nothing Nothing
+
+getValue :: (Bot -> a) -> Net a
+getValue f = get >>= \st -> return $ f st
+
 {- | Defines a Dikunt action. All new Dikunt features should implement a
  - function of this type and report in the functions list. -}
 type BotFunction = Message -> Net (Maybe String)
@@ -44,100 +47,46 @@ data IRCCommand = ADMIN | AWAY | CNOTICE | CPRIVMSG | CONNECT | DIE | ENCAP
     | PASS | PING | PONG | PRIVMSG | QUIT | REHASH | RESTART | RULES | SERVER
     | SERVICE | SERVLIST | SQUERY | SQUIT | SETNAME | SILENCE | STATS | SUMMON
     | TIME | TOPIC | TRACE | UHNAMES | USER | USERHOST | USERIP | USERS
-    | VERSION | WALLOPS | WATCH | WHO | WHOIS | WHOWAS
+    | VERSION | WALLOPS | WATCH | WHO | WHOIS | WHOWAS | NUMCOM Integer
     deriving (Show, Read, Eq)
 
-data Message = Message
-    { senderNick    :: String
-    , senderIP      :: String
-    , command       :: IRCCommand
-    , messageString :: String
-    } deriving (Show)
+data IRCMessage = IRCMessage
+    { ircPrefix  :: Maybe String
+    , ircCommand :: IRCCommand
+    , ircParams  :: [String]
+    , trail      :: Maybe String
+    } deriving (Show, Eq)
 
-bot :: Handle -> String -> String -> String -> Bot
-bot h n c p = Bot h n c p Nothing Nothing
+ircMessage :: String -> Maybe IRCMessage
+ircMessage str = do
+    cmd' <- numericCommand <|> textCommand
+    return $ IRCMessage prefix' cmd' args' msg'
+  where
+    pattern = "^(:(\\S+) )?(\\S+)( (?!:)(.+?))?( :(.+))?$"
+    [[_, prefix, _, cmd, _, args, _, msg]] = str =~ pattern :: [[String]]
+    textCommand = readMay cmd
+    numericCommand = readMay cmd >>= return . NUMCOM
 
-saveMsg :: String -> Net ()
-saveMsg msg = do
-    st <- get
-    put st { lastMessage = currentMessage st
-        , currentMessage = message msg
-        }
+    prefix' = if null prefix then Nothing else Just prefix
+    args' = words args
+    msg' = if null msg then Nothing else Just msg
 
-getValue :: (Bot -> a) -> Net a
-getValue f = get >>= \st -> return $ f st
+data Message = PrivMsg { privMsgFrom, privMsgTo, privMsgMessage :: String }
+    | Ping { pingFrom :: String }
+    deriving (Show, Eq, Read)
+
+newMessage :: IRCMessage -> Maybe Message
+newMessage msg
+    | ircCommand msg == PING = do
+        from <- trail msg
+        return $ Ping from
+    | ircCommand msg == PRIVMSG = do
+        prefix <- ircPrefix msg
+        let from = takeWhile ('!' /=) prefix
+        to <- atMay (ircParams msg) 0
+        str <- trail msg
+        return $ PrivMsg from to str
+    | otherwise = Nothing
 
 message :: String -> Maybe Message
-message str = case matchGroups of
-    [[_, user, ip, com, _, msg]] -> do
-        com' <- ircMode com
-        return $ Message user ip com' msg
-    _ -> Nothing
-  where
-    matchGroups = str =~ ":(.*)!~(.*) (.*) (#.*) :(.*)" :: [[String]]
-
-ircMode :: String -> Maybe IRCCommand
-ircMode = readMay . map toUpper . filter (not . isSpace)
-
-
-    {-["ADMIN"] -> ADMIN-}
-    {-["AWAY"] -> AWAY-}
-    {-["CNOTICE"] -> CNOTICE-}
-    {-["CPRIVMSG"] -> CPRIVMSG-}
-    {-["CONNECT"] -> CONNECT-}
-    {-["DIE"] -> DIE-}
-    {-["ENCAP"] -> ENCAP-}
-    {-["ERROR"] -> ERROR-}
-    {-["HELP"] -> HELP-}
-    {-["INFO"] -> INFO-}
-    {-["INVITE"] -> INVITE-}
-    {-["ISON"] -> ISON-}
-    {-["JOIN"] -> JOIN-}
-    {-["KICK"] -> KICK-}
-    {-["KILL"] -> KILL-}
-    {-["KNOCK"] -> KNOCK-}
-    {-["LINKS"] -> LINKS-}
-    {-["LIST"] -> LIST-}
-    {-["LUSERS"] -> LUSERS-}
-    {-["MODE"] -> MODE-}
-    {-["MOTD"] -> MOTD-}
-    {-["NAMES"] -> NAMES-}
-    {-["NAMESX"] -> NAMESX-}
-    {-["NICK"] -> NICK-}
-    {-["NOTICE"] -> NOTICE-}
-    {-["OPER"] -> OPER-}
-    {-["PART"] -> PART-}
-    {-["PASS"] -> PASS-}
-    {-["PING"] -> PING-}
-    {-["PONG"] -> PONG-}
-    {-["PRIVMSG"] -> PRIVMSG-}
-    {-["QUIT"] -> QUIT-}
-    {-["REHASH"] -> REHASH-}
-    {-["RESTART"] -> RESTART-}
-    {-["RULES"] -> RULES-}
-    {-["SERVER"] -> SERVER-}
-    {-["SERVICE"] -> SERVICE-}
-    {-["SERVLIST"] -> SERVLIST-}
-    {-["SQUERY"] -> SQUERY-}
-    {-["SQUIT"] -> SQUIT-}
-    {-["SETNAME"] -> SETNAME-}
-    {-["SILENCE"] -> SILENCE-}
-    {-["STATS"] -> STATS-}
-    {-["SUMMON"] -> SUMMON-}
-    {-["TIME"] -> TIME-}
-    {-["TOPIC"] -> TOPIC-}
-    {-["TRACE"] -> TRACE-}
-    {-["UHNAMES"] -> UHNAMES-}
-    {-["USER"] -> USER-}
-    {-["USERHOST"] -> USERHOST-}
-    {-["USERIP"] -> USERIP-}
-    {-["USERS"] -> USERS-}
-    {-["VERSION"] -> VERSION-}
-    {-["WALLOPS"] -> WALLOPS-}
-    {-["WATCH"] -> WATCH-}
-    {-["WHO"] -> WHO-}
-    {-["WHOIS"] -> WHOIS-}
-    {-["WHOWAS"] -> WHOWAS-}
-    {-_ -> Undefined-}
-
-{-":bus000_!~fluttersh@46.101.150.96 PRIVMSG #dikufags :asciiart: (y)" =~ ":(.*)!~(.*) (.*) (#.*) :(.*)" :: [[String]]-}
+message str = ircMessage str >>= newMessage

@@ -8,7 +8,6 @@ module Bot
 import Control.Concurrent
 import Control.Monad
 import Control.Monad.State
-import Data.List
 import Data.Maybe
 import Network
 import System.IO
@@ -24,9 +23,8 @@ import BotTypes
     , password
     , bot
     , channel
-    , saveMsg
-    , getValue
-    , currentMessage
+    , Message(..)
+    , message
     )
 import Functions.AsciiPicture (runAsciiPicture)
 import Functions.Fix (runFix)
@@ -68,22 +66,17 @@ listen = forever $ do
     st <- get
     let h = socket st
     s <- fmap init (liftIO $ hGetLine h)
-    saveMsg s
-    if ping s then pong s else eval functions
-  where
-    ping x = "PING :" `isPrefixOf` x
-    pong x = write "PONG" (':' : drop 6 x)
-
-eval :: [BotFunction] -> Net ()
-eval fs = do
-    message <- getValue currentMessage
-    case message of
-        Just message' -> do
-            results <- mapM (\f -> f message') fs
-            case catMaybes results of
-                (res:_) -> privmsg res
-                _ -> return ()
+    case message s of
+        Just m -> eval m functions
         Nothing -> return ()
+
+eval :: Message -> [BotFunction] -> Net ()
+eval (Ping from) _ = write "PONG" from
+eval msg@(PrivMsg _ _ _) fs = do
+    results <- mapM (\f -> f msg) fs
+    case catMaybes results of
+        (res:_) -> privmsg res
+        _ -> return ()
 
 privmsg :: String -> Net ()
 privmsg s = do
