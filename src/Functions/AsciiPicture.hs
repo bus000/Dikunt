@@ -21,7 +21,8 @@ pepe :: String
 pepe = "https://ih1.redbubble.net/image.53530799.0943/flat,800x800,070,f.jpg"
 
 wewlad :: String
-wewlad = "http://vignette1.wikia.nocookie.net/trollpasta/images/e/e6/Wew_lad.jpgs"
+wewlad = "http://vignette1.wikia.nocookie.net/trollpasta/images/e/e6/" ++
+    "Wew_lad.jpg"
 
 justRight :: String
 justRight = "http://static3.depositphotos.com/1001914/142/i/950/" ++
@@ -36,6 +37,7 @@ asciiPicture str
     | "asciiart: (y)" `isPrefixOf` str = doAsciiGeneration thumbsUp
     | "asciiart: pepe" `isPrefixOf` str = doAsciiGeneration pepe
     | "asciiart: just right" `isPrefixOf` str = doAsciiGeneration justRight
+    | "asciiart: wewlad" `isPrefixOf` str = doAsciiGeneration wewlad
     | "asciiart: http" `isPrefixOf` str =
         doAsciiGeneration $ drop (length "asciiart: ") str
     | otherwise = return Nothing
