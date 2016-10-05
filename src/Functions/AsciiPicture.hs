@@ -20,6 +20,9 @@ thumbsUp = "http://clipartix.com/wp-content/uploads/2016/04/Thumbs-up" ++
 pepe :: String
 pepe = "https://ih1.redbubble.net/image.53530799.0943/flat,800x800,070,f.jpg"
 
+wewlad :: String
+wewlad = "http://vignette1.wikia.nocookie.net/trollpasta/images/e/e6/Wew_lad.jpgs"
+
 justRight :: String
 justRight = "http://static3.depositphotos.com/1001914/142/i/950/" ++
     "depositphotos_1429391-Hand-sign-ok.jpg"
