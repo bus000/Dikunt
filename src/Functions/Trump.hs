@@ -25,8 +25,8 @@ trump gen = do
     content <- readFile trumpFile
     let ws = words content
         trumpText = run 2 ws 0 gen
-        trumpText' = drop 1 $ dropWhile (\str -> not ('.' `elem` str)) trumpText
-        sentence = (takeWhile ('.' /=) (unwords trumpText')) ++ "."
+        trumpText' = drop 1 $ dropWhile (notElem '.') trumpText
+        sentence = takeWhile ('.' /=) (unwords trumpText') ++ "."
 
     return $ "Friends, delegates and fellow Americans: " ++ sentence
 

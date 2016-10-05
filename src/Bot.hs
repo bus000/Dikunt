@@ -75,7 +75,7 @@ listen = forever $ do
 
 eval :: Message -> [BotFunction] -> Net ()
 eval (Ping from) _ = write "PONG" from
-eval msg@(PrivMsg _ _ _) fs = do
+eval msg@PrivMsg{} fs = do
     results <- mapM (\f -> f msg) fs
     case catMaybes results of
         (res:_) -> privmsg res
