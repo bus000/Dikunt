@@ -18,6 +18,8 @@ replacementList =
     , ("tjekker", "kontrollerer")
     , ("Tjekker", "Kontrollerer")
     , ("tjekke", "kontrollere")
+    , ("vim", "best editor")
+    , ("emacs", "worst editor")
     ]
 
 replacementKeys :: [String]
