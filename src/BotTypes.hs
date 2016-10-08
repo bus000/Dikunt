@@ -12,11 +12,11 @@ module BotTypes
     , Message(..)
     ) where
 
+import Control.Applicative ((<|>))
 import Control.Monad.State
+import Safe (readMay, atMay)
 import System.IO
 import Text.Regex.PCRE ((=~))
-import Safe (readMay, atMay)
-import Control.Applicative ((<|>))
 
 type Net = StateT Bot IO
 data Bot = Bot
