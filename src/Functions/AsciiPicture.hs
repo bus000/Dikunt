@@ -1,5 +1,5 @@
 module Functions.AsciiPicture
-  ( runAsciiPicture
+  ( asciiPicture
   ) where
 
 import qualified BotTypes as BT
@@ -7,44 +7,54 @@ import Control.Monad.State
 import Data.List
 import System.Exit
 import System.Process
+import qualified Data.Map as Map
+import Data.Char (isSpace)
 
-dickbutt :: String
-dickbutt = "https://static1.fjcdn.com/thumbnails/comments/" ++
-    "Dickbut+for+everybody+zentertainments+gets+a+dickbut+_" ++
-    "fc88e4d586c873f470964fab580a9518.jpg"
+asciiPicture :: BT.BotFunction
+asciiPicture = BT.BotFunction
+    { BT.shouldRun = shouldRun
+    , BT.run = run
+    , BT.help = "asciiart: <url> - Prints the jpg picture the URL points to"
+    , BT.name = "AsciiArt"
+    }
 
-thumbsUp :: String
-thumbsUp = "http://clipartix.com/wp-content/uploads/2016/04/Thumbs-up" ++
-    "-clipart-cliparts-for-you.jpg"
+buildIn :: Map.Map String String
+buildIn = Map.fromList
+    [ ("dickbutt", "https://static1.fjcdn.com/thumbnails/comments/" ++
+        "Dickbut+for+everybody+zentertainments+gets+a+dickbut+_" ++
+        "fc88e4d586c873f470964fab580a9518.jpg")
 
-pepe :: String
-pepe = "https://ih1.redbubble.net/image.53530799.0943/flat,800x800,070,f.jpg"
+    , ("(y)", "http://clipartix.com/wp-content/uploads/2016/04/Thumbs-up" ++
+        "-clipart-cliparts-for-you.jpg")
 
-wewlad :: String
-wewlad = "http://vignette1.wikia.nocookie.net/trollpasta/images/e/e6/" ++
-    "Wew_lad.jpg"
+    , ("pepe", "https://ih1.redbubble.net/image.53530799.0943/" ++
+        "flat,800x800,070,f.jpg")
 
-justRight :: String
-justRight = "http://static3.depositphotos.com/1001914/142/i/950/" ++
-    "depositphotos_1429391-Hand-sign-ok.jpg"
+    , ("wewlad", "http://vignette1.wikia.nocookie.net/trollpasta/images/e/" ++
+        "e6/Wew_lad.jpg")
 
-runAsciiPicture :: BT.BotFunction
-runAsciiPicture msg = asciiPicture $ BT.privMsgMessage msg
+    , ("just right", "http://static3.depositphotos.com/1001914/142/i/950/" ++
+        "depositphotos_1429391-Hand-sign-ok.jpg")
+    ]
 
-asciiPicture :: String -> BT.Net (Maybe String)
-asciiPicture str
-    | "asciiart: dickbutt" `isPrefixOf` str = doAsciiGeneration dickbutt
-    | "asciiart: (y)" `isPrefixOf` str = doAsciiGeneration thumbsUp
-    | "asciiart: pepe" `isPrefixOf` str = doAsciiGeneration pepe
-    | "asciiart: just right" `isPrefixOf` str = doAsciiGeneration justRight
-    | "asciiart: wewlad" `isPrefixOf` str = doAsciiGeneration wewlad
-    | "asciiart: http" `isPrefixOf` str =
-        doAsciiGeneration $ drop (length "asciiart: ") str
-    | otherwise = return Nothing
-  where
-    doAsciiGeneration url = do
-        (e,s,_) <- liftIO $ readProcessWithExitCode "/usr/bin/jp2a"
-            [url, "--width=80","--background=light"] []
-        if e /= ExitSuccess
-            then return Nothing
-            else return $ Just s
+shouldRun :: BT.Message -> BT.Net Bool
+shouldRun (BT.PrivMsg _ _ msg) =
+    let msg' = dropWhile isSpace msg
+    in return $ "asciiart:" `isPrefixOf` msg'
+shouldRun _ = return False
+
+run :: BT.Message -> BT.Net String
+run (BT.PrivMsg _ _ msg) =
+    let clean = (unwords . drop 1 . words) msg
+    in case Map.lookup clean buildIn of
+        Just url -> generatePicture url
+        Nothing -> generatePicture clean
+run _ = fail "AsciiPicture only runs on PrivMsg's"
+
+generatePicture :: String -> BT.Net String
+generatePicture url = do
+    (e, s, _) <- liftIO $ readProcessWithExitCode "/usr/bin/jp2a"
+        [url, "--width=80", "--background=light"] []
+    case e of
+        ExitSuccess -> return s
+        ExitFailure _ -> return "I do not understand yo URL"

@@ -1,8 +1,33 @@
 module Functions.WordReplacer
-  ( runReplaceWords
+  ( wordReplacer
   ) where
 
 import qualified BotTypes as BT
+
+wordReplacer :: BT.BotFunction
+wordReplacer = BT.BotFunction
+    { BT.shouldRun = wordReplacerShouldRun
+    , BT.run = runReplaceWords
+    , BT.help = "Replaces words in any message."
+    , BT.name = "WordReplacer"
+    }
+
+wordReplacerShouldRun :: BT.Message -> BT.Net Bool
+wordReplacerShouldRun (BT.PrivMsg _ _ msg) =
+    return $ any (`elem` replacementKeys) (words msg)
+wordReplacerShouldRun _ = return False
+
+runReplaceWords :: BT.Message -> BT.Net String
+runReplaceWords (BT.PrivMsg _ _ msg) =
+    return . unwords . map replace . words $ msg
+  where
+    replace word = case lookup word replacementList of
+        Just replacement -> replacement
+        _ -> word
+runReplaceWords _ = return "WordReplacer should only run on PrivMsg's."
+
+replacementKeys :: [String]
+replacementKeys = map fst replacementList
 
 replacementList :: [(String, String)]
 replacementList =
@@ -13,6 +38,7 @@ replacementList =
     , ("Oleks", "Joleks")
     , ("10/10", "knæhøj karse")
     , ("ha!", "HAHAHAHAHAHHAHA!")
+    , ("haha", "hilarious, just hilarious")
     , ("Mads", "Twin")
     , ("Troels", "Twin")
     , ("tjekker", "kontrollerer")
@@ -20,20 +46,6 @@ replacementList =
     , ("tjekke", "kontrollere")
     , ("vim", "best editor")
     , ("emacs", "worst editor")
+    , ("fucking", "")
+    , ("fuck", "")
     ]
-
-replacementKeys :: [String]
-replacementKeys = map fst replacementList
-
-replaceWords :: String -> BT.Net (Maybe String)
-replaceWords str
-    | any (`elem` replacementKeys) (words str) =
-        return . Just . unwords . map replace . words $ str
-    | otherwise = return Nothing
-  where
-    replace word = case lookup word replacementList of
-        Just replacement -> replacement
-        _ -> word
-
-runReplaceWords :: BT.BotFunction
-runReplaceWords msg = replaceWords (BT.privMsgMessage msg)

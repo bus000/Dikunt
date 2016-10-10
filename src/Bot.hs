@@ -8,7 +8,10 @@ module Bot
 import Control.Concurrent
 import Control.Monad
 import Control.Monad.State
-import Data.Maybe
+    ( liftIO
+    , get
+    , runStateT
+    )
 import Network
 import System.IO
 import Text.Printf
@@ -16,7 +19,7 @@ import Text.Printf
 -- Bot modules
 import BotTypes
     ( Net
-    , BotFunction
+    , BotFunction(..)
     , Bot
     , socket
     , nickname
@@ -26,18 +29,17 @@ import BotTypes
     , Message(..)
     , message
     )
-import Functions.AsciiPicture (runAsciiPicture)
-import Functions.AsciiText (runAsciiText)
-import Functions.Fix (runFix)
-import Functions.Parrot (runParrot)
-import Functions.Trump (runTrump)
-import Functions.WordReplacer (runReplaceWords)
+import Functions.AsciiPicture (asciiPicture)
+import Functions.AsciiText (asciiText)
+import Functions.Fix (fix)
+import Functions.Parrot (parrot)
+import Functions.Trump (trump)
+import Functions.WordReplacer (wordReplacer)
 
 {- | List of all the crazy things Dikunt can do! The first of these actions to
  - return a value is chosen as the action for an incoming request. -}
 functions :: [BotFunction]
-functions = [runAsciiPicture, runAsciiText, runTrump, runFix, runParrot,
-    runReplaceWords]
+functions = [asciiPicture, asciiText, trump, fix, parrot, wordReplacer]
 
 disconnect :: Bot -> IO ()
 disconnect = hClose . socket
@@ -49,20 +51,19 @@ connect serv chan nick pass port = do
     return $ bot h nick chan pass
 
 loop :: Bot -> IO ()
-loop b = void $ runStateT run b
+loop b = void $ runStateT runLoop b
+  where
+    runLoop = do
+        st <- get
+        let pass = password st
+            nick = nickname st
+            chan = channel st
 
-run :: Net ()
-run = do
-    st <- get
-    let pass = password st
-        nick = nickname st
-        chan = channel st
-
-    write "NICK" nick
-    write "USER" (nick ++ " 0 * :tutorial bot")
-    write ("PRIVMSG NickServ : IDENTIFY " ++ nick) pass
-    write "JOIN" chan
-    listen
+        write "NICK" nick
+        write "USER" (nick ++ " 0 * :tutorial bot")
+        write ("PRIVMSG NickServ : IDENTIFY " ++ nick) pass
+        write "JOIN" chan
+        listen
 
 listen :: Net ()
 listen = forever $ do
@@ -76,10 +77,10 @@ listen = forever $ do
 eval :: Message -> [BotFunction] -> Net ()
 eval (Ping from) _ = write "PONG" from
 eval msg@PrivMsg{} fs = do
-    results <- mapM (\f -> f msg) fs
-    case catMaybes results of
-        (res:_) -> privmsg res
-        _ -> return ()
+    runables <- filterM (\f -> shouldRun f msg) fs
+    case runables of
+        (first:_) -> run first msg >>= privmsg
+        [] -> return ()
 
 privmsg :: String -> Net ()
 privmsg s = do

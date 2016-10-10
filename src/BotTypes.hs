@@ -1,6 +1,6 @@
 module BotTypes
     ( Net
-    , BotFunction
+    , BotFunction(..)
     , Bot
     , bot
     , getValue
@@ -32,9 +32,12 @@ bot h n c p = Bot h n c p
 getValue :: (Bot -> a) -> Net a
 getValue f = get >>= \st -> return $ f st
 
-{- | Defines a Dikunt action. All new Dikunt features should implement a
- - function of this type and report in the functions list. -}
-type BotFunction = Message -> Net (Maybe String)
+data BotFunction = BotFunction
+    { shouldRun :: Message -> Net Bool
+    , run       :: Message -> Net String
+    , help      :: String
+    , name      :: String
+    }
 
 data IRCCommand = ADMIN | AWAY | CNOTICE | CPRIVMSG | CONNECT | DIE | ENCAP
     | ERROR | HELP | INFO | INVITE | ISON | JOIN | KICK | KILL | KNOCK | LINKS
@@ -85,3 +88,8 @@ newMessage msg
 
 message :: String -> Maybe Message
 message str = ircMessage str >>= newMessage
+
+{-IRCMessage {ircPrefix = Just ":bus000_!~fluttersh@46.101.150.96 ", ircCommand = QUIT, ircParams= [], trail = Just "Quit: leaving"}-}
+
+{-IRCMessage {ircPrefix = Just ":bus000!~fluttersh@46.101.150.96 ", ircCommand = JOIN, ircParams = ["#dikufags_test"], trail = Nothing}-}
+

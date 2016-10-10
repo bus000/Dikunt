@@ -1,30 +1,42 @@
 module Functions.Trump
-    ( runTrump
+    ( trump
     ) where
 
 import qualified BotTypes as BT
 import Control.Monad.State
-import Data.List
-import Data.MarkovChain (run)
+import qualified Data.MarkovChain as MC
 import System.IO (readFile)
 import qualified System.Random as Random
 
-runTrump :: BT.BotFunction
-runTrump msg = do
-    nick <- BT.getValue BT.nickname
-    let str = BT.privMsgMessage msg
-    gen <- liftIO Random.newStdGen
-    if (nick ++ ": trump") `isPrefixOf` str
-    then do
-        res <- liftIO $ trump gen
-        return $ Just res
-    else return Nothing
+trump :: BT.BotFunction
+trump = BT.BotFunction
+    { BT.shouldRun = shouldRun
+    , BT.run = run
+    , BT.help = "<nick>: trump - Outputs a markov random trump quote."
+    , BT.name = "Trump"
+    }
 
-trump :: Random.StdGen -> IO String
-trump gen = do
+shouldRun :: BT.Message -> BT.Net Bool
+shouldRun (BT.PrivMsg _ _ msg) = do
+    nick <- BT.getValue BT.nickname
+    case words msg of
+        [first, second] ->
+            return $ (first == nick ++ ":") && (second == "trump")
+        _ -> return False
+shouldRun _ = return False
+
+run :: BT.Message -> BT.Net String
+run (BT.PrivMsg _ _ _) = do
+    gen <- liftIO Random.newStdGen
+    res <- liftIO $ runTrump gen
+    return res
+run _ = return "Trump should only run on PrivMsg's."
+
+runTrump :: Random.StdGen -> IO String
+runTrump gen = do
     content <- readFile trumpFile
     let ws = words content
-        trumpText = run 2 ws 0 gen
+        trumpText = MC.run 2 ws 0 gen
         trumpText' = drop 1 $ dropWhile (notElem '.') trumpText
         sentence = takeWhile ('.' /=) (unwords trumpText') ++ "."
 
