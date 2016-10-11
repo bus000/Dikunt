@@ -26,12 +26,6 @@ data Bot = Bot
     , password :: String
     }
 
-bot :: Handle -> String -> String -> String -> Bot
-bot h n c p = Bot h n c p
-
-getValue :: (Bot -> a) -> Net a
-getValue f = get >>= \st -> return $ f st
-
 data BotFunction = BotFunction
     { shouldRun :: Message -> Net Bool
     , run       :: Message -> Net String
@@ -55,6 +49,18 @@ data IRCMessage = IRCMessage
     , _trail      :: Maybe String
     } deriving (Show, Eq)
 
+data Message = PrivMsg { privMsgFrom, privMsgTo, privMsgMessage :: String }
+    | Ping { pingFrom :: String }
+    | Join { joinNick :: String }
+    | Quit { quitNick :: String }
+    deriving (Show, Eq, Read)
+
+bot :: Handle -> String -> String -> String -> Bot
+bot h n c p = Bot h n c p
+
+getValue :: (Bot -> a) -> Net a
+getValue f = get >>= \st -> return $ f st
+
 ircMessage :: String -> Maybe IRCMessage
 ircMessage str = do
     cmd' <- numericCommand <|> textCommand
@@ -69,12 +75,6 @@ ircMessage str = do
     args' = words args
     msg' = if null msg then Nothing else Just msg
 
-data Message = PrivMsg { privMsgFrom, privMsgTo, privMsgMessage :: String }
-    | Ping { pingFrom :: String }
-    | Join { joinNick :: String }
-    | Quit { quitNick :: String }
-    deriving (Show, Eq, Read)
-
 newMessage :: IRCMessage -> Maybe Message
 newMessage (IRCMessage _ PING _ (Just trail)) = return $ Ping trail
 newMessage (IRCMessage (Just prefix) PRIVMSG (to:_) (Just trail)) =
@@ -87,8 +87,3 @@ newMessage _ = Nothing
 
 message :: String -> Maybe Message
 message str = ircMessage str >>= newMessage
-
-{-IRCMessage {ircPrefix = Just ":bus000_!~fluttersh@46.101.150.96 ", ircCommand = QUIT, ircParams= [], trail = Just "Quit: leaving"}-}
-
-{-IRCMessage {ircPrefix = Just ":bus000!~fluttersh@46.101.150.96 ", ircCommand = JOIN, ircParams = ["#dikufags_test"], trail = Nothing}-}
-
