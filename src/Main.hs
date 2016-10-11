@@ -53,12 +53,12 @@ computeOffset :: String -> Maybe DiffTime
 computeOffset ('+':int) = do
     off <- readMay int
     if off > 0 && off < 15
-    then return $ secondsToDiffTime off
+    then return $ secondsToDiffTime (off * 3600)
     else Nothing
 computeOffset ('-':int) = do
     off <- readMay int
     if off > 0 && off < 13
-    then return $ secondsToDiffTime (-off)
+    then return $ secondsToDiffTime (-(off * 3600))
     else Nothing
 computeOffset ('0':[]) = Just $ secondsToDiffTime 0
 computeOffset _ = Nothing
