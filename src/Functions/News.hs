@@ -50,4 +50,4 @@ analyseFeed item = do
     return $ title ++ "\n    " ++ description ++ "\n" ++ link
 
 rssFeed :: String
-rssFeed = "http://feeds.bbci.co.uk/news/rss.xml"
+rssFeed = "http://feeds.bbci.co.uk/news/world/rss.xml"
