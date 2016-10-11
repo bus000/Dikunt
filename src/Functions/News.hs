@@ -27,6 +27,7 @@ shouldRun (BT.PrivMsg _ _ msg) = do
     case words msg of
         (first:"news":[]) -> return $ first == (nick ++ ":")
         _ -> return False
+shouldRun _ = return False
 
 {- TODO: refactor, this is FUGLY. -}
 run :: BT.Message -> BT.Net String
@@ -39,7 +40,6 @@ run _ = do
                 Just str -> return str
                 Nothing -> return "Feed analysation failed"
             _ -> return "No news"
-        _ -> return "Feed empty"
 
 analyseFeed :: Item -> Maybe String
 analyseFeed item = do
