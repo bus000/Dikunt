@@ -22,6 +22,7 @@ data Bot = Bot
     , channel    :: String
     , password   :: String
     , timeOffset :: DiffTime
+    , functions  :: [BotFunction]
     }
 
 data BotFunction = BotFunction
@@ -54,8 +55,8 @@ data Message = PrivMsg { privMsgFrom, privMsgTo, privMsgMessage :: String }
     | Part { partNick :: String }
     deriving (Show, Eq, Read)
 
-bot :: Handle -> String -> String -> String -> DiffTime -> Bot
-bot h n c p o = Bot h n c p o
+bot :: Handle -> String -> String -> String -> DiffTime -> [BotFunction] -> Bot
+bot h n c p o fs = Bot h n c p o fs
 
 getValue :: (Bot -> a) -> Net a
 getValue f = get >>= \st -> return $ f st

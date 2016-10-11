@@ -29,6 +29,8 @@ import BotTypes
     , channel
     , Message(..)
     , message
+    , functions
+    , getValue
     )
 import Functions.AsciiPicture (asciiPicture)
 import Functions.AsciiText (asciiText)
@@ -38,19 +40,6 @@ import Functions.Trump (trump)
 import Functions.WordReplacer (wordReplacer)
 import Functions.Greeting (greeting)
 
-{- | List of all the crazy things Dikunt can do! The first of these actions to
- - return a value is chosen as the action for an incoming request. -}
-functions :: [BotFunction]
-functions =
-    [ asciiPicture
-    , asciiText
-    , trump
-    , fix
-    , parrot
-    , greeting
-    , wordReplacer
-    ]
-
 disconnect :: Bot -> IO ()
 disconnect = hClose . socket
 
@@ -58,7 +47,17 @@ connect :: String -> String -> String -> String -> Integer -> DiffTime -> IO Bot
 connect serv chan nick pass port diff = do
     h <- connectTo serv (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
-    return $ bot h nick chan pass diff
+    return $ bot h nick chan pass diff functions
+  where
+    functions =
+        [ asciiPicture
+        , asciiText
+        , trump
+        , fix
+        , parrot
+        , greeting
+        , wordReplacer
+        ]
 
 loop :: Bot -> IO ()
 loop b = void $ runStateT runLoop b
@@ -77,11 +76,11 @@ loop b = void $ runStateT runLoop b
 
 listen :: Net ()
 listen = forever $ do
-    st <- get
-    let h = socket st
+    h <- getValue socket
+    fs <- getValue functions
     s <- fmap init (liftIO $ hGetLine h)
     case message s of
-        Just m -> eval m functions
+        Just m -> eval m fs
         Nothing -> return ()
 
 eval :: Message -> [BotFunction] -> Net ()
