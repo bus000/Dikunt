@@ -25,6 +25,7 @@ import Functions.Trump (trump)
 import Functions.WordReplacer (wordReplacer)
 import Functions.Greeting (greeting)
 import Functions.Help (help)
+import Functions.News (news)
 
 disconnect :: BT.Bot -> IO ()
 disconnect = hClose . BT.socket
@@ -41,6 +42,7 @@ connect serv chan nick pass port diff = do
         , trump
         , fix
         , help
+        , news
         , parrot
         , greeting
         , wordReplacer
