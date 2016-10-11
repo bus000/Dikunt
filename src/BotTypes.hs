@@ -49,10 +49,10 @@ data IRCCommand = ADMIN | AWAY | CNOTICE | CPRIVMSG | CONNECT | DIE | ENCAP
     deriving (Show, Read, Eq)
 
 data IRCMessage = IRCMessage
-    { ircPrefix  :: Maybe String
-    , ircCommand :: IRCCommand
-    , ircParams  :: [String]
-    , trail      :: Maybe String
+    { _ircPrefix  :: Maybe String
+    , _ircCommand :: IRCCommand
+    , _ircParams  :: [String]
+    , _trail      :: Maybe String
     } deriving (Show, Eq)
 
 ircMessage :: String -> Maybe IRCMessage
