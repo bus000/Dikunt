@@ -53,6 +53,9 @@ data Message = PrivMsg { privMsgFrom, privMsgTo, privMsgMessage :: String }
     | Join { joinNick :: String }
     | Quit { quitNick :: String }
     | Part { partNick :: String }
+    | Pong { pongTo   :: String }
+    | Nick { nicknick :: String }
+    | User { userName :: String }
     deriving (Show, Eq, Read)
 
 bot :: Handle -> String -> String -> String -> DiffTime -> [BotFunction] -> Bot

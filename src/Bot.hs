@@ -54,10 +54,10 @@ loop b = void $ runStateT runLoop b
         nick <- BT.getValue BT.nickname
         chan <- BT.getValue BT.channel
 
-        write "NICK" nick
-        write "USER" (nick ++ " 0 * :tutorial bot")
-        write ("PRIVMSG NickServ : IDENTIFY " ++ nick) pass
-        write "JOIN" chan
+        write $ BT.Nick nick
+        write $ BT.User (nick ++ " 0 * :DikuntBot")
+        write $ BT.PrivMsg nick "NickServ" ("IDENTIFY" ++ nick ++ pass)
+        write $ BT.Join chan
         listen
 
 listen :: BT.Net ()
@@ -70,28 +70,33 @@ listen = forever $ do
         Nothing -> return ()
 
 eval :: BT.Message -> [BT.BotFunction] -> BT.Net ()
-eval (BT.Ping from) _ = write "PONG" from
+eval (BT.Ping from) _ = write $ BT.Pong from
 eval msg fs = do
     runables <- filterM (\f -> BT.shouldRun f msg) fs
     case runables of
         (first:_) -> BT.run first msg >>= privmsg
         [] -> return ()
 
+{- TODO: remove. This function should not be needed. -}
 privmsg :: String -> BT.Net ()
 privmsg s = do
     chan <- BT.getValue BT.channel
+    nick <- BT.getValue BT.nickname
+    let msgs = map (BT.PrivMsg nick chan) (lines s)
+    mapM_ (\l -> write l >> liftIO (threadDelay 1000000)) msgs
 
-    let begin = chan ++ " :"
-        ls = map (begin ++) (lines s)
-
-    mapM_ writeLine ls
+write :: BT.Message -> BT.Net ()
+write message = BT.getValue BT.socket >>= \h -> liftIO $ write' h message
   where
-    writeLine msg = do
-        write "PRIVMSG" msg
-        liftIO $ threadDelay 1000000
-
-write :: String -> String -> BT.Net ()
-write s t = do
-    h <- BT.getValue BT.socket
-    liftIO $ hPrintf h "%s %s\r\n" s t
-    liftIO $ printf    "> %s %s\n" s t
+    write' h (BT.PrivMsg _ to msg) =
+        hPrintf h "PRIVMSG %s :%s\r\n" to msg
+    write' h (BT.Pong to) =
+        hPrintf h "PONG %s\r\n" to
+    write' h (BT.Nick name) =
+        hPrintf h "NICK %s\r\n" name
+    write' h (BT.User name) =
+        hPrintf h "USER %s\r\n" name
+    write' h (BT.Join chan) =
+        hPrintf h "JOIN %s\r\n" chan
+    write' _ _ =
+        putStrLn "Cannot send message type"
