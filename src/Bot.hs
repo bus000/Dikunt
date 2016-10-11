@@ -26,6 +26,7 @@ import Functions.WordReplacer (wordReplacer)
 import Functions.Greeting (greeting)
 import Functions.Help (help)
 import Functions.News (news)
+import Functions.Insult (insult)
 
 disconnect :: BT.Bot -> IO ()
 disconnect = hClose . BT.socket
@@ -43,6 +44,7 @@ connect serv chan nick pass port diff = do
         , fix
         , help
         , news
+        , insult
         , parrot
         , greeting
         , wordReplacer
