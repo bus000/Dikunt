@@ -76,7 +76,7 @@ listen = forever $ do
 
 eval :: Message -> [BotFunction] -> Net ()
 eval (Ping from) _ = write "PONG" from
-eval msg@PrivMsg{} fs = do
+eval msg fs = do
     runables <- filterM (\f -> shouldRun f msg) fs
     case runables of
         (first:_) -> run first msg >>= privmsg

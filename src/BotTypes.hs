@@ -14,7 +14,7 @@ module BotTypes
 
 import Control.Applicative ((<|>))
 import Control.Monad.State
-import Safe (readMay, atMay)
+import Safe (readMay)
 import System.IO
 import Text.Regex.PCRE ((=~))
 
@@ -71,20 +71,19 @@ ircMessage str = do
 
 data Message = PrivMsg { privMsgFrom, privMsgTo, privMsgMessage :: String }
     | Ping { pingFrom :: String }
+    | Join { joinNick :: String }
+    | Quit { quitNick :: String }
     deriving (Show, Eq, Read)
 
 newMessage :: IRCMessage -> Maybe Message
-newMessage msg
-    | ircCommand msg == PING = do
-        from <- trail msg
-        return $ Ping from
-    | ircCommand msg == PRIVMSG = do
-        prefix <- ircPrefix msg
-        let from = takeWhile ('!' /=) prefix
-        to <- atMay (ircParams msg) 0
-        str <- trail msg
-        return $ PrivMsg from to str
-    | otherwise = Nothing
+newMessage (IRCMessage _ PING _ (Just trail)) = return $ Ping trail
+newMessage (IRCMessage (Just prefix) PRIVMSG (to:_) (Just trail)) =
+    let from = takeWhile ('!' /=) prefix in return $ PrivMsg from to trail
+newMessage (IRCMessage (Just prefix) JOIN _ _) =
+    let nick = takeWhile ('!' /=) . drop 1 $ prefix in return $ Join nick
+newMessage (IRCMessage (Just prefix) QUIT _ _) =
+    let nick = takeWhile ('!' /=) . drop 1 $ prefix in return $ Quit nick
+newMessage _ = Nothing
 
 message :: String -> Maybe Message
 message str = ircMessage str >>= newMessage
