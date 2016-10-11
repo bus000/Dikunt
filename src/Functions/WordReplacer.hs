@@ -48,4 +48,5 @@ replacementList =
     , ("emacs", "worst editor")
     , ("fucking", "")
     , ("fuck", "")
+    , ("0/10", "Mark's Bot")
     ]
