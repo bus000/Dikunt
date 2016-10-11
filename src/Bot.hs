@@ -15,6 +15,7 @@ import Control.Monad.State
 import Network
 import System.IO
 import Text.Printf
+import Data.Time.Clock (DiffTime)
 
 -- Bot modules
 import BotTypes
@@ -35,20 +36,29 @@ import Functions.Fix (fix)
 import Functions.Parrot (parrot)
 import Functions.Trump (trump)
 import Functions.WordReplacer (wordReplacer)
+import Functions.Greeting (greeting)
 
 {- | List of all the crazy things Dikunt can do! The first of these actions to
  - return a value is chosen as the action for an incoming request. -}
 functions :: [BotFunction]
-functions = [asciiPicture, asciiText, trump, fix, parrot, wordReplacer]
+functions =
+    [ asciiPicture
+    , asciiText
+    , trump
+    , fix
+    , parrot
+    , greeting
+    , wordReplacer
+    ]
 
 disconnect :: Bot -> IO ()
 disconnect = hClose . socket
 
-connect :: String -> String -> String -> String -> Integer -> IO Bot
-connect serv chan nick pass port = do
+connect :: String -> String -> String -> String -> Integer -> DiffTime -> IO Bot
+connect serv chan nick pass port diff = do
     h <- connectTo serv (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
-    return $ bot h nick chan pass
+    return $ bot h nick chan pass diff
 
 loop :: Bot -> IO ()
 loop b = void $ runStateT runLoop b

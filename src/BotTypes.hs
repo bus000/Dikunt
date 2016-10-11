@@ -1,13 +1,9 @@
 module BotTypes
     ( Net
     , BotFunction(..)
-    , Bot
+    , Bot(..)
     , bot
     , getValue
-    , socket
-    , nickname
-    , channel
-    , password
     , message
     , Message(..)
     ) where
@@ -17,13 +13,15 @@ import Control.Monad.State
 import Safe (readMay)
 import System.IO
 import Text.Regex.PCRE ((=~))
+import Data.Time.Clock (DiffTime)
 
 type Net = StateT Bot IO
 data Bot = Bot
-    { socket   :: Handle
-    , nickname :: String
-    , channel  :: String
-    , password :: String
+    { socket     :: Handle
+    , nickname   :: String
+    , channel    :: String
+    , password   :: String
+    , timeOffset :: DiffTime
     }
 
 data BotFunction = BotFunction
@@ -53,10 +51,11 @@ data Message = PrivMsg { privMsgFrom, privMsgTo, privMsgMessage :: String }
     | Ping { pingFrom :: String }
     | Join { joinNick :: String }
     | Quit { quitNick :: String }
+    | Part { partNick :: String }
     deriving (Show, Eq, Read)
 
-bot :: Handle -> String -> String -> String -> Bot
-bot h n c p = Bot h n c p
+bot :: Handle -> String -> String -> String -> DiffTime -> Bot
+bot h n c p o = Bot h n c p o
 
 getValue :: (Bot -> a) -> Net a
 getValue f = get >>= \st -> return $ f st
@@ -83,6 +82,8 @@ newMessage (IRCMessage (Just prefix) JOIN _ _) =
     let nick = takeWhile ('!' /=) . drop 1 $ prefix in return $ Join nick
 newMessage (IRCMessage (Just prefix) QUIT _ _) =
     let nick = takeWhile ('!' /=) . drop 1 $ prefix in return $ Quit nick
+newMessage (IRCMessage (Just prefix) PART _ _) =
+    let nick = takeWhile ('!' /=) . drop 1 $ prefix in return $ Part nick
 newMessage _ = Nothing
 
 message :: String -> Maybe Message
