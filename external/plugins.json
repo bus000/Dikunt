@@ -1,0 +1,8 @@
+[
+    {
+        "help": "<nick>: proof - Proof of concept python program.",
+        "name": "ProofOfConcept",
+        "programname": "proof",
+        "command": "./external/proofOfConcept.py"
+    }
+]

@@ -17,6 +17,7 @@ import Data.Time.Clock (DiffTime)
 
 -- Bot modules
 import qualified BotTypes as BT
+import qualified ExternalPlugins as EP
 import Functions.AsciiPicture (asciiPicture)
 import Functions.AsciiText (asciiText)
 import Functions.Fix (fix)
@@ -36,9 +37,16 @@ connect :: String -> String -> String -> String -> Integer -> DiffTime -> IO BT.
 connect serv chan nick pass port diff = do
     h <- connectTo serv (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
-    return $ BT.bot h nick chan pass diff fs
+
+    externalFsMight <- EP.generatePlugins
+
+    case externalFsMight of
+        Nothing ->
+            return $ BT.bot h nick chan pass diff internalFs
+        Just externalFs ->
+            return $ BT.bot h nick chan pass diff (externalFs ++ internalFs)
   where
-    fs =
+    internalFs =
         [ asciiPicture
         , asciiText
         , trump
