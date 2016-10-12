@@ -61,4 +61,6 @@ replacementList =
     , ("Frederik", "Hans Kongelige Højhed Kronprins Frederik, Prins til Danmark, greve af Monpezat")
     , ("Joakim", "Hans Kongelige Højhed Prins Joachim")
     , ("Mary", "Hendes Kongelige Højhed Kronprinsesse Mary")
+    , ("python", "python2.7")
+    , ("Python", "Python2.7")
     ]
