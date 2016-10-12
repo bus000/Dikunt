@@ -27,6 +27,7 @@ import Functions.Greeting (greeting)
 import Functions.Help (help)
 import Functions.News (news)
 import Functions.Insult (insult)
+import Functions.BibleGem (biblegem)
 
 disconnect :: BT.Bot -> IO ()
 disconnect = hClose . BT.socket
@@ -45,6 +46,7 @@ connect serv chan nick pass port diff = do
         , help
         , news
         , insult
+        , biblegem
         , parrot
         , greeting
         , wordReplacer
