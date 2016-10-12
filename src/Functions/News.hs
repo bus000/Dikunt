@@ -30,16 +30,16 @@ shouldRun (BT.PrivMsg _ _ msg) = do
 shouldRun _ = return False
 
 {- TODO: refactor, this is FUGLY. -}
-run :: BT.Message -> BT.Net String
+run :: BT.Message -> BT.Net [BT.Message]
 run _ = do
     feed <- liftIO $ openAsFeed rssFeed
     case feed of
-        Left err -> return err
+        Left err -> BT.privmsgs err
         Right corFeed -> case feedItems corFeed of
             (breaking:_) -> case analyseFeed breaking of
-                Just str -> return str
-                Nothing -> return "Feed analysation failed"
-            _ -> return "No news"
+                Just str -> BT.privmsgs str
+                Nothing -> BT.privmsgs "Feed analysation failed"
+            _ -> BT.privmsgs "No news"
 
 analyseFeed :: Item -> Maybe String
 analyseFeed item = do

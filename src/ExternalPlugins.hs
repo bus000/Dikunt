@@ -7,7 +7,7 @@ import Control.Monad.State (liftIO)
 import qualified Data.ByteString.Lazy as B
 import Data.Aeson
 import qualified BotTypes as BT
-import GHC.Generics
+import GHC.Generics (Generic)
 import System.Environment (setEnv)
 import System.Process
 import System.Exit
@@ -48,16 +48,17 @@ shouldRun progname = shouldRun'
             _ -> return False
     shouldRun' _ = return False
 
-run :: String -> (BT.Message -> BT.Net String)
+run :: String -> (BT.Message -> BT.Net [BT.Message])
 run cmd = run'
   where
-    run' msg = do
+    run' (BT.PrivMsg _ _ msg) = do
         liftIO $ setEnv "MESSAGE" (show msg)
         (e, s, _) <- liftIO $ readProcessWithExitCode cmd [] []
         case e of
-            ExitSuccess -> return s
+            ExitSuccess -> BT.privmsgs s
             ExitFailure code ->
-                return $ "Process exited with error code " ++ (show code)
+                BT.privmsgs $ "Process exited with error code " ++ (show code)
+    run' _ = fail "Should only be run with PrivMsg's."
 
 getJSON :: IO B.ByteString
 getJSON = B.readFile pluginConfig

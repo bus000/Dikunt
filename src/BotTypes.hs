@@ -6,6 +6,7 @@ module BotTypes
     , getValue
     , message
     , Message(..)
+    , privmsgs
     ) where
 
 import Control.Applicative ((<|>))
@@ -33,7 +34,7 @@ data Bot = Bot
  - to generate the bots output. -}
 data BotFunction = BotFunction
     { shouldRun :: Message -> Net Bool -- ^ If functions should handle message.
-    , run       :: Message -> Net String -- ^ Produce the bots output.
+    , run       :: Message -> Net [Message] -- ^ Produce the bots output.
     , help      :: String -- ^ Generate a help string for the function.
     , name      :: String -- ^ The name of the function.
     }
@@ -131,3 +132,10 @@ message :: String
     -- ^ String to construct message from.
     -> Maybe Message
 message str = ircMessage str >>= newMessage
+
+privmsgs :: String -> Net [Message]
+privmsgs msg = do
+    nick <- getValue nickname
+    chan <- getValue channel
+
+    return $ map (PrivMsg nick chan) (lines msg)

@@ -43,7 +43,7 @@ shouldRun (BT.PrivMsg _ _ msg) =
     in return $ "asciiart:" `isPrefixOf` msg'
 shouldRun _ = return False
 
-run :: BT.Message -> BT.Net String
+run :: BT.Message -> BT.Net [BT.Message]
 run (BT.PrivMsg _ _ msg) =
     let clean = (unwords . drop 1 . words) msg
     in case Map.lookup clean buildIn of
@@ -51,10 +51,10 @@ run (BT.PrivMsg _ _ msg) =
         Nothing -> generatePicture clean
 run _ = fail "AsciiPicture only runs on PrivMsg's"
 
-generatePicture :: String -> BT.Net String
+generatePicture :: String -> BT.Net [BT.Message]
 generatePicture url = do
     (e, s, _) <- liftIO $ readProcessWithExitCode "/usr/bin/jp2a"
         [url, "--width=80", "--background=light"] []
     case e of
-        ExitSuccess -> return s
-        ExitFailure _ -> return "I do not understand yo URL"
+        ExitSuccess -> BT.privmsgs s
+        ExitFailure _ -> BT.privmsgs "I do not understand yo URL"

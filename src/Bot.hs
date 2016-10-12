@@ -88,16 +88,9 @@ eval (BT.Ping from) _ = write $ BT.Pong from
 eval msg fs = do
     runables <- filterM (`BT.shouldRun` msg) fs
     case runables of
-        (first:_) -> BT.run first msg >>= privmsg
+        (first:_) -> BT.run first msg >>=
+            mapM_ (\l -> write l >> liftIO (threadDelay 1000000))
         [] -> return ()
-
-{- TODO: remove. This function should not be needed. -}
-privmsg :: String -> BT.Net ()
-privmsg s = do
-    chan <- BT.getValue BT.channel
-    nick <- BT.getValue BT.nickname
-    let msgs = map (BT.PrivMsg nick chan) (lines s)
-    mapM_ (\l -> write l >> liftIO (threadDelay 1000000)) msgs
 
 write :: BT.Message -> BT.Net ()
 write message = BT.getValue BT.socket >>= \h -> liftIO $ write' h message

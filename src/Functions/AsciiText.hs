@@ -11,25 +11,25 @@ import Data.Char (isSpace)
 
 asciiText :: BT.BotFunction
 asciiText = BT.BotFunction
-    { BT.shouldRun = asciiTextShouldRun
-    , BT.run = asciiTextRun
+    { BT.shouldRun = shouldRun
+    , BT.run = run
     , BT.help = "asciitext: <text> - Outputs text as asciitext"
     , BT.name = "AsciiText"
     }
 
-asciiTextShouldRun :: BT.Message -> BT.Net Bool
-asciiTextShouldRun (BT.PrivMsg _ _ msg) =
+shouldRun :: BT.Message -> BT.Net Bool
+shouldRun (BT.PrivMsg _ _ msg) =
     let msg' = dropWhile isSpace msg
     in return $ "asciitext:" `isPrefixOf` msg'
-asciiTextShouldRun _ = return False
+shouldRun _ = return False
 
-asciiTextRun :: BT.Message -> BT.Net String
-asciiTextRun (BT.PrivMsg _ _ msg) = do
+run :: BT.Message -> BT.Net [BT.Message]
+run (BT.PrivMsg _ _ msg) = do
     (e, s, _) <- liftIO $ readProcessWithExitCode "/usr/bin/toilet" [msg'] []
     case e of
-        ExitSuccess -> return s
-        ExitFailure _ -> return "Error in toilet"
+        ExitSuccess -> BT.privmsgs s
+        ExitFailure _ -> BT.privmsgs "Error in toilet"
   where
     msg' = dropWhile isSpace . drop (length "asciitext:") .
         dropWhile isSpace $ msg
-asciiTextRun _ = return "Asciitext should only run on PrivMsg's"
+run _ = fail "Asciitext should only run on PrivMsg's"

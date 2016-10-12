@@ -17,14 +17,14 @@ wordReplacerShouldRun (BT.PrivMsg _ _ msg) =
     return $ any (`elem` replacementKeys) (words msg)
 wordReplacerShouldRun _ = return False
 
-runReplaceWords :: BT.Message -> BT.Net String
+runReplaceWords :: BT.Message -> BT.Net [BT.Message]
 runReplaceWords (BT.PrivMsg _ _ msg) =
-    return . unwords . map replace . words $ msg
+    BT.privmsgs . unwords . map replace . words $ msg
   where
     replace word = case lookup word replacementList of
         Just replacement -> replacement
         _ -> word
-runReplaceWords _ = return "WordReplacer should only run on PrivMsg's."
+runReplaceWords _ = fail "WordReplacer should only run on PrivMsg's."
 
 replacementKeys :: [String]
 replacementKeys = map fst replacementList

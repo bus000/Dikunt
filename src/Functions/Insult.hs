@@ -23,11 +23,11 @@ shouldRun (BT.PrivMsg _ _ msg) = do
         _ -> return False
 shouldRun _ = return False
 
-run :: BT.Message -> BT.Net String
+run :: BT.Message -> BT.Net [BT.Message]
 run (BT.PrivMsg _ _ msg) = case words msg of
     [_, _, nick] -> let myinsult = liftIO $ sample (choice insults)
-        in myinsult >>= \i -> return $ nick ++ " " ++ i
-    _ -> return "Parse error"
+        in myinsult >>= \i -> BT.privmsgs $ nick ++ " " ++ i
+    _ -> BT.privmsgs "Parse error"
 run _ = fail "run should only run on PrivMsg's"
 
 {- Insults come from http://www.gotlines.com/insults/ -}

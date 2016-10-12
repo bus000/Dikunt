@@ -26,19 +26,19 @@ shouldRun (BT.Quit _) = return True
 shouldRun (BT.Part _) = return True
 shouldRun _ = return False
 
-run :: BT.Message -> BT.Net String
+run :: BT.Message -> BT.Net [BT.Message]
 run (BT.Join nick) = do
     offSet <- BT.getValue BT.timeOffset
     hour <- liftIO $ hourOfDay offSet
 
     case timeOfDay hour of
-        Just Morning -> return $ "Good morning " ++ nick
-        Just AfterNoon -> return $ "Good afternoon " ++ nick
-        Just Evening -> return $ "Good evening " ++ nick
-        Just Night -> return $ "Good night " ++ nick
-        Nothing -> return $ "Hello and welcome " ++ nick
-run (BT.Quit nick) = return $ "Goodbye " ++ nick
-run (BT.Part nick) = return $ "Goodbye " ++ nick
+        Just Morning -> BT.privmsgs $ "Good morning " ++ nick
+        Just AfterNoon -> BT.privmsgs $ "Good afternoon " ++ nick
+        Just Evening -> BT.privmsgs $ "Good evening " ++ nick
+        Just Night -> BT.privmsgs $ "Good night " ++ nick
+        Nothing -> BT.privmsgs $ "Hello and welcome " ++ nick
+run (BT.Quit nick) = BT.privmsgs $ "Goodbye " ++ nick
+run (BT.Part nick) = BT.privmsgs $ "Goodbye " ++ nick
 run _ = fail "Should only run on Join's and Quit's."
 
 hourOfDay :: DiffTime -> IO Integer

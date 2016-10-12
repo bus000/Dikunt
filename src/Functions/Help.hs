@@ -21,12 +21,12 @@ shouldRun (BT.PrivMsg _ _ msg) = do
         _ -> return False
 shouldRun _ = return False
 
-run :: BT.Message -> BT.Net String
+run :: BT.Message -> BT.Net [BT.Message]
 run (BT.PrivMsg _ _ msg) = do
     functions <- BT.getValue BT.functions
     nick <- BT.getValue BT.nickname
     case words msg of
-        [_, "help"] -> return $ "Try " ++ nick ++ ": help <module>\n" ++
+        [_, "help"] -> BT.privmsgs $ "Try " ++ nick ++ ": help <module>\n" ++
             modules functions
         [_, "help", myModule] -> helpModule myModule functions
         _ -> fail "Help does not match"
@@ -34,6 +34,6 @@ run (BT.PrivMsg _ _ msg) = do
     modules = concatMap (\f -> "    " ++ BT.name f ++ "\n")
     helpModule name functions =
         case filter (\f -> BT.name f == name) functions of
-            (myModule:_) -> return $ BT.help myModule
-            _ -> return "Could not find module."
+            (myModule:_) -> BT.privmsgs $ BT.help myModule
+            _ -> BT.privmsgs "Could not find module."
 run _ = fail "Help should only run on PrivMsg's"

@@ -15,5 +15,5 @@ fix = BT.BotFunction
 shouldRun :: BT.Message -> BT.Net Bool
 shouldRun _ = return False
 
-run :: BT.Message -> BT.Net String
+run :: BT.Message -> BT.Net [BT.Message]
 run = undefined

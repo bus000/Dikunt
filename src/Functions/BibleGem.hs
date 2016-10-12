@@ -24,12 +24,12 @@ shouldRun (BT.PrivMsg _ _ msg) = do
         _ -> return False
 shouldRun _ = return False
 
-run :: BT.Message -> BT.Net String
+run :: BT.Message -> BT.Net [BT.Message]
 run _ = do
     res <- liftIO (openURI randomQuote)
     case res of
-        Left err -> return err
-        Right passage -> return $ format (unpack passage)
+        Left err -> BT.privmsgs err
+        Right passage -> BT.privmsgs $ format (unpack passage)
 
 format :: String -> String
 format passage = verse ++ ": " ++ content

@@ -13,10 +13,11 @@ parrot = BT.BotFunction
     , BT.name = "Parrot"
     }
 
-run :: BT.Message -> BT.Net String
+run :: BT.Message -> BT.Net [BT.Message]
 run (BT.PrivMsg _ _ msg) = do
     nick <- BT.getValue BT.nickname
-    return $ parrot' nick msg
+
+    BT.privmsgs $ parrot' nick msg
 run _ = fail "Parrot should only run on PrivMsg's"
 
 shouldRun :: BT.Message -> BT.Net Bool
