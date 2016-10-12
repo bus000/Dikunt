@@ -35,7 +35,7 @@ format :: String -> String
 format passage = verse ++ ": " ++ content
   where
     pattern = "^<b>(.*)<\\/b> (.*)$"
-    [[verse, content]] = pattern =~ passage :: [[String]]
+    [[verse, content]] = passage =~ pattern :: [[String]]
 
 randomQuote :: String
 randomQuote = "http://labs.bible.org/api/?passage=random"
