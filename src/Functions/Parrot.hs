@@ -7,23 +7,23 @@ import Data.List
 
 parrot :: BT.BotFunction
 parrot = BT.BotFunction
-    { BT.shouldRun = parrotShouldRun
-    , BT.run = runParrot
+    { BT.shouldRun = shouldRun
+    , BT.run = run
     , BT.help = "<nick>: <string> - Outputs string given."
     , BT.name = "Parrot"
     }
 
-runParrot :: BT.Message -> BT.Net String
-runParrot (BT.PrivMsg _ _ msg) = do
+run :: BT.Message -> BT.Net String
+run (BT.PrivMsg _ _ msg) = do
     nick <- BT.getValue BT.nickname
     return $ parrot' nick msg
-runParrot _ = fail "Parrot should only run on PrivMsg's"
+run _ = fail "Parrot should only run on PrivMsg's"
 
-parrotShouldRun :: BT.Message -> BT.Net Bool
-parrotShouldRun (BT.PrivMsg _ _ msg) = do
+shouldRun :: BT.Message -> BT.Net Bool
+shouldRun (BT.PrivMsg _ _ msg) = do
     nick <- BT.getValue BT.nickname
     return $ (nick ++ ": ") `isPrefixOf` msg
-parrotShouldRun _ = return False
+shouldRun _ = return False
 
 parrot' :: String -> String -> String
-parrot' nick str = drop (length $ nick ++ ": ") str
+parrot' nick = drop (length $ nick ++ ": ")

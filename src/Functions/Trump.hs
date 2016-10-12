@@ -26,10 +26,9 @@ shouldRun (BT.PrivMsg _ _ msg) = do
 shouldRun _ = return False
 
 run :: BT.Message -> BT.Net String
-run (BT.PrivMsg _ _ _) = do
+run BT.PrivMsg{} = do
     gen <- liftIO Random.newStdGen
-    res <- liftIO $ runTrump gen
-    return res
+    liftIO $ runTrump gen
 run _ = return "Trump should only run on PrivMsg's."
 
 runTrump :: Random.StdGen -> IO String

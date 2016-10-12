@@ -76,7 +76,7 @@ listen = forever $ do
 eval :: BT.Message -> [BT.BotFunction] -> BT.Net ()
 eval (BT.Ping from) _ = write $ BT.Pong from
 eval msg fs = do
-    runables <- filterM (\f -> BT.shouldRun f msg) fs
+    runables <- filterM (`BT.shouldRun` msg) fs
     case runables of
         (first:_) -> BT.run first msg >>= privmsg
         [] -> return ()

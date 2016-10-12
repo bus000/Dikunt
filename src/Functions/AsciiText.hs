@@ -30,6 +30,6 @@ asciiTextRun (BT.PrivMsg _ _ msg) = do
         ExitSuccess -> return s
         ExitFailure _ -> return "Error in toilet"
   where
-    msg' = (dropWhile isSpace) . (drop $ length "asciitext:") .
-        (dropWhile isSpace) $ msg
+    msg' = dropWhile isSpace . drop (length "asciitext:") .
+        dropWhile isSpace $ msg
 asciiTextRun _ = return "Asciitext should only run on PrivMsg's"

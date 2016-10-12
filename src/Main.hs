@@ -60,5 +60,5 @@ computeOffset ('-':int) = do
     if off > 0 && off < 13
     then return $ secondsToDiffTime (-(off * 3600))
     else Nothing
-computeOffset ('0':[]) = Just $ secondsToDiffTime 0
+computeOffset ['0'] = Just $ secondsToDiffTime 0
 computeOffset _ = Nothing

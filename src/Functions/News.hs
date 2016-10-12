@@ -25,7 +25,7 @@ shouldRun :: BT.Message -> BT.Net Bool
 shouldRun (BT.PrivMsg _ _ msg) = do
     nick <- BT.getValue BT.nickname
     case words msg of
-        (first:"news":[]) -> return $ first == (nick ++ ":")
+        [first, "news"] -> return $ first == (nick ++ ":")
         _ -> return False
 shouldRun _ = return False
 

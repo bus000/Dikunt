@@ -19,13 +19,13 @@ shouldRun :: BT.Message -> BT.Net Bool
 shouldRun (BT.PrivMsg _ _ msg) = do
     nick <- BT.getValue BT.nickname
     case words msg of
-        (first:"insult":_:[]) -> return $ first == (nick ++ ":")
+        [first, "insult", _] -> return $ first == (nick ++ ":")
         _ -> return False
 shouldRun _ = return False
 
 run :: BT.Message -> BT.Net String
 run (BT.PrivMsg _ _ msg) = case words msg of
-    (_:_:nick:[]) -> let myinsult = liftIO $ sample (choice insults)
+    [_, _, nick] -> let myinsult = liftIO $ sample (choice insults)
         in myinsult >>= \i -> return $ nick ++ " " ++ i
     _ -> return "Parse error"
 run _ = fail "run should only run on PrivMsg's"

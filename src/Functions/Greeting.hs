@@ -44,7 +44,7 @@ run _ = fail "Should only run on Join's and Quit's."
 hourOfDay :: DiffTime -> IO Integer
 hourOfDay offset = do
     time <- liftIO getCurrentTime
-    let localTime = (utctDayTime time) + offset
+    let localTime = utctDayTime time + offset
     return $ quot (diffTimeToPicoseconds localTime) (36 * 10^(14 :: Integer))
 
 data TimeOfDay = Night | Morning | AfterNoon | Evening
