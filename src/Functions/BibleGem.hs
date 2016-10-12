@@ -6,6 +6,7 @@ import Control.Monad.State (liftIO)
 import qualified BotTypes as BT
 import Network.Download (openURI)
 import Data.ByteString.Char8 (unpack)
+import Text.Regex.PCRE ((=~))
 
 biblegem :: BT.BotFunction
 biblegem = BT.BotFunction
@@ -28,7 +29,13 @@ run _ = do
     res <- liftIO (openURI randomQuote)
     case res of
         Left err -> return err
-        Right passage -> return $ unpack passage
+        Right passage -> return $ format (unpack passage)
+
+format :: String -> String
+format passage = verse ++ ": " ++ content
+  where
+    pattern = "^<b>(.*)<\\/b> (.*)$"
+    [[verse, content]] = pattern =~ passage :: [[String]]
 
 randomQuote :: String
 randomQuote = "http://labs.bible.org/api/?passage=random"
