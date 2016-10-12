@@ -118,14 +118,17 @@ newMessage :: IRCMessage
     -> Maybe Message
 newMessage (IRCMessage _ PING _ (Just trail)) = return $ Ping trail
 newMessage (IRCMessage (Just prefix) PRIVMSG (to:_) (Just trail)) =
-    let from = takeWhile ('!' /=) prefix in return $ PrivMsg from to trail
+    let from = getNickname prefix in return $ PrivMsg from to trail
 newMessage (IRCMessage (Just prefix) JOIN _ _) =
-    let nick = takeWhile ('!' /=) . drop 1 $ prefix in return $ Join nick
+    let nick = getNickname prefix in return $ Join nick
 newMessage (IRCMessage (Just prefix) QUIT _ _) =
-    let nick = takeWhile ('!' /=) . drop 1 $ prefix in return $ Quit nick
+    let nick = getNickname prefix in return $ Quit nick
 newMessage (IRCMessage (Just prefix) PART _ _) =
-    let nick = takeWhile ('!' /=) . drop 1 $ prefix in return $ Part nick
+    let nick = getNickname prefix in return $ Part nick
 newMessage _ = Nothing
+
+getNickname :: String -> String
+getNickname = takeWhile ('!' /=) . drop 1
 
 {- | Construct a Message from a string by using ircMessage. -}
 message :: String

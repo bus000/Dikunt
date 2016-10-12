@@ -29,6 +29,7 @@ import Functions.Help (help)
 import Functions.News (news)
 import Functions.Insult (insult)
 import Functions.BibleGem (biblegem)
+import Functions.Ponger (ponger)
 
 disconnect :: BT.Bot -> IO ()
 disconnect = hClose . BT.socket
@@ -47,7 +48,8 @@ connect serv chan nick pass port diff = do
             return $ BT.bot h nick chan pass diff (externalFs ++ internalFs)
   where
     internalFs =
-        [ asciiPicture
+        [ ponger
+        , asciiPicture
         , asciiText
         , trump
         , fix
@@ -84,7 +86,6 @@ listen = forever $ do
         Nothing -> return ()
 
 eval :: BT.Message -> [BT.BotFunction] -> BT.Net ()
-eval (BT.Ping from) _ = write $ BT.Pong from
 eval msg fs = do
     runables <- filterM (`BT.shouldRun` msg) fs
     case runables of

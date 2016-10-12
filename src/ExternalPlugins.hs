@@ -51,14 +51,13 @@ shouldRun progname = shouldRun'
 run :: String -> (BT.Message -> BT.Net [BT.Message])
 run cmd = run'
   where
-    run' (BT.PrivMsg _ _ msg) = do
+    run' msg = do
         liftIO $ setEnv "MESSAGE" (show msg)
         (e, s, _) <- liftIO $ readProcessWithExitCode cmd [] []
         case e of
             ExitSuccess -> BT.privmsgs s
             ExitFailure code ->
                 BT.privmsgs $ "Process exited with error code " ++ (show code)
-    run' _ = fail "Should only be run with PrivMsg's."
 
 getJSON :: IO B.ByteString
 getJSON = B.readFile pluginConfig
