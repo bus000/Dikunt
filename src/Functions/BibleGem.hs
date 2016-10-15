@@ -32,10 +32,11 @@ run _ = do
         Right passage -> BT.privmsgs $ format (unpack passage)
 
 format :: String -> String
-format passage = verse ++ ": " ++ content
+format passage = case passage =~ pattern :: [[String]] of
+    [[_, verse, content]] -> verse ++ ": " ++ content
+    _ -> passage
   where
     pattern = "^<b>(.*)<\\/b> (.*)$"
-    [[_, verse, content]] = passage =~ pattern :: [[String]]
 
 randomQuote :: String
 randomQuote = "http://labs.bible.org/api/?passage=random"
