@@ -3,10 +3,10 @@ module Functions.AsciiText
   ) where
 
 import qualified BotTypes as BT
-import Control.Monad.State
-import Data.List
-import System.Exit
-import System.Process
+import Control.Monad.State (liftIO)
+import Data.List (isPrefixOf)
+import System.Exit (ExitCode(ExitSuccess, ExitFailure))
+import System.Process (readProcessWithExitCode)
 import Data.Char (isSpace)
 
 asciiText :: BT.BotFunction

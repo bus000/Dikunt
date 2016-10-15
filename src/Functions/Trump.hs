@@ -3,7 +3,7 @@ module Functions.Trump
     ) where
 
 import qualified BotTypes as BT
-import Control.Monad.State
+import Control.Monad.State (liftIO)
 import qualified Data.MarkovChain as MC
 import System.IO (readFile)
 import qualified System.Random as Random

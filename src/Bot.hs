@@ -4,32 +4,29 @@ module Bot
     , loop
     ) where
 
-import Control.Concurrent
-import Control.Monad
-import Control.Monad.State
-    ( liftIO
-    , runStateT
-    )
-import Network
-import System.IO
-import Text.Printf
+import Control.Concurrent (threadDelay)
+import Control.Monad (void, forever, filterM)
+import Control.Monad.State (liftIO , runStateT)
 import Data.Time.Clock (DiffTime)
+import Network (connectTo, PortID(..))
+import System.IO (hClose, hSetBuffering, hGetLine, BufferMode(..))
+import Text.Printf (hPrintf)
 
 -- Bot modules
 import qualified BotTypes as BT
 import qualified ExternalPlugins as EP
 import Functions.AsciiPicture (asciiPicture)
 import Functions.AsciiText (asciiText)
+import Functions.BibleGem (biblegem)
 import Functions.Fix (fix)
-import Functions.Parrot (parrot)
-import Functions.Trump (trump)
-import Functions.WordReplacer (wordReplacer)
 import Functions.Greeting (greeting)
 import Functions.Help (help)
-import Functions.News (news)
 import Functions.Insult (insult)
-import Functions.BibleGem (biblegem)
+import Functions.News (news)
+import Functions.Parrot (parrot)
 import Functions.Ponger (ponger)
+import Functions.Trump (trump)
+import Functions.WordReplacer (wordReplacer)
 
 disconnect :: BT.Bot -> IO ()
 disconnect = hClose . BT.socket

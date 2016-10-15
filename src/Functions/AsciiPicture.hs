@@ -3,12 +3,12 @@ module Functions.AsciiPicture
   ) where
 
 import qualified BotTypes as BT
-import Control.Monad.State
-import Data.List
-import System.Exit
-import System.Process
-import qualified Data.Map as Map
+import Control.Monad.State (liftIO)
 import Data.Char (isSpace)
+import Data.List (isPrefixOf)
+import qualified Data.Map as Map
+import System.Exit (ExitCode(ExitSuccess, ExitFailure))
+import System.Process (readProcessWithExitCode)
 
 asciiPicture :: BT.BotFunction
 asciiPicture = BT.BotFunction

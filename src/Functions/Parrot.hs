@@ -3,7 +3,7 @@ module Functions.Parrot
   ) where
 
 import qualified BotTypes as BT
-import Data.List
+import Data.List (isPrefixOf)
 
 parrot :: BT.BotFunction
 parrot = BT.BotFunction

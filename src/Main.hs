@@ -4,6 +4,18 @@ module Main (main) where
 import Bot (connect, disconnect, loop)
 import Control.Exception (bracket)
 import System.Console.CmdArgs
+    ( Data
+    , Typeable
+    , helpArg
+    , explicit
+    , name
+    , (&=)
+    , help
+    , versionArg
+    , def
+    , summary
+    , cmdArgs
+    )
 import Data.Time.Clock (DiffTime, secondsToDiffTime)
 import Safe (readMay)
 

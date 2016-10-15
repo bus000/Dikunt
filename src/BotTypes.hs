@@ -10,9 +10,9 @@ module BotTypes
     ) where
 
 import Control.Applicative ((<|>))
-import Control.Monad.State
+import Control.Monad.State (StateT, get)
 import Safe (readMay)
-import System.IO
+import System.IO (Handle)
 import Text.Regex.PCRE ((=~))
 import Data.Time.Clock (DiffTime)
 
@@ -85,7 +85,7 @@ bot :: Handle
     -> [BotFunction]
     -- ^ List of functions the server should support.
     -> Bot
-bot h n c p o fs = Bot h n c p o fs
+bot = Bot
 
 {- | Helper function to extract values from a Net state. -}
 getValue :: (Bot -> a)

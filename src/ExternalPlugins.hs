@@ -1,16 +1,16 @@
-{-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric #-}
 module ExternalPlugins
     ( generatePlugins
     ) where
 
 import Control.Monad.State (liftIO)
 import qualified Data.ByteString.Lazy as B
-import Data.Aeson
+import Data.Aeson (FromJSON, ToJSON, eitherDecode)
 import qualified BotTypes as BT
 import GHC.Generics (Generic)
 import System.Environment (setEnv)
-import System.Process
-import System.Exit
+import System.Process (readProcessWithExitCode)
+import System.Exit (ExitCode(ExitSuccess, ExitFailure))
 
 data Plugin = Plugin
     { help        :: String
