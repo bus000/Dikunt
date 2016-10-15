@@ -107,7 +107,7 @@ insults =
     , "You're so ugly, you scared the crap out of the toilet."
     , "Shock me, say something intelligent."
     , "If your brain was made of chocolate, it wouldn't fill an M&M."
-    , "I can explain it to you, but I can�t understand it for you."
+    , "I can explain it to you, but I can't understand it for you."
     , "It's kinda sad watching you attempt to fit your entire vocabulary into a sentence."
     , "I fart to make you smell better."
     , "You are proof that evolution CAN go in reverse."
