@@ -2,7 +2,7 @@
 module Main (main) where
 
 import Bot (connect, disconnect, loop)
-import Control.Exception
+import Control.Exception (bracket)
 import System.Console.CmdArgs
 import Data.Time.Clock (DiffTime, secondsToDiffTime)
 import Safe (readMay)
