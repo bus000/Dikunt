@@ -23,6 +23,7 @@ shouldRun (BT.PrivMsg _ _ msg) = do
                     Just n' -> n' > 0 && n' < 100
                     Nothing -> False
             in return $ a && b
+        _ -> return $ False
 shouldRun _ = return False
 
 run :: BT.Message -> BT.Net [BT.Message]
