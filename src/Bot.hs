@@ -18,6 +18,7 @@ import qualified ExternalPlugins as EP
 import Functions.AsciiPicture (asciiPicture)
 import Functions.AsciiText (asciiText)
 import Functions.BibleGem (biblegem)
+import Functions.DanishMoan (danishMoan)
 import Functions.Fix (fix)
 import Functions.Greeting (greeting)
 import Functions.Help (help)
@@ -54,6 +55,7 @@ connect serv chan nick pass port diff = do
         , news
         , insult
         , biblegem
+        , danishMoan
         , parrot
         , greeting
         , wordReplacer
