@@ -23,6 +23,7 @@ shouldRun (BT.PrivMsg _ _ msg) = do
                     Just n' -> n' > 0 && n' < 100
                     Nothing -> False
             in return $ a && b
+shouldRun _ = return False
 
 run :: BT.Message -> BT.Net [BT.Message]
 run (BT.PrivMsg _ _ msg) = case words msg of
@@ -30,3 +31,4 @@ run (BT.PrivMsg _ _ msg) = case words msg of
         Just n' -> BT.privmsgs $ ("Å" ++ replicate (n' - 1) 'å') ++ "hhhh"
         _ -> BT.privmsgs "Error"
     _ -> BT.privmsgs "Error"
+run _ = fail "Danish Moan only runs on PrivMsg's"
