@@ -63,4 +63,6 @@ replacementList =
     , ("Mary", "Hendes Kongelige Højhed Kronprinsesse Mary")
     , ("python", "python2.7")
     , ("Python", "Python2.7")
+    , ("latex", "LaTeX")
+    , ("tex", "Tex")
     ]
