@@ -76,16 +76,17 @@ loop b = void $ runStateT runLoop b
         listen
 
 listen :: BT.Net ()
-listen = forever $ do
+listen = do
     h <- BT.getValue BT.socket
     fs <- BT.getValue BT.functions
-    s <- fmap init (liftIO $ hGetLine h)
-    case BT.message s of
-        Just m -> eval m fs
-        Nothing -> return ()
 
-eval :: BT.Message -> [BT.BotFunction] -> BT.Net ()
-eval msg fs = do
+    forever $ do
+        s <- fmap init (liftIO $ hGetLine h)
+        liftIO $ putStrLn s
+        maybe (return ()) (eval fs) (BT.message s)
+
+eval :: [BT.BotFunction] -> BT.Message ->  BT.Net ()
+eval fs msg = do
     runables <- filterM (`BT.shouldRun` msg) fs
     case runables of
         (first:_) -> BT.run first msg >>=
