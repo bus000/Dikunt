@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 module Main (main) where
 
-import Control.Concurrent.MVar (takeMVar)
-import Monitoring (startMonitoring)
+import Bot (connect, disconnect, loop)
+import Control.Exception (bracket)
 import System.Console.CmdArgs
     ( Data
     , Typeable
@@ -50,6 +50,7 @@ mode = cmdArgs dikunt
 main :: IO ()
 main = do
     arguments <- mode
+    -- TODO: Make type representing these bot parameters.
     let serv = server arguments
         pass = password arguments
         nick = nickname arguments
@@ -58,11 +59,12 @@ main = do
         offset = timeOffset arguments
 
     executables <- getExecutables "./plugins/"
-    handlesVar <- startMonitoring executables
 
-    handles <- takeMVar handlesVar
-
-    print handles
+    case computeOffset offset of
+        Just off ->
+            bracket (connect serv chan nick pass port' off executables) disconnect loop
+        Nothing ->
+            putStrLn $ "Could not parse UTC offset " ++ offset
 
 getExecutables :: FilePath -> IO [FilePath]
 getExecutables dir = do

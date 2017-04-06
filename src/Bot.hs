@@ -4,106 +4,101 @@ module Bot
     , loop
     ) where
 
-import Control.Concurrent (threadDelay)
-import Control.Monad (void, forever, filterM)
-import Control.Monad.State (liftIO , runStateT)
+import Monitoring (startMonitoring)
+import Control.Concurrent (forkIO, readMVar, threadDelay)
+import System.IO (Handle)
+import Control.Monad (forever)
 import Data.Time.Clock (DiffTime)
 import Network (connectTo, PortID(..))
-import System.IO (hClose, hSetBuffering, hGetLine, BufferMode(..))
+import System.IO (hClose, hSetBuffering, hGetLine, BufferMode(..), hPutStrLn)
 import Text.Printf (hPrintf)
 
 -- Bot modules
 import qualified BotTypes as BT
-import qualified ExternalPlugins as EP
-import Functions.AsciiPicture (asciiPicture)
-import Functions.AsciiText (asciiText)
-import Functions.BibleGem (biblegem)
-import Functions.DanishMoan (danishMoan)
-import Functions.Fix (fix)
-import Functions.Greeting (greeting)
-import Functions.Help (help)
-import Functions.Insult (insult)
-import Functions.News (news)
-import Functions.Parrot (parrot)
-import Functions.Ponger (ponger)
-import Functions.Trump (trump)
-import Functions.WordReplacer (wordReplacer)
 
 disconnect :: BT.Bot -> IO ()
 disconnect = hClose . BT.socket
 
-connect :: String -> String -> String -> String -> Integer -> DiffTime -> IO BT.Bot
-connect serv chan nick pass port diff = do
+{- | Connect the bot to an IRC server with the channel, nick, pass and port
+ - given. -}
+connect :: String
+    -- ^ URL to server to connect to.
+    -> String
+    -- ^ Channel name to join.
+    -> String
+    -- ^ Nickname to use.
+    -> String
+    -- ^ Password to connect with.
+    -> Integer
+    -- ^ Port to use.
+    -> DiffTime
+    -- ^ Difference in time of clients compared to UTC.
+    -> [FilePath]
+    -- ^ Plugins to load.
+    -> IO BT.Bot
+connect serv chan nick pass port diff execs = do
     h <- connectTo serv (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
 
-    externalFsMight <- EP.generatePlugins
+    handlesVar <- startMonitoring execs
 
-    case externalFsMight of
-        Nothing ->
-            return $ BT.bot h nick chan pass diff internalFs
-        Just externalFs ->
-            return $ BT.bot h nick chan pass diff (externalFs ++ internalFs)
-  where
-    internalFs =
-        [ ponger
-        , asciiPicture
-        , asciiText
-        , trump
-        , fix
-        , help
-        , news
-        , insult
-        , biblegem
-        , danishMoan
-        , parrot
-        , greeting
-        , wordReplacer
-        ]
+    let bot = BT.bot h nick chan pass diff handlesVar
+
+    -- Start thread responding.
+    _ <- forkIO $ respond bot
+
+    return bot
+
 
 loop :: BT.Bot -> IO ()
-loop b = void $ runStateT runLoop b
+loop bot = do
+    write h $ BT.Nick nick
+    write h $ BT.User (nick ++ " 0 * :DikuntBot")
+    write h $ BT.PrivMsg nick "NickServ" ("IDENTIFY" ++ nick ++ pass)
+    write h $ BT.Join chan
+    listen bot
   where
-    runLoop = do
-        pass <- BT.getValue BT.password
-        nick <- BT.getValue BT.nickname
-        chan <- BT.getValue BT.channel
+    h = BT.socket bot
+    pass = BT.password bot
+    nick = BT.nickname bot
+    chan = BT.channel bot
 
-        write $ BT.Nick nick
-        write $ BT.User (nick ++ " 0 * :DikuntBot")
-        write $ BT.PrivMsg nick "NickServ" ("IDENTIFY" ++ nick ++ pass)
-        write $ BT.Join chan
-        listen
+listen :: BT.Bot -> IO ()
+listen bot = forever $ do
+    s <- fmap init $ hGetLine h
+    (ins, _) <- readMVar $ BT.pluginHandles bot
 
-listen :: BT.Net ()
-listen = do
-    h <- BT.getValue BT.socket
-    fs <- BT.getValue BT.functions
+    case BT.message s of
+        Just (BT.Ping from) -> write h $ BT.Pong from
+        Just message -> mapM_ (\handle -> hPutStrLn handle $ show message) ins
+        Nothing -> putStrLn $ "Could not parse message" ++ s
 
-    forever $ do
-        s <- fmap init (liftIO $ hGetLine h)
-        maybe (return ()) (eval fs) (BT.message s)
-
-eval :: [BT.BotFunction] -> BT.Message ->  BT.Net ()
-eval fs msg = do
-    runables <- filterM (`BT.shouldRun` msg) fs
-    case runables of
-        (first:_) -> BT.run first msg >>=
-            mapM_ (\l -> write l >> liftIO (threadDelay 1000000))
-        [] -> return ()
-
-write :: BT.Message -> BT.Net ()
-write message = BT.getValue BT.socket >>= \h -> liftIO $ write' h message
+    threadDelay 1000000
   where
-    write' h (BT.PrivMsg _ to msg) =
-        hPrintf h "PRIVMSG %s :%s\r\n" to msg
-    write' h (BT.Pong to) =
-        hPrintf h "PONG %s\r\n" to
-    write' h (BT.Nick name) =
-        hPrintf h "NICK %s\r\n" name
-    write' h (BT.User name) =
-        hPrintf h "USER %s\r\n" name
-    write' h (BT.Join chan) =
-        hPrintf h "JOIN %s\r\n" chan
-    write' _ _ =
-        putStrLn "Cannot send message type"
+    h = BT.socket bot
+    chan = BT.channel bot
+
+respond :: BT.Bot -> IO ()
+respond bot = forever $ do
+    (_, output) <- readMVar $ BT.pluginHandles bot
+
+    line <- hGetLine output
+    write h $ BT.PrivMsg nick chan line
+  where
+    h = BT.socket bot
+    nick = BT.nickname bot
+    chan = BT.channel bot
+
+write :: Handle -> BT.Message -> IO ()
+write h (BT.PrivMsg _ to msg) =
+    hPrintf h "PRIVMSG %s :%s\r\n" to msg
+write h (BT.Pong to) =
+    hPrintf h "PONG %s\r\n" to
+write h (BT.Nick name) =
+    hPrintf h "NICK %s\r\n" name
+write h (BT.User name) =
+    hPrintf h "USER %s\r\n" name
+write h (BT.Join chan) =
+    hPrintf h "JOIN %s\r\n" chan
+write _ _ =
+    putStrLn "Cannot send message type"

@@ -1,6 +1,5 @@
 module BotTypes
     ( Net
-    , BotFunction(..)
     , Bot(..)
     , bot
     , getValue
@@ -9,6 +8,7 @@ module BotTypes
     , privmsgs
     ) where
 
+import Control.Concurrent.MVar (MVar)
 import Control.Applicative ((<|>))
 import Control.Monad.State (StateT, get)
 import Safe (readMay)
@@ -21,22 +21,12 @@ type Net = StateT Bot IO
 
 {- | The content of the state in the Net type. -}
 data Bot = Bot
-    { socket     :: Handle -- ^ The handle to communicate with the server.
-    , nickname   :: String -- ^ The nickname used on the server.
-    , channel    :: String -- ^ The channel connected to.
-    , password   :: String -- ^ The password to connect with.
-    , timeOffset :: DiffTime -- ^ Offset compared to UTC time.
-    , functions  :: [BotFunction] -- ^ Functions handles messages to the bot.
-    }
-
-{- | A botfunction is a collection of functions that handles messages sent to
- - the bot. If shouldRun returns true for any given message then run is called
- - to generate the bots output. -}
-data BotFunction = BotFunction
-    { shouldRun :: Message -> Net Bool -- ^ If functions should handle message.
-    , run       :: Message -> Net [Message] -- ^ Produce the bots output.
-    , help      :: String -- ^ Generate a help string for the function.
-    , name      :: String -- ^ The name of the function.
+    { socket        :: Handle -- ^ The handle to communicate with the server.
+    , nickname      :: String -- ^ The nickname used on the server.
+    , channel       :: String -- ^ The channel connected to.
+    , password      :: String -- ^ The password to connect with.
+    , timeOffset    :: DiffTime -- ^ Offset compared to UTC time.
+    , pluginHandles :: MVar ([Handle], Handle) -- ^ Plugin in- and out- put.
     }
 
 {- | Represents an IRC command. -}
@@ -82,8 +72,8 @@ bot :: Handle
     -- ^ Password to use.
     -> DiffTime
     -- ^ The time offset to use from UTC time.
-    -> [BotFunction]
-    -- ^ List of functions the server should support.
+    -> MVar ([Handle], Handle)
+    -- ^ Input and output file handles for plugins.
     -> Bot
 bot = Bot
 

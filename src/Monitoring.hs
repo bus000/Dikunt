@@ -14,7 +14,16 @@ module Monitoring ( startMonitoring ) where
 
 import System.Environment (getEnvironment)
 import System.IO (hSetBuffering, BufferMode(..), Handle)
-import System.Process (createProcess, std_out, std_in, proc, StdStream(..), createPipe, env, ProcessHandle)
+import System.Process
+    ( createProcess
+    , std_out
+    , std_in
+    , proc
+    , StdStream(..)
+    , createPipe
+    , env
+    , ProcessHandle
+    )
 import Control.Concurrent.MVar (MVar, newMVar)
 
 data DikuntProcess = DikuntProcess
