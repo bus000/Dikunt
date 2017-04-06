@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 module Main (main) where
 
-import Bot (connect, disconnect, loop)
-import Control.Exception (bracket)
+import Control.Concurrent.MVar (takeMVar)
+import Monitoring (startMonitoring)
 import System.Console.CmdArgs
     ( Data
     , Typeable
@@ -16,8 +16,10 @@ import System.Console.CmdArgs
     , summary
     , cmdArgs
     )
+import Control.Monad
 import Data.Time.Clock (DiffTime, secondsToDiffTime)
 import Safe (readMay)
+import System.Directory
 
 data Dikunt = Dikunt
     { server     :: String
@@ -55,11 +57,17 @@ main = do
         port' = port arguments
         offset = timeOffset arguments
 
-    case computeOffset offset of
-        Just off ->
-            bracket (connect serv chan nick pass port' off) disconnect loop
-        Nothing ->
-            putStrLn $ "Could not parse UTC offset " ++ offset
+    executables <- getExecutables "./plugins/"
+    handlesVar <- startMonitoring executables
+
+    handles <- takeMVar handlesVar
+
+    print handles
+
+getExecutables :: FilePath -> IO [FilePath]
+getExecutables dir = do
+    files <- getDirectoryContents dir
+    filterM (liftM executable . getPermissions) (map (\x -> dir ++ x) files)
 
 computeOffset :: String -> Maybe DiffTime
 computeOffset ('+':int) = do

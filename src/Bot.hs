@@ -82,7 +82,6 @@ listen = do
 
     forever $ do
         s <- fmap init (liftIO $ hGetLine h)
-        liftIO $ putStrLn s
         maybe (return ()) (eval fs) (BT.message s)
 
 eval :: [BT.BotFunction] -> BT.Message ->  BT.Net ()
