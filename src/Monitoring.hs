@@ -42,9 +42,11 @@ type Monitor = [DikuntProcess]
  - background. -}
 startMonitoring :: [FilePath]
     -- ^ List of executable files.
+    -> [String]
+    -- ^ Arguments.
     -> IO (MVar ([Handle], Handle))
-startMonitoring execs = do
-    processes <- startAll execs
+startMonitoring execs args = do
+    processes <- startAll execs args
 
     let ins = map inputHandle processes
         out = head $ map outputHandle processes
@@ -56,19 +58,20 @@ startMonitoring execs = do
 {- | Start a process for each file given. -}
 startAll :: [FilePath]
     -- ^ Files to execute.
+    -> [String]
+    -- ^ Arguments.
     -> IO Monitor
-startAll files = do
+startAll files args = do
     environment <- getEnvironment
     (pipeRead, pipeWrite) <- createPipe -- Pipe to use as stdout.
-    {-pipeReadH <- fdToHandle pipeRead-} -- TODO: REMOVE.
-    {-pipeWriteH <- fdToHandle pipeWriteH-}
 
+    {- Don't buffer python stdin and stdout. -}
     let newEnv = ("PYTHONUNBUFFERED", "1"):environment
 
     mapM (start newEnv pipeWrite pipeRead) files
   where
     start environment houtWrite houtRead file = do
-        (Just hin, _, _, processHandle) <- createProcess (proc file [])
+        (Just hin, _, _, processHandle) <- createProcess (proc file args)
             { std_out = UseHandle houtWrite
             , std_in = CreatePipe
             , env = Just environment

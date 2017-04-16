@@ -8,13 +8,13 @@ module BotTypes
     , privmsgs
     ) where
 
-import Control.Concurrent.MVar (MVar)
 import Control.Applicative ((<|>))
+import Control.Concurrent.MVar (MVar)
 import Control.Monad.State (StateT, get)
+import Data.Time.Clock (DiffTime)
 import Safe (readMay)
 import System.IO (Handle)
 import Text.Regex.PCRE ((=~))
-import Data.Time.Clock (DiffTime)
 
 {- | The state used by the bot. -}
 type Net = StateT Bot IO

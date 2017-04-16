@@ -4,17 +4,15 @@ module Bot
     , loop
     ) where
 
-import Monitoring (startMonitoring)
+import qualified BotTypes as BT
 import Control.Concurrent (forkIO, readMVar, threadDelay)
-import System.IO (Handle)
 import Control.Monad (forever)
 import Data.Time.Clock (DiffTime)
+import Monitoring (startMonitoring)
 import Network (connectTo, PortID(..))
+import System.IO (Handle)
 import System.IO (hClose, hSetBuffering, hGetLine, BufferMode(..), hPutStrLn)
 import Text.Printf (hPrintf)
-
--- Bot modules
-import qualified BotTypes as BT
 
 disconnect :: BT.Bot -> IO ()
 disconnect = hClose . BT.socket
@@ -40,7 +38,7 @@ connect serv chan nick pass port diff execs = do
     h <- connectTo serv (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
 
-    handlesVar <- startMonitoring execs
+    handlesVar <- startMonitoring execs [nick, chan]
 
     let bot = BT.bot h nick chan pass diff handlesVar
 
@@ -72,8 +70,6 @@ listen bot = forever $ do
         Just (BT.Ping from) -> write h $ BT.Pong from
         Just message -> mapM_ (\handle -> hPutStrLn handle $ show message) ins
         Nothing -> putStrLn $ "Could not parse message" ++ s
-
-    threadDelay 1000000
   where
     h = BT.socket bot
     chan = BT.channel bot
@@ -84,6 +80,8 @@ respond bot = forever $ do
 
     line <- hGetLine output
     write h $ BT.PrivMsg nick chan line
+
+    threadDelay 1000000
   where
     h = BT.socket bot
     nick = BT.nickname bot
