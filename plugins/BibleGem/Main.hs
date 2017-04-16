@@ -11,7 +11,7 @@ import Safe (readMay)
 
 main :: IO ()
 main = do
-    [nick, chan] <- getArgs
+    [nick, _] <- getArgs
 
     hSetBuffering stdout LineBuffering
     hSetBuffering stdin LineBuffering
@@ -28,7 +28,7 @@ biblegem :: String -> String -> IO (Maybe String)
 biblegem nick s = case readMay s :: Maybe BT.Message of
     Just (BT.PrivMsg _ _ str) -> if str =~ pattern
         then getGem
-        else return . return $ concat ["did not match ", str, " with ", pattern]
+        else return Nothing
     _ -> return Nothing
   where
     pattern = concat ["^", sp, nick, "\\:", ps, "biblegem", sp, "$"]
@@ -39,7 +39,7 @@ getGem :: IO (Maybe String)
 getGem = do
     res <- openURI randomQuote
     case res of
-        Left err -> return Nothing
+        Left _ -> return Nothing
         Right passage -> return $ Just (format (unpack passage))
 
 format :: String -> String

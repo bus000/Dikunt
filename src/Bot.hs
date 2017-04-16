@@ -5,13 +5,20 @@ module Bot
     ) where
 
 import qualified BotTypes as BT
+import Control.Applicative ((<$>))
 import Control.Concurrent (forkIO, readMVar, threadDelay)
 import Control.Monad (forever)
 import Data.Time.Clock (DiffTime)
 import Monitoring (startMonitoring)
 import Network (connectTo, PortID(..))
-import System.IO (Handle)
-import System.IO (hClose, hSetBuffering, hGetLine, BufferMode(..), hPutStrLn)
+import System.IO
+    ( hClose
+    , hSetBuffering
+    , hGetLine
+    , BufferMode(..)
+    , hPrint
+    , Handle
+    )
 import Text.Printf (hPrintf)
 
 disconnect :: BT.Bot -> IO ()
@@ -63,16 +70,15 @@ loop bot = do
 
 listen :: BT.Bot -> IO ()
 listen bot = forever $ do
-    s <- fmap init $ hGetLine h
+    s <- init <$> hGetLine h
     (ins, _) <- readMVar $ BT.pluginHandles bot
 
     case BT.message s of
         Just (BT.Ping from) -> write h $ BT.Pong from
-        Just message -> mapM_ (\handle -> hPutStrLn handle $ show message) ins
+        Just message -> mapM_ (`hPrint` message) ins
         Nothing -> putStrLn $ "Could not parse message" ++ s
   where
     h = BT.socket bot
-    chan = BT.channel bot
 
 respond :: BT.Bot -> IO ()
 respond bot = forever $ do

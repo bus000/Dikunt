@@ -19,10 +19,8 @@ import System.Console.CmdArgs
     , summary
     , cmdArgs
     )
-import Control.Monad
 import Data.Time.Clock (DiffTime, secondsToDiffTime)
 import Safe (readMay)
-import System.Directory
 
 data Dikunt = Dikunt
     { server     :: String
@@ -56,7 +54,7 @@ main = do
     configName <- getDataFileName "data/dikunt.config"
     config <- load [ Required configName ]
 
-    executables <- require config "pathPlugins" :: IO ([String])
+    executables <- require config "pathPlugins" :: IO [String]
 
     -- TODO: Make type representing these bot parameters.
     let serv = server arguments
@@ -71,11 +69,6 @@ main = do
             bracket (connect serv chan nick pass port' off executables) disconnect loop
         Nothing ->
             putStrLn $ "Could not parse UTC offset " ++ offset
-
-getExecutables :: FilePath -> IO [FilePath]
-getExecutables dir = do
-    files <- getDirectoryContents dir
-    filterM (liftM executable . getPermissions) (map (\x -> dir ++ x) files)
 
 computeOffset :: String -> Maybe DiffTime
 computeOffset ('+':int) = do
