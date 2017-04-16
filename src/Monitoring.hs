@@ -25,6 +25,7 @@ import System.Process
     , ProcessHandle
     )
 import Control.Concurrent.MVar (MVar, newMVar)
+import GHC.IO.Handle (hDuplicate)
 
 data DikuntProcess = DikuntProcess
     { _location      :: FilePath
@@ -71,8 +72,10 @@ startAll files args = do
     mapM (start newEnv pipeWrite pipeRead) files
   where
     start environment houtWrite houtRead file = do
+        dupHoutWrite <- hDuplicate houtWrite
+
         (Just hin, _, _, processHandle) <- createProcess (proc file args)
-            { std_out = UseHandle houtWrite
+            { std_out = UseHandle dupHoutWrite
             , std_in = CreatePipe
             , env = Just environment
             }
