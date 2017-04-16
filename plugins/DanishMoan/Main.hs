@@ -9,7 +9,7 @@ import Data.Maybe (catMaybes)
 
 main :: IO ()
 main = do
-    [nick, chan] <- getArgs
+    [nick, _] <- getArgs
 
     hSetBuffering stdout LineBuffering
     hSetBuffering stdin LineBuffering
