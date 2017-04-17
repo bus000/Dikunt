@@ -41,7 +41,7 @@ dikunt = Dikunt
     , timeOffset = "0" &= help "UTC time offset"
     } &=
         help "Bot to run on IRC channels" &=
-        summary "Dikunt v0.0.0.0 (C) Magnus Stavngaard" &=
+        summary "Dikunt v0.0.1.0 (C) Magnus Stavngaard" &=
         helpArg [explicit, name "h"] &=
         versionArg [explicit, name "v"]
 
