@@ -5,8 +5,6 @@ import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import Control.Monad (forever)
 import Safe (readMay)
 import qualified BotTypes as BT
-import Data.Char (isSpace)
-import Data.List (isPrefixOf)
 import qualified Data.Map as Map
 import System.Exit (ExitCode(ExitSuccess, ExitFailure))
 import System.Process (readProcessWithExitCode)

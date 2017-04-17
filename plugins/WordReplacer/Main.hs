@@ -39,20 +39,16 @@ wordReplacer nick conn = do
     forever $ do
         line <- getLine
         case readMay line :: Maybe BT.Message of
-            Just (BT.PrivMsg _ _ str) -> do
-                output <- handleInput conn nick str
-                case output of
-                    Just str -> putStrLn str
-                    Nothing -> return ()
+            Just (BT.PrivMsg _ _ str) -> handleInput conn nick str
             _ -> return ()
 
-handleInput :: DB.Connection -> String -> String -> IO (Maybe String)
+handleInput :: DB.Connection -> String -> String -> IO ()
 handleInput conn nick str
     | str =~ helpPattern nick = help nick
     | str =~ addPattern nick = case str =~ addPattern nick of
         [[_, word, replacement]] -> addReplacement conn word replacement
-        _ -> return Nothing
-    | otherwise = replaceWords conn nick str
+        _ -> return ()
+    | otherwise = replaceWords conn str
 
 sp, ps :: String
 sp = "[ \\t]*"
@@ -64,28 +60,28 @@ helpPattern nick = concat ["^", sp, nick, "\\:", ps, "wordreplacer", ps, "help",
 addPattern nick = concat ["^", sp, nick, "\\:", ps, "wordreplacer", ps, "add",
     ps, "([a-zA-Z0-9]*)=([a-zA-Z0-9]*)"]
 
-help :: String -> IO (Maybe String)
-help nick = do
-    return (Just $ unlines
-        [ unwords [nick, "wordreplacer add <word1>=<word2> - add word1=word2 to"
-            , "database"]
-        , unwords [nick, "wordreplacer help - display this message"]
-        , "otherwise replaces words from database in messages"
-        ])
+help :: String -> IO ()
+help nick = putStrLn $ unlines
+    [ unwords [nick, "wordreplacer add <word1>=<word2> - add word1=word2 to"
+        , "database"]
+    , unwords [nick, "wordreplacer help - display this message"]
+    , "otherwise replaces words from database in messages"
+    ]
 
-addReplacement :: DB.Connection -> String -> String -> IO (Maybe String)
+addReplacement :: DB.Connection -> String -> String -> IO ()
 addReplacement conn word replacement = do
     DB.executeNamed conn "INSERT OR REPLACE INTO replacements \
         \(word, replacement) VALUES (:word, :replacement)" [":word" := word,
         ":replacement" := replacement]
-    return (Just $ "Added replacement")
 
-replaceWords :: DB.Connection -> String -> String -> IO (Maybe String)
-replaceWords conn nick line = do
+    putStrLn "Added replacement"
+
+replaceWords :: DB.Connection -> String -> IO ()
+replaceWords conn line = do
     replacements <- foldM getReplacements [] (words line)
     if null replacements
-    then return Nothing
-    else return (Just $ replaceStrings replacements line)
+    then return ()
+    else putStrLn $ replaceStrings replacements line
   where
     getReplacements replacements word = do
         r <- DB.queryNamed conn "SELECT id, word, replacement FROM \
@@ -102,7 +98,7 @@ replaceStrings replacements str = unwords . map maybeReplace . words $ str
         Nothing -> word
 
 getReplacement :: Replacement -> (String, String)
-getReplacement (Replacement id_ word replacement) =
+getReplacement (Replacement _ word replacement) =
     (T.unpack word, T.unpack replacement)
 
 {- TODO: Make default replacements. -}

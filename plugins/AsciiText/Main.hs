@@ -1,14 +1,12 @@
 module Main ( main ) where
 
 import qualified BotTypes as BT
-import Data.List (isPrefixOf)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import Text.Regex.PCRE ((=~))
 import Safe (readMay)
 import System.Exit (ExitCode(ExitSuccess, ExitFailure))
 import Control.Monad (forever)
 import System.Process (readProcessWithExitCode)
-import Data.Char (isSpace)
 
 main :: IO ()
 main = do
