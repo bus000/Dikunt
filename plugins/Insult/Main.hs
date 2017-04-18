@@ -65,9 +65,7 @@ insult conn usernick = do
     r <- DB.query_ conn query
     if null r
     then return ()
-    else do
-        putStr $ usernick ++ " - "
-        putStrLn $ (T.unpack . text . head) r
+    else putStrLn $ usernick ++ ": " ++ (T.unpack . text . head) r
   where
     query = "SELECT id, insult FROM insults ORDER BY RANDOM() LIMIT 1"
 
