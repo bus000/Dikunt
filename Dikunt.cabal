@@ -9,7 +9,8 @@ build-type:          Simple
 extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 data-files:          data/dikunt.config,
-                     data/WordReplacerData.db
+                     data/WordReplacerData.db,
+                     data/InsultData.db
 
 library
   build-depends:       base >=4.8 && <4.10,
@@ -130,4 +131,16 @@ executable Greetings
                        Dikunt
   GHC-Options:         -Wall
   hs-source-dirs:      plugins/Greetings/
+  default-language:    Haskell2010
+
+executable Insult
+  main-is:             Main.hs
+  build-depends:       base >=4.8 && <4.10,
+                       regex-pcre >=0.94.4,
+                       sqlite-simple >=0.4.13.0,
+                       safe >=0.3.9,
+                       text >=1.2.2.1,
+                       Dikunt
+  GHC-Options:         -Wall
+  hs-source-dirs:      plugins/Insult/
   default-language:    Haskell2010

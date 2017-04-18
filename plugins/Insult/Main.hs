@@ -1,34 +1,93 @@
-module Functions.Insult
-    ( insult
-    ) where
+{-# LANGUAGE OverloadedStrings #-}
+module Main ( main ) where
 
-import Control.Monad.State (liftIO)
+import qualified Data.Text as T
+import Paths_Dikunt
+import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
+import Text.Regex.PCRE ((=~))
+import qualified Database.SQLite.Simple as DB
+import Safe (readMay)
 import qualified BotTypes as BT
-import Data.Random (sample)
-import Data.Random.Extras (choice)
+import System.Environment (getArgs)
+import Control.Monad (forever)
 
-insult :: BT.BotFunction
-insult = BT.BotFunction
-    { BT.shouldRun = shouldRun
-    , BT.run = run
-    , BT.help = "<nick>: insult <usernick> - Will send an insult to usernick"
-    , BT.name = "Insulter"
-    }
+data Insult = Insult
+    { id_  :: Int
+    , text :: T.Text
+    } deriving (Show)
 
-shouldRun :: BT.Message -> BT.Net Bool
-shouldRun (BT.PrivMsg _ _ msg) = do
-    nick <- BT.getValue BT.nickname
-    case words msg of
-        [first, "insult", _] -> return $ first == (nick ++ ":")
-        _ -> return False
-shouldRun _ = return False
+instance DB.FromRow Insult where
+    fromRow = Insult <$> DB.field <*> DB.field
 
-run :: BT.Message -> BT.Net [BT.Message]
-run (BT.PrivMsg _ _ msg) = case words msg of
-    [_, _, nick] -> let myinsult = liftIO $ sample (choice insults)
-        in myinsult >>= \i -> BT.privmsgs $ nick ++ " " ++ i
-    _ -> BT.privmsgs "Parse error"
-run _ = fail "run should only run on PrivMsg's"
+instance DB.ToRow Insult where
+    toRow (Insult id_ insult) = DB.toRow (id_, insult)
+
+main :: IO ()
+main = do
+    [nick, _] <- getArgs
+
+    hSetBuffering stdout LineBuffering
+    hSetBuffering stdin LineBuffering
+
+    dbFile <- getDataFileName "data/InsultData.db"
+    DB.withConnection dbFile (insulter nick)
+
+insulter :: String -> DB.Connection -> IO ()
+insulter nick conn = do
+    createDatabase conn
+    insertDefaultData conn
+
+    forever $ do
+        line <- getLine
+
+        case readMay line :: Maybe BT.Message of
+            Just message -> handleMessage conn nick message
+            Nothing -> return ()
+  where
+    createDatabase c = DB.execute_ c "CREATE TABLE IF NOT EXISTS insults \
+            \(id INTEGER PRIMARY KEY, insult TEXT UNIQUE)"
+    insertDefaultData c = mapM_ (insertDefault c) insults
+    insertDefault c insult =
+        DB.execute c "INSERT OR REPLACE INTO insults (insult) VALUES (?)"
+            [insult]
+
+handleMessage :: DB.Connection -> String -> BT.Message -> IO ()
+handleMessage conn nick (BT.PrivMsg _ _ str)
+    | str =~ helpPattern nick = help nick
+    | str =~ insultPattern nick = case str =~ insultPattern nick of
+        [[_, usernick]] -> insult conn usernick
+        _ -> return ()
+    | otherwise = return ()
+handleMessage _ _ _ = return ()
+
+insult :: DB.Connection -> String -> IO ()
+insult conn usernick = do
+    r <- DB.query_ conn query
+    if null r
+    then return ()
+    else do
+        putStr $ usernick ++ " - "
+        putStrLn $ (T.unpack . text . head) r
+  where
+    query = "SELECT id, insult FROM insults ORDER BY RANDOM() LIMIT 1"
+
+helpPattern :: String -> String
+helpPattern nick = concat ["^", sp, nick, "\\:", ps, "insult", ps, "help", sp,
+    "$"]
+  where
+    sp = "[ \\t]*"
+    ps = "[ \\t]+"
+
+insultPattern :: String -> String
+insultPattern nick = concat ["^", sp, nick, "\\:", ps, "insult", ps,
+    "([^\\s]+)", sp, "$"]
+  where
+    sp = "[ \\t]*"
+    ps = "[ \\t]+"
+
+help :: String -> IO ()
+help nick = putStrLn $ unwords [nick, ": insult <usernick> - Send an insult to"
+    , "<usernick>"]
 
 {- Insults come from http://www.gotlines.com/insults/ -}
 insults :: [String]
