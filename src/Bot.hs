@@ -4,6 +4,7 @@ module Bot
     , loop
     ) where
 
+import Control.Exception (catch, IOException)
 import qualified BotTypes as BT
 import Control.Concurrent (forkIO, readMVar, threadDelay)
 import Control.Monad (forever)
@@ -20,6 +21,8 @@ import System.IO
     , BufferMode(..)
     , hPrint
     , Handle
+    , hPutStrLn
+    , stderr
     )
 import Text.Printf (hPrintf)
 
@@ -74,8 +77,12 @@ listen bot@(BT.Bot h _ _ _ _ _) = forever $ do
 
     case parseMessage (s ++ "\n") of
         Just (BT.ServerPing from) -> write h $ BT.ClientPong from
-        Just message -> mapM_ (`hPrint` message) ins
-        Nothing -> putStrLn $ "Could not parse message \"" ++ s ++ "\""
+        Just message -> mapM_ (safePrint message) ins
+        Nothing -> hPutStrLn stderr $ "Could not parse message \"" ++ s ++ "\""
+  where
+    safePrint msg processHandle = catch (hPrint processHandle msg) (\e -> do
+        let err = show (e :: IOException)
+        hPutStrLn stderr err)
 
 respond :: BT.Bot -> IO ()
 respond bot@(BT.Bot h _ chan _ _ _) = forever $ do
