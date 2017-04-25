@@ -85,7 +85,7 @@ insultPattern nick = concat ["^", sp, nick, "\\:", ps, "insult", ps,
     ps = "[ \\t]+"
 
 help :: String -> IO ()
-help nick = putStrLn $ unwords [nick, ": insult <usernick> - Send an insult to"
+help nick = putStrLn $ concat [nick, ": insult <usernick> - Send an insult to"
     , "<usernick>"]
 
 {- Insults come from http://www.gotlines.com/insults/ -}
