@@ -62,7 +62,7 @@ loop bot@(BT.Bot h nick chan pass _ _) = do
     write h $ BT.ClientNick nick
     write h $ BT.ClientUser nick 0 "DikuntBot"
     write h $ BT.ClientPrivMsg (BT.IRCUser "NickServ" Nothing Nothing)
-        ("IDENTIFY " ++ pass)
+        ("IDENTIFY " ++ nick ++ " " ++ pass)
     write h $ BT.ClientJoin [(chan, "")]
 
     listen bot
