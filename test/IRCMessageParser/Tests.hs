@@ -106,6 +106,7 @@ layer1UnitTests = testGroup "Layer 1 Tests"
     , testCase "parseMessage3" parseMessage3
     , testCase "parseMessage4" parseMessage4
     , testCase "parseMessage5" parseMessage5
+    , testCase "parseMessage6" parseMessage6
     ]
 
 layer2UnitTests :: TestTree
@@ -405,6 +406,9 @@ parseMessage5 = [] @=? nub output
   where
     str = ":wolfe.freenode.net 252 dikunttest123 28 :IRC Operators online"
     output = readP_to_S parseMessage str
+
+{-":NickServ!NickServ@services. NOTICE dikunttest123 :dikunttest123 is nota registered nickname."-}
+
 
 {-parsePrivMsg1 :: Assertion-}
 {-parsePrivMsg1 =-}

@@ -70,6 +70,7 @@ data ServerMessage = ServerNick IRCUser Nickname
     | ServerPrivMsg IRCUser Nickname String
     | ServerNotice IRCUser Nickname String
     | ServerPing Servername
+    | ServerReply Servername Integer [String] (Maybe String)
     deriving (Eq, Show, Read)
 
 data ClientMessage = ClientPass Password

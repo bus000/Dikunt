@@ -20,31 +20,42 @@ import BotTypes
     )
 
 parseServerMessage :: IRCMessage -> Maybe ServerMessage
-parseServerMessage (IRCMessage (Just (NicknamePrefix usr)) NICK [nick] Nothing) =
-    Just $ ServerNick usr nick
+parseServerMessage (IRCMessage
+    (Just (NicknamePrefix usr)) NICK [nick] Nothing) =
+        Just $ ServerNick usr nick
 
-parseServerMessage (IRCMessage (Just (NicknamePrefix usr)) JOIN [chan] Nothing) =
-    Just $ ServerJoin usr chan
+parseServerMessage (IRCMessage
+    (Just (NicknamePrefix usr)) JOIN [chan] Nothing) =
+        Just $ ServerJoin usr chan
 
-parseServerMessage (IRCMessage (Just (NicknamePrefix usr)) PART [chan] (Just msg)) =
-    Just $ ServerPart usr chan msg
+parseServerMessage (IRCMessage
+    (Just (NicknamePrefix usr)) PART [chan] (Just msg)) =
+        Just $ ServerPart usr chan msg
 
-parseServerMessage (IRCMessage (Just (NicknamePrefix usr)) TOPIC [chan] (Just topic)) =
-    Just $ ServerTopic usr chan topic
+parseServerMessage (IRCMessage
+    (Just (NicknamePrefix usr)) TOPIC [chan] (Just topic)) =
+        Just $ ServerTopic usr chan topic
 
-parseServerMessage (IRCMessage (Just (NicknamePrefix usr)) INVITE [nick, chan] Nothing) =
-    Just $ ServerInvite usr nick chan
+parseServerMessage (IRCMessage
+    (Just (NicknamePrefix usr)) INVITE [nick, chan] Nothing) =
+        Just $ ServerInvite usr nick chan
 
-parseServerMessage (IRCMessage (Just (NicknamePrefix usr)) PRIVMSG [nick] (Just msg)) =
-    Just $ ServerPrivMsg usr nick msg
+parseServerMessage (IRCMessage
+    (Just (NicknamePrefix usr)) PRIVMSG [nick] (Just msg)) =
+        Just $ ServerPrivMsg usr nick msg
 
-parseServerMessage (IRCMessage (Just (NicknamePrefix usr)) NOTICE [nick] (Just msg)) =
-    Just $ ServerNotice usr nick msg
+parseServerMessage
+    (IRCMessage (Just (NicknamePrefix usr)) NOTICE [nick] (Just msg)) =
+        Just $ ServerNotice usr nick msg
 
 parseServerMessage (IRCMessage Nothing PING [] (Just servername)) =
     Just $ ServerPing servername
 
 parseServerMessage (IRCMessage (Just (NicknamePrefix usr)) QUIT [] (Just msg)) =
     Just $ ServerQuit usr msg
+
+parseServerMessage (IRCMessage
+    (Just (ServernamePrefix server)) (NUMCOM n) params msg) =
+        Just $ ServerReply server n params msg
 
 parseServerMessage _ = Nothing
