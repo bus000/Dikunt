@@ -1,6 +1,7 @@
 module Main (main) where
 
 import qualified BotTypes as BT
+import Control.Error.Util (note)
 import Control.Monad (forever)
 import Network.Download (openAsFeed)
 import Safe (readMay)
@@ -46,16 +47,15 @@ help nick = do
 giveNews :: IO ()
 giveNews = do
     feed <- openAsFeed rssFeed
-    case feed of
-        Left err -> putStrLn err
-        Right corFeed -> case feedItems corFeed of
-            (breaking:_) -> case analyseFeed breaking of
-                Just str -> putStrLn str
-                Nothing -> putStrLn "Feed analysation failed"
-            _ -> putStrLn "No news"
+    either putStrLn putStrLn (giveNews' feed)
+  where
+    giveNews' f = do
+        f' <- f
+        note "Feed analysis failed" $ analyseFeed (feedItems f')
 
-analyseFeed :: Item -> Maybe String
-analyseFeed item = do
+analyseFeed :: [Item] -> Maybe String
+analyseFeed [] = Nothing
+analyseFeed (item:_) = do
     title <- getItemTitle item
     link <- getItemLink item
     description <- getItemDescription item
