@@ -28,21 +28,21 @@ main = do
         handleMessage (readMay line :: Maybe BT.ServerMessage) nick
 
 handleMessage :: Maybe BT.ServerMessage -> String -> IO ()
-handleMessage (Just (BT.ServerPrivMsg (BT.IRCUser _ _ _) _ msg)) nick
+handleMessage (Just (BT.ServerPrivMsg BT.IRCUser{} _ msg)) nick
     | msg =~ helpPattern = help nick
-    | msg =~ pattern = giveNews
+    | msg =~ runPattern = giveNews
     | otherwise = return ()
   where
     helpPattern = concat ["^", sp, nick, ":", ps, "news", ps, "help", sp, "$"]
-    pattern = concat ["^", sp, nick, ":", ps, "news", sp, "$"]
+    runPattern = concat ["^", sp, nick, ":", ps, "news", sp, "$"]
     sp = "[ \\t]*"
     ps = "[ \\t]+"
 handleMessage _ _ = return ()
 
 help :: String -> IO ()
 help nick = do
-    putStrLn $ concat [nick, ": news help - Display this help message"]
-    putStrLn $ concat [nick, ": news - Display news"]
+    putStrLn $ nick ++ ": news help - Display this help message"
+    putStrLn $ nick ++ ": news - Display news"
 
 giveNews :: IO ()
 giveNews = do
