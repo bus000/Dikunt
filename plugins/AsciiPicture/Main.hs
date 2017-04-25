@@ -1,13 +1,13 @@
 module Main ( main ) where
 
-import Text.Regex.PCRE ((=~))
-import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
-import Control.Monad (forever)
-import Safe (readMay)
 import qualified BotTypes as BT
+import Control.Monad (forever)
 import qualified Data.Map as Map
+import Safe (readMay)
 import System.Exit (ExitCode(ExitSuccess, ExitFailure))
+import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import System.Process (readProcessWithExitCode)
+import Text.Regex.PCRE ((=~))
 
 main :: IO ()
 main = do
@@ -16,13 +16,13 @@ main = do
 
     forever $ do
         line <- getLine
-        output <- handleMessage (readMay line :: Maybe BT.Message)
+        output <- handleMessage (readMay line :: Maybe BT.ServerMessage)
         case output of
             Just str -> putStrLn str
             Nothing -> return ()
 
-handleMessage :: Maybe BT.Message -> IO (Maybe String)
-handleMessage (Just (BT.PrivMsg _ _ str))
+handleMessage :: Maybe BT.ServerMessage -> IO (Maybe String)
+handleMessage (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = help
     | otherwise = case str =~ pattern of
         [[_, url]] -> asciiart url

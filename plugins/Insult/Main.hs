@@ -1,18 +1,18 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main ( main ) where
 
+import qualified BotTypes as BT
+import Control.Monad (forever)
 import qualified Data.Text as T
+import qualified Database.SQLite.Simple as DB
 import Paths_Dikunt
+import Safe (readMay)
+import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import Text.Regex.PCRE ((=~))
-import qualified Database.SQLite.Simple as DB
-import Safe (readMay)
-import qualified BotTypes as BT
-import System.Environment (getArgs)
-import Control.Monad (forever)
 
 data Insult = Insult
-    { id_  :: Int
+    { _id  :: Int
     , text :: T.Text
     } deriving (Show)
 
@@ -30,6 +30,7 @@ main = do
     hSetBuffering stdin LineBuffering
 
     dbFile <- getDataFileName "data/InsultData.db"
+    putStrLn dbFile
     DB.withConnection dbFile (insulter nick)
 
 insulter :: String -> DB.Connection -> IO ()
@@ -40,7 +41,7 @@ insulter nick conn = do
     forever $ do
         line <- getLine
 
-        case readMay line :: Maybe BT.Message of
+        case readMay line :: Maybe BT.ServerMessage of
             Just message -> handleMessage conn nick message
             Nothing -> return ()
   where
@@ -51,17 +52,17 @@ insulter nick conn = do
         DB.execute c "INSERT OR REPLACE INTO insults (insult) VALUES (?)"
             [insult]
 
-handleMessage :: DB.Connection -> String -> BT.Message -> IO ()
-handleMessage conn nick (BT.PrivMsg _ _ str)
+handleMessage :: DB.Connection -> String -> BT.ServerMessage -> IO ()
+handleMessage conn nick (BT.ServerPrivMsg _ _ str)
     | str =~ helpPattern nick = help nick
     | str =~ insultPattern nick = case str =~ insultPattern nick of
-        [[_, usernick]] -> insult conn usernick
+        [[_, usernick]] -> getInsult conn usernick
         _ -> return ()
     | otherwise = return ()
 handleMessage _ _ _ = return ()
 
-insult :: DB.Connection -> String -> IO ()
-insult conn usernick = do
+getInsult :: DB.Connection -> String -> IO ()
+getInsult conn usernick = do
     r <- DB.query_ conn query
     if null r
     then return ()

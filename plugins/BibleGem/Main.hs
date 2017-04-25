@@ -1,13 +1,13 @@
 module Main where
 
 import qualified BotTypes as BT
+import Control.Monad (forever)
 import Data.ByteString.Char8 (unpack)
 import Network.Download (openURI)
-import Text.Regex.PCRE ((=~))
+import Safe (readMay)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
-import Control.Monad (forever)
-import Safe (readMay)
+import Text.Regex.PCRE ((=~))
 
 main :: IO ()
 main = do
@@ -25,8 +25,8 @@ main = do
             Nothing -> return ()
 
 biblegem :: String -> String -> IO (Maybe String)
-biblegem nick s = case readMay s :: Maybe BT.Message of
-    Just (BT.PrivMsg _ _ str) -> if str =~ pattern
+biblegem nick s = case readMay s :: Maybe BT.ServerMessage of
+    Just (BT.ServerPrivMsg _ _ str) -> if str =~ pattern
         then getGem
         else return Nothing
     _ -> return Nothing

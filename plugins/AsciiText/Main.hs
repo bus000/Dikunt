@@ -1,12 +1,12 @@
 module Main ( main ) where
 
 import qualified BotTypes as BT
-import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
-import Text.Regex.PCRE ((=~))
+import Control.Monad (forever)
 import Safe (readMay)
 import System.Exit (ExitCode(ExitSuccess, ExitFailure))
-import Control.Monad (forever)
+import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import System.Process (readProcessWithExitCode)
+import Text.Regex.PCRE ((=~))
 
 main :: IO ()
 main = do
@@ -15,10 +15,10 @@ main = do
 
     forever $ do
         line <- getLine
-        handleMessage (readMay line :: Maybe BT.Message)
+        handleMessage (readMay line :: Maybe BT.ServerMessage)
 
-handleMessage :: Maybe BT.Message -> IO ()
-handleMessage (Just (BT.PrivMsg _ _ str))
+handleMessage :: Maybe BT.ServerMessage -> IO ()
+handleMessage (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = help
     | otherwise = case str =~ pattern of
         [[_, text]] -> asciitext text

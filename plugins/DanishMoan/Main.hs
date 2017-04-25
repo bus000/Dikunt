@@ -1,11 +1,11 @@
 module Main where
 
 import qualified BotTypes as BT
+import Data.Maybe (catMaybes)
 import Safe (readMay)
 import System.Environment (getArgs)
-import Text.Regex.PCRE ((=~))
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
-import Data.Maybe (catMaybes)
+import Text.Regex.PCRE ((=~))
 
 main :: IO ()
 main = do
@@ -18,9 +18,9 @@ main = do
 
 danishMoan :: String -> String -> Maybe String
 danishMoan nick s = do
-    message <- readMay s :: Maybe BT.Message
+    message <- readMay s :: Maybe BT.ServerMessage
     case message of
-        BT.PrivMsg _ _ str -> getMoan nick str
+        BT.ServerPrivMsg _ _ str -> getMoan nick str
         _ -> Nothing
 
 getMoan :: String -> String -> Maybe String

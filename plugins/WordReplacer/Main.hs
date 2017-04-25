@@ -2,16 +2,16 @@
 module Main ( main ) where
 
 import qualified BotTypes as BT
-import Text.Regex.PCRE ((=~))
-import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
-import Paths_Dikunt
+import Control.Applicative ((<$>), (<*>))
+import Control.Monad (foldM, forever)
+import qualified Data.Text as T
 import qualified Database.SQLite.Simple as DB
 import Database.SQLite.Simple (NamedParam((:=)))
-import Control.Monad (foldM, forever)
+import Paths_Dikunt
 import Safe (readMay)
 import System.Environment (getArgs)
-import qualified Data.Text as T
-import Control.Applicative ((<$>), (<*>))
+import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
+import Text.Regex.PCRE ((=~))
 
 data Replacement = Replacement Int T.Text T.Text deriving (Show)
 
@@ -38,8 +38,8 @@ wordReplacer nick conn = do
 
     forever $ do
         line <- getLine
-        case readMay line :: Maybe BT.Message of
-            Just (BT.PrivMsg _ _ str) -> handleInput conn nick str
+        case readMay line :: Maybe BT.ServerMessage of
+            Just (BT.ServerPrivMsg _ _ str) -> handleInput conn nick str
             _ -> return ()
 
 handleInput :: DB.Connection -> String -> String -> IO ()

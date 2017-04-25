@@ -1,5 +1,5 @@
 {- |
- - Module      : Monitor
+ - Module      : Monitoring
  - Description : Monitor execution of Dikunt plugins.
  - Copyright   : (c) Magnus Stavngaard, 2016
  - License     : BSD-3
