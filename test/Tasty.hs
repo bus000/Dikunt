@@ -1,6 +1,5 @@
 module Main where
 
-import qualified BotTypes.Tests as BTT
 import qualified IRCMessageParser.Tests as IMPT
 import Test.Tasty
     ( TestTree
@@ -9,7 +8,7 @@ import Test.Tasty
     )
 
 allTests :: TestTree
-allTests = testGroup "Tasty Tests" [ BTT.tests, IMPT.tests ]
+allTests = testGroup "Tasty Tests" [ IMPT.tests ]
 
 main :: IO ()
 main = defaultMain allTests

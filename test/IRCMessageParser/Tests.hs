@@ -2,7 +2,6 @@ module IRCMessageParser.Tests where
 
 import qualified BotTypes as BT
 import Data.List (nub)
-import IRCParser
 import IRCParser.Layer1Impl
 import IRCParser.Layer2Impl
 import Text.ParserCombinators.ReadP (readP_to_S)
@@ -109,9 +108,9 @@ layer1UnitTests = testGroup "Layer 1 Tests"
     , testCase "parseMessage5" parseMessage5
     ]
 
-layer2UnitTests :: TestTreee
+layer2UnitTests :: TestTree
 layer2UnitTests = testGroup "Layer 2 Tests"
-    [ testCase "parsePrivMsg1" parsePrivMsg1
+    [
     ]
 
 qcTests :: TestTree
@@ -226,7 +225,8 @@ parseNicknamePrefix1 :: Assertion
 parseNicknamePrefix1 = assertBool "" $ (expected, rest) `elem` output
   where
     str = "bus000_!~fluttersh@1.1.1.1 PRIVMSG"
-    expected = BT.NicknamePrefix "bus000_" (Just "~fluttersh") (Just "1.1.1.1")
+    expected = BT.NicknamePrefix
+        (BT.IRCUser "bus000_" (Just "~fluttersh") (Just "1.1.1.1"))
     rest = " PRIVMSG"
     output = readP_to_S parseNicknamePrefix str
 
@@ -234,7 +234,8 @@ parseNicknamePrefix2 :: Assertion
 parseNicknamePrefix2 = assertBool "" $ (expected, rest) `elem` output
   where
     str = "bus000_!~fluttersh PRIVMSG"
-    expected = BT.NicknamePrefix "bus000_" (Just "~fluttersh") Nothing
+    expected = BT.NicknamePrefix
+        (BT.IRCUser "bus000_" (Just "~fluttersh") Nothing)
     rest = " PRIVMSG"
     output = readP_to_S parseNicknamePrefix str
 
@@ -242,7 +243,8 @@ parseNicknamePrefix3 :: Assertion
 parseNicknamePrefix3 = assertBool "" $ (expected, rest) `elem` output
   where
     str = "bus000_ PRIVMSG"
-    expected = BT.NicknamePrefix "bus000_" Nothing Nothing
+    expected = BT.NicknamePrefix
+        (BT.IRCUser "bus000_" Nothing Nothing)
     rest = " PRIVMSG"
     output = readP_to_S parseNicknamePrefix str
 
@@ -358,7 +360,8 @@ parseMessage1 = [(expected, "")] @=? nub output
   where
     str = ":bus000_!~fluttersh@1.1.1.1 PRIVMSG #dikufags_test :my message\r\n"
     expected = BT.IRCMessage prefix command params trailing
-    prefix = Just $ BT.NicknamePrefix "bus000_" (Just "~fluttersh") (Just "1.1.1.1")
+    prefix = Just $ BT.NicknamePrefix
+        (BT.IRCUser "bus000_" (Just "~fluttersh") (Just "1.1.1.1"))
     command = BT.PRIVMSG
     params = ["#dikufags_test"]
     trailing = Just "my message"
