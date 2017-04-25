@@ -5,7 +5,6 @@ module Bot
     ) where
 
 import qualified BotTypes as BT
-import Control.Applicative ((<$>))
 import Control.Concurrent (forkIO, readMVar, threadDelay)
 import Control.Monad (forever)
 import Data.Time.Clock (DiffTime)
@@ -60,25 +59,23 @@ connect serv chan nick pass port diff execs = do
 
 loop :: BT.Bot -> IO ()
 loop bot@(BT.Bot h nick chan pass _ _) = do
-    writeNew h $ BT.ClientNick nick
-    writeNew h $ BT.ClientUser nick 0 "DikuntBot"
-    writeNew h $ BT.ClientPrivMsg (BT.IRCUser "NickServ" Nothing Nothing)
+    write h $ BT.ClientNick nick
+    write h $ BT.ClientUser nick 0 "DikuntBot"
+    write h $ BT.ClientPrivMsg (BT.IRCUser "NickServ" Nothing Nothing)
         ("IDENTIFY " ++ pass)
-    writeNew h $ BT.ClientJoin [(chan, "")]
+    write h $ BT.ClientJoin [(chan, "")]
 
     listen bot
 
 listen :: BT.Bot -> IO ()
-listen bot = forever $ do
+listen bot@(BT.Bot h _ _ _ _ _) = forever $ do
     s <- hGetLine h
     (ins, _) <- readMVar $ BT.pluginHandles bot
 
     case parseMessage (s ++ "\n") of
-        Just (BT.ServerPing from) -> writeNew h $ BT.ClientPong from
+        Just (BT.ServerPing from) -> write h $ BT.ClientPong from
         Just message -> mapM_ (`hPrint` message) ins
         Nothing -> putStrLn $ "Could not parse message \"" ++ s ++ "\""
-  where
-    h = BT.socket bot
 
 respond :: BT.Bot -> IO ()
 respond bot@(BT.Bot h _ chan _ _ _) = forever $ do
@@ -86,24 +83,10 @@ respond bot@(BT.Bot h _ chan _ _ _) = forever $ do
 
     line <- hGetLine output
     case readMay line :: Maybe BT.ClientMessage of
-        Just message -> writeNew h message
-        Nothing -> writeNew h $ BT.ClientPrivMsgChan chan line
+        Just message -> write h message
+        Nothing -> write h $ BT.ClientPrivMsgChan chan line
 
     threadDelay 1000000
 
-writeNew :: Handle -> BT.ClientMessage -> IO ()
-writeNew h mes = hPrintf h $ writeMessage mes
-
-{-write :: Handle -> BT.Message -> IO ()-}
-{-write h (BT.PrivMsg _ to msg) =-}
-    {-hPrintf h "PRIVMSG %s :%s\r\n" to msg-}
-{-write h (BT.Pong to) =-}
-    {-hPrintf h "PONG %s\r\n" to-}
-{-write h (BT.Nick name) =-}
-    {-hPrintf h "NICK %s\r\n" name-}
-{-write h (BT.User name) =-}
-    {-hPrintf h "USER %s\r\n" name-}
-{-write h (BT.Join chan) =-}
-    {-hPrintf h "JOIN %s\r\n" chan-}
-{-write _ _ =-}
-    {-putStrLn "Cannot send message type"-}
+write :: Handle -> BT.ClientMessage -> IO ()
+write h mes = hPrintf h $ writeMessage mes
