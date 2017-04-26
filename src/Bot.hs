@@ -71,9 +71,9 @@ loop bot@(BT.Bot h nick chan pass _ _) = do
     listen bot
 
 listen :: BT.Bot -> IO ()
-listen bot@(BT.Bot h _ _ _ _ _) = forever $ do
+listen bot@(BT.Bot h _ _ _ _ pluginHandles) = forever $ do
     s <- hGetLine h
-    (ins, _) <- readMVar $ BT.pluginHandles bot
+    (ins, _) <- readMVar pluginHandles
 
     case parseMessage (s ++ "\n") of
         Just (BT.ServerPing from) -> write h $ BT.ClientPong from
