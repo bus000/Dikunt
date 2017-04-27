@@ -8,7 +8,6 @@ import Control.Exception (catch, IOException)
 import qualified BotTypes as BT
 import Control.Concurrent (forkIO, readMVar, threadDelay)
 import Control.Monad (forever)
-import Data.Time.Clock (DiffTime)
 import IRCParser.IRCMessageParser (parseMessage)
 import IRCWriter.IRCWriter (writeMessage)
 import Monitoring (startMonitoring)
@@ -41,18 +40,16 @@ connect :: String
     -- ^ Password to connect with.
     -> Integer
     -- ^ Port to use.
-    -> DiffTime
-    -- ^ Difference in time of clients compared to UTC.
     -> [FilePath]
     -- ^ Plugins to load.
     -> IO BT.Bot
-connect serv chan nick pass port diff execs = do
+connect serv chan nick pass port execs = do
     h <- connectTo serv (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
 
     handlesVar <- startMonitoring execs [nick, chan]
 
-    let bot = BT.bot h nick chan pass diff handlesVar
+    let bot = BT.bot h nick chan pass handlesVar
 
     -- Start thread responding.
     _ <- forkIO $ respond bot
@@ -61,7 +58,7 @@ connect serv chan nick pass port diff execs = do
 
 
 loop :: BT.Bot -> IO ()
-loop bot@(BT.Bot h nick chan pass _ _) = do
+loop bot@(BT.Bot h nick chan pass _) = do
     write h $ BT.ClientNick nick
     write h $ BT.ClientUser nick 0 "DikuntBot"
     write h $ BT.ClientPrivMsg (BT.IRCUser "NickServ" Nothing Nothing)
@@ -71,7 +68,7 @@ loop bot@(BT.Bot h nick chan pass _ _) = do
     listen bot
 
 listen :: BT.Bot -> IO ()
-listen bot@(BT.Bot h _ _ _ _ pluginHandles) = forever $ do
+listen bot@(BT.Bot h _ _ _ pluginHandles) = forever $ do
     s <- hGetLine h
     (ins, _) <- readMVar pluginHandles
 
@@ -85,7 +82,7 @@ listen bot@(BT.Bot h _ _ _ _ pluginHandles) = forever $ do
         hPutStrLn stderr err)
 
 respond :: BT.Bot -> IO ()
-respond bot@(BT.Bot h _ chan _ _ _) = forever $ do
+respond bot@(BT.Bot h _ chan _ _) = forever $ do
     (_, output) <- readMVar $ BT.pluginHandles bot
 
     line <- hGetLine output

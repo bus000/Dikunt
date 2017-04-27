@@ -10,7 +10,6 @@ module BotTypes
     ) where
 
 import Control.Concurrent.MVar (MVar)
-import Data.Time.Clock (DiffTime)
 import System.IO (Handle)
 
 type Nickname = String
@@ -28,7 +27,6 @@ data Bot = Bot
     , nickname      :: Nickname -- ^ The nickname used on the server.
     , channel       :: Channel -- ^ The channel connected to.
     , password      :: Password -- ^ The password to connect with.
-    , timeOffset    :: DiffTime -- ^ Offset compared to UTC time.
     , pluginHandles :: MVar ([Handle], Handle) -- ^ Plugin in- and out- put.
     }
 
@@ -104,8 +102,6 @@ bot :: Handle
     -- ^ Channel to connect to, should start with a #.
     -> String
     -- ^ Password to use.
-    -> DiffTime
-    -- ^ The time offset to use from UTC time.
     -> MVar ([Handle], Handle)
     -- ^ Input and output file handles for plugins.
     -> Bot
