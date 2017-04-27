@@ -56,6 +56,10 @@ main = do
 
     executables <- require config "pathPlugins" :: IO [String]
 
+    dataFileLocations <- dataFiles
+
+    print dataFileLocations
+
     -- TODO: Make type representing these bot parameters.
     let serv = server arguments
         pass = password arguments
@@ -83,3 +87,10 @@ computeOffset ('-':int) = do
     else Nothing
 computeOffset ['0'] = Just $ secondsToDiffTime 0
 computeOffset _ = Nothing
+
+dataFiles :: IO [String]
+dataFiles = mapM getDataFileName
+    [ "data/InsultData.db"
+    , "data/trump.txt"
+    , "data/WordReplacerData.db"
+    ]

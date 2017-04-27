@@ -30,7 +30,6 @@ main = do
     hSetBuffering stdin LineBuffering
 
     dbFile <- getDataFileName "data/InsultData.db"
-    putStrLn dbFile
     DB.withConnection dbFile (insulter nick)
 
 insulter :: String -> DB.Connection -> IO ()
