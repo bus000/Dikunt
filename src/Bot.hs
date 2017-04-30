@@ -4,9 +4,9 @@ module Bot
     , loop
     ) where
 
-import Control.Exception (catch, IOException)
 import qualified BotTypes as BT
 import Control.Concurrent (forkIO, readMVar, threadDelay)
+import Control.Exception (catch, IOException)
 import Control.Monad (forever)
 import IRCParser.IRCMessageParser (parseMessage)
 import IRCWriter.IRCWriter (writeMessage)
@@ -68,7 +68,7 @@ loop bot@(BT.Bot h nick chan pass _) = do
     listen bot
 
 listen :: BT.Bot -> IO ()
-listen bot@(BT.Bot h _ _ _ pluginHandles) = forever $ do
+listen (BT.Bot h _ _ _ pluginHandles) = forever $ do
     s <- hGetLine h
     (ins, _) <- readMVar pluginHandles
 

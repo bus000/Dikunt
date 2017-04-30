@@ -1,7 +1,7 @@
 module Main where
 
 import qualified BotTypes as BT
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
 import Safe (readMay)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
@@ -14,7 +14,7 @@ main = do
     hSetBuffering stdout LineBuffering
     hSetBuffering stdin LineBuffering
 
-    interact (unlines . catMaybes . map (danishMoan nick) . lines)
+    interact (unlines . mapMaybe (danishMoan nick) . lines)
 
 danishMoan :: String -> String -> Maybe String
 danishMoan nick s = do
@@ -24,7 +24,7 @@ danishMoan nick s = do
         _ -> Nothing
 
 getMoan :: String -> String -> Maybe String
-getMoan nick str = case str =~ pattern of
+getMoan nick str = case str =~ runPattern of
     [[_, number]] -> do
         n <- readMay number :: Maybe Int
         if n < 100 && n > 0
@@ -32,7 +32,7 @@ getMoan nick str = case str =~ pattern of
         else Nothing
     _ -> Nothing
   where
-    pattern = concat ["^", sp, nick, "\\:", ps, "danish", ps, "moan", ps,
+    runPattern = concat ["^", sp, nick, "\\:", ps, "danish", ps, "moan", ps,
         "([0-9]+)$"]
     sp = "[ \\t]*"
     ps = "[ \\t]+"

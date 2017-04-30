@@ -19,7 +19,6 @@ import System.Console.CmdArgs
     , summary
     , cmdArgs
     )
-import Safe (readMay)
 
 data Dikunt = Dikunt
     { server     :: String

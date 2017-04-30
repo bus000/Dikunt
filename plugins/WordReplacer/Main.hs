@@ -3,7 +3,7 @@ module Main ( main ) where
 
 import qualified BotTypes as BT
 import Control.Applicative ((<$>), (<*>))
-import Control.Monad (foldM, forever)
+import Control.Monad (foldM, forever, unless)
 import qualified Data.Text as T
 import qualified Database.SQLite.Simple as DB
 import Database.SQLite.Simple (NamedParam((:=)))
@@ -39,9 +39,9 @@ initDatabase :: DB.Connection
 initDatabase conn = do
     DB.execute_ conn "CREATE TABLE IF NOT EXISTS replacements \
         \(id INTEGER PRIMARY KEY, word TEXT UNIQUE, replacement TEXT)"
-    mapM_ (insertDefault conn) replacementList
+    mapM_ insertDefault replacementList
   where
-    insertDefault c (word, replacement) =
+    insertDefault (word, replacement) =
         DB.executeNamed conn "INSERT OR REPLACE INTO replacements \
             \(word, replacement) VALUES (:word, :replacement)"
                 [":word" := word
@@ -55,8 +55,7 @@ wordReplacer :: String
     -> DB.Connection
     -- ^ Database connection with replacements.
     -> IO ()
-wordReplacer nick conn = do
-    forever $ do
+wordReplacer nick conn = forever $ do
         line <- getLine
         handleMessage conn nick $ readMay line
 
@@ -70,17 +69,17 @@ handleMessage :: DB.Connection
     -- ^ Message received from IRCServer.
     -> IO ()
 handleMessage conn nick (Just (BT.ServerPrivMsg _ _ str))
-    | str =~ helpPattern nick = help nick
-    | str =~ addPattern nick = case str =~ addPattern nick of
+    | str =~ helpPattern = help nick
+    | str =~ addPattern = case str =~ addPattern of
         [[_, word, replacement]] -> addReplacement conn word replacement
         _ -> return ()
     | otherwise = replaceWords conn str
   where
     sp = "[ \\t]*"
     ps = "[ \\t]+"
-    helpPattern nick = concat ["^", sp, nick, "\\:", ps, "wordreplacer", ps, "help",
+    helpPattern = concat ["^", sp, nick, "\\:", ps, "wordreplacer", ps, "help",
         sp, "$"]
-    addPattern nick = concat ["^", sp, nick, "\\:", ps, "wordreplacer", ps, "add",
+    addPattern = concat ["^", sp, nick, "\\:", ps, "wordreplacer", ps, "add",
         ps, "([a-zA-Z0-9]*)=([a-zA-Z0-9]*)"]
 handleMessage _ _ _ = return ()
 
@@ -118,15 +117,13 @@ replaceWords :: DB.Connection
     -> IO ()
 replaceWords conn line = do
     replacements <- foldM getReplacements [] (words line)
-    if null replacements
-    then return ()
-    else putStrLn $ replaceStrings replacements line
+    unless (null replacements) $ putStrLn (replaceStrings replacements line)
   where
     getReplacements replacements word = do
         r <- DB.queryNamed conn "SELECT id, word, replacement FROM \
             \replacements WHERE word = :word"
             [":word" := word] :: IO [Replacement]
-        if null r then return replacements else return $ (head r):replacements
+        if null r then return replacements else return $ head r:replacements
 
 {- | Replace words in string with their replacement in the replacementlist
  - given. -}
@@ -135,12 +132,10 @@ replaceStrings :: [Replacement]
     -> String
     -- ^ The string to replace in.
     -> String
-replaceStrings replacements str = unwords . map maybeReplace . words $ str
+replaceStrings replacements = unwords . map maybeReplace . words
   where
-    replacementList = map getReplacement replacements
-    maybeReplace word = case lookup word replacementList of
-        Just newWord -> newWord
-        Nothing -> word
+    replacements' = map getReplacement replacements
+    maybeReplace word = fromMaybe word (lookup word replacements')
 
 {- | Utility function converting Replacement's to tuples of replacement. -}
 getReplacement :: Replacement

@@ -17,6 +17,7 @@
 module IRCParser.Layer1Impl where
 
 import qualified BotTypes as BT
+import Control.Applicative ((<$>))
 import Text.ParserCombinators.ReadP
     ( ReadP
     , readP_to_S
@@ -50,7 +51,7 @@ parseIRCMessage str = case nub (readP_to_S parseMessage str) of
  -     [ ":" prefix SPACE ] command [ params ] crlf -}
 parseMessage :: ReadP BT.IRCMessage
 parseMessage = do
-    prefix <- option Nothing (fmap Just $ between (char ':') (char ' ') parsePrefix)
+    prefix <- option Nothing (Just <$> between (char ':') (char ' ') parsePrefix)
     command <- parseCommand
     (params, trailing) <- parseParams
 
@@ -154,7 +155,7 @@ parseShortname :: ReadP String
 parseShortname = do
     str <- many (parseLetter +++ parseDigit +++ char '-')
 
-    if length str > 0 && last str /= '-' && head str /= '-'
+    if not (null str) && last str /= '-' && head str /= '-'
     then return str
     else pfail
 
@@ -210,7 +211,7 @@ parseNickname = do
 {- | Parse an IRC user which is any non empty sequence of characters that are
  - not NUL, CR, LF, " " and "@". -}
 parseUser :: ReadP String
-parseUser = munch1 (\c -> not $ c `elem` ['\0', '\r', '\n', ' ', '@'])
+parseUser = munch1 (\c -> c `notElem` ['\0', '\r', '\n', ' ', '@'])
 
 {- | Parse an IRC letter which is any of the character a-Z. -}
 parseLetter :: ReadP Char
@@ -233,4 +234,4 @@ parseHexdigit = parseDigit +++ satisfy (`elem` ['A', 'B', 'C', 'D', 'E', 'F'])
 {- | Parse an IRC nospcrlfcl message which is any character not NUL, CR, LF,
  - " " and ":". -}
 parseNospcrlfcl :: ReadP Char
-parseNospcrlfcl = satisfy (\c -> not $ c `elem` ['\0', '\r', '\n', ' ', ':'])
+parseNospcrlfcl = satisfy (\c -> c `notElem` ['\0', '\r', '\n', ' ', ':'])

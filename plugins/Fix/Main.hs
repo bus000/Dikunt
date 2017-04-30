@@ -6,7 +6,7 @@ import Control.Monad.State.Strict (runStateT, StateT, get, lift, put)
 import Data.List.Utils (replace)
 import Safe (readMay)
 import System.Environment (getArgs)
-import System.IO (stdout, stdin, hSetBuffering, BufferMode(..), readFile)
+import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import Text.Regex.PCRE ((=~))
 
 main :: IO ()

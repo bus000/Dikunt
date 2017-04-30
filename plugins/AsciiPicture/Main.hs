@@ -24,12 +24,12 @@ main = do
 handleMessage :: Maybe BT.ServerMessage -> IO (Maybe String)
 handleMessage (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = help
-    | otherwise = case str =~ pattern of
+    | otherwise = case str =~ runPattern of
         [[_, url]] -> asciiart url
         _ -> return Nothing
   where
     helpPattern = concat ["^", sp, "asciiart\\:", ps, "help", sp]
-    pattern = concat ["^", sp, "asciiart\\:", ps, "(.*)$"]
+    runPattern = concat ["^", sp, "asciiart\\:", ps, "(.*)$"]
     sp = "[ \\t]*"
     ps = "[ \\t]+"
 handleMessage _ = return Nothing

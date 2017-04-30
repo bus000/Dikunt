@@ -28,7 +28,7 @@ handleMessage :: Maybe BT.ServerMessage -> String -> String -> IO ()
 handleMessage (Just (BT.ServerPrivMsg BT.IRCUser{} _ msg)) nick trumpData
     | msg =~ helpPattern = putStrLn $ help nick
     | msg =~ runPattern = newStdGen >>= \r ->
-        putStrLn (trumpQuote msg nick trumpData r)
+        putStrLn (trumpQuote trumpData r)
     | otherwise = return ()
   where
     helpPattern = concat ["^", sp, nick, ":", ps, "trump", ps, "help", sp, "$"]
@@ -43,8 +43,8 @@ help nick = unlines
     , nick ++ ": trump - Output a markov random trump quote."
     ]
 
-trumpQuote :: String -> String -> String -> StdGen -> String
-trumpQuote msg nick trumpData gen =
+trumpQuote :: String -> StdGen -> String
+trumpQuote trumpData gen =
     "Friends, delegates and fellow Americans: " ++ sentence
   where
     ws = words trumpData

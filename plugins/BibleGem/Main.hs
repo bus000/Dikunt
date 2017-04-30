@@ -26,12 +26,12 @@ main = do
 
 biblegem :: String -> String -> IO (Maybe String)
 biblegem nick s = case readMay s :: Maybe BT.ServerMessage of
-    Just (BT.ServerPrivMsg _ _ str) -> if str =~ pattern
+    Just (BT.ServerPrivMsg _ _ str) -> if str =~ runPattern
         then getGem
         else return Nothing
     _ -> return Nothing
   where
-    pattern = concat ["^", sp, nick, "\\:", ps, "biblegem", sp, "$"]
+    runPattern = concat ["^", sp, nick, "\\:", ps, "biblegem", sp, "$"]
     sp = "[ \\t]*"
     ps = "[ \\t]+"
 
@@ -43,11 +43,11 @@ getGem = do
         Right passage -> return $ Just (format (unpack passage))
 
 format :: String -> String
-format passage = case passage =~ pattern :: [[String]] of
+format passage = case passage =~ runPattern :: [[String]] of
     [[_, verse, content]] -> verse ++ ": " ++ content
     _ -> passage
   where
-    pattern = "^<b>(.*)<\\/b> (.*)$"
+    runPattern = "^<b>(.*)<\\/b> (.*)$"
 
 randomQuote :: String
 randomQuote = "http://labs.bible.org/api/?passage=random"

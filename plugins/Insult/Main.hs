@@ -2,7 +2,7 @@
 module Main ( main ) where
 
 import qualified BotTypes as BT
-import Control.Monad (forever)
+import Control.Monad (forever, unless)
 import qualified Data.Text as T
 import qualified Database.SQLite.Simple as DB
 import Paths_Dikunt
@@ -63,9 +63,7 @@ handleMessage _ _ _ = return ()
 getInsult :: DB.Connection -> String -> IO ()
 getInsult conn usernick = do
     r <- DB.query_ conn query
-    if null r
-    then return ()
-    else putStrLn $ usernick ++ ": " ++ (T.unpack . text . head) r
+    unless (null r) $ putStrLn (usernick ++ ": " ++ (T.unpack . text . head) r)
   where
     query = "SELECT id, insult FROM insults ORDER BY RANDOM() LIMIT 1"
 
