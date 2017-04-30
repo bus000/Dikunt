@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main ( main ) where
 
+import Data.Maybe (fromMaybe)
 import qualified BotTypes as BT
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad (foldM, forever, unless)

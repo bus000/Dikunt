@@ -30,7 +30,7 @@ handleInput nick (Just (BT.ServerPrivMsg _ _ str))
         _ -> error "Should always match."
     | otherwise = put str
   where
-    helpPattern = concat ["^", sp, "fix:", ps, "help", sp]
+    helpPattern = concat ["^", sp, nick, ":", ps, "fix", ps, "help", sp]
     runPattern = concat ["^", sp, "s/([a-zA-Z0-9]*)/([a-zA-Z0-9]*)", sp, "$"]
     sp = "[ \\t]*"
     ps = "[ \\t]+"
