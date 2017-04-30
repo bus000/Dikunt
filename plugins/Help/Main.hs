@@ -2,6 +2,7 @@
 module Main (main) where
 
 import qualified BotTypes as BT
+import Control.Applicative ((<$>))
 import Control.Monad (forever)
 import Data.Char (toLower)
 import Data.Configurator (load, Worth(..), require)
@@ -17,7 +18,7 @@ main = do
 
     configName <- getDataFileName "data/dikunt.config"
     config <- load [ Required configName ]
-    executables <- fmap (map . map $ toLower) $ require config "pathPlugins"
+    executables <- (map . map $ toLower) <$> require config "pathPlugins"
 
     hSetBuffering stdout LineBuffering
     hSetBuffering stdin LineBuffering
