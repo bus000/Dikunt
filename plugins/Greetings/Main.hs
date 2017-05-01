@@ -27,7 +27,6 @@ handleMessage _ (Just (BT.ServerPart (BT.IRCUser nick _ _) _ _)) =
     putStrLn $ "Goodbye " ++ nick
 handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = putStrLn $ help nick
-    | otherwise = return ()
   where
     helpPattern = concat ["^", sp, nick, ":", ps, "greetings", ps, "help", sp,
         "$"]

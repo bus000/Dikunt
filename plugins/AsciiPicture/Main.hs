@@ -22,7 +22,6 @@ handleMessage :: Maybe BT.ServerMessage -> IO ()
 handleMessage (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = help
     | [[_, url]] <- str =~ runPattern = asciiart url
-    | otherwise = return ()
   where
     helpPattern = concat ["^", sp, "asciiart\\:", ps, "help", sp, "$"]
     runPattern = concat ["^", sp, "asciiart\\:", ps, "(.*)$"]

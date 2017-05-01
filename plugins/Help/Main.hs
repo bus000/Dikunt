@@ -31,7 +31,6 @@ handleInput :: String -> [String] -> Maybe BT.ServerMessage -> IO ()
 handleInput nick executables (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = help nick
     | str =~ runPattern = moduleHelp executables nick
-    | otherwise = return ()
   where
     helpPattern = concat ["^", sp, nick, ":", ps, "help", ps, "help", sp, "$"]
     runPattern = concat ["^", sp, nick, ":", ps, "help", sp, "$"]

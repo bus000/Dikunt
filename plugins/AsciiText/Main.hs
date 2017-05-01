@@ -24,7 +24,6 @@ handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
 handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = putStrLn $ help nick
     | [[_, text]] <- str =~ runPattern = asciitext text
-    | otherwise = return ()
   where
     helpPattern = concat ["^", sp, "asciitext:", ps, "help", sp]
     runPattern = concat ["^", sp, "asciitext:", ps, "(.*)$"]

@@ -31,7 +31,6 @@ handleMessage :: Maybe BT.ServerMessage -> String -> IO ()
 handleMessage (Just (BT.ServerPrivMsg BT.IRCUser{} _ msg)) nick
     | msg =~ helpPattern = help nick
     | msg =~ runPattern = giveNews
-    | otherwise = return ()
   where
     helpPattern = concat ["^", sp, nick, ":", ps, "news", ps, "help", sp, "$"]
     runPattern = concat ["^", sp, nick, ":", ps, "news", sp, "$"]
