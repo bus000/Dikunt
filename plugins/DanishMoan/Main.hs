@@ -6,6 +6,7 @@ import Safe (readMay)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import Text.Regex.PCRE ((=~))
+import Control.Monad (forever)
 
 main :: IO ()
 main = do
@@ -14,25 +15,30 @@ main = do
     hSetBuffering stdout LineBuffering
     hSetBuffering stdin LineBuffering
 
-    interact (unlines . mapMaybe (danishMoan nick) . lines)
+    forever $ do
+        line <- getLine
+        handleInput nick $ readMay line
 
-danishMoan :: String -> String -> Maybe String
-danishMoan nick s = do
-    message <- readMay s :: Maybe BT.ServerMessage
-    case message of
-        BT.ServerPrivMsg _ _ str -> getMoan nick str
-        _ -> Nothing
-
-getMoan :: String -> String -> Maybe String
-getMoan nick str = case str =~ runPattern of
-    [[_, number]] -> do
-        n <- readMay number :: Maybe Int
-        if n < 100 && n > 0
-        then return $ "Å" ++ replicate (n - 1) 'å' ++ "hhh"
-        else Nothing
-    _ -> Nothing
+handleInput :: String -> Maybe (BT.ServerMessage) -> IO ()
+handleInput nick (Just (BT.ServerPrivMsg _ _ str))
+    | str =~ helpPattern = putStrLn $ help nick
+    | [[_, n]] <- str =~ runPattern = putStr $ getMoan (readMay n)
+    | otherwise = return ()
   where
-    runPattern = concat ["^", sp, nick, "\\:", ps, "danish", ps, "moan", ps,
-        "([0-9]+)$"]
+    helpPattern = concat ["^", sp, nick, ":", ps, "danishmoan", ps, "help", sp,
+        "$"]
+    runPattern = concat ["^", sp, nick, ":", ps, "danishmoan", ps, "([0-9]+)",
+        sp, "$"]
     sp = "[ \\t]*"
     ps = "[ \\t]+"
+handleInput _ _ = return ()
+
+help :: String -> String
+help nick = unlines
+    [ nick ++ ": danishmoan help - Display this help message."
+    , nick ++ ": danishmoan <n> - Print a moan using <n> å's."
+    ]
+
+getMoan :: Maybe Int -> String
+getMoan (Just n) = "Å" ++ replicate (n - 1) 'å' ++ "hhh\n"
+getMoan _ = ""
