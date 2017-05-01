@@ -49,4 +49,4 @@ moduleHelp :: [String] -> String -> IO ()
 moduleHelp executables nick = putStrLn . unlines $
     "Try one of the commands":map helpPlugin executables
   where
-    helpPlugin pluginName = "    " ++ nick ++ ": help " ++ pluginName
+    helpPlugin pluginName = "    " ++ nick ++ ": " ++ pluginName ++ " help"
