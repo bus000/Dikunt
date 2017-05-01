@@ -16,28 +16,38 @@ main = do
 
     forever $ do
         line <- getLine
-        output <- handleMessage (readMay line :: Maybe BT.ServerMessage)
-        case output of
-            Just str -> putStrLn str
-            Nothing -> return ()
+        handleMessage (readMay line)
 
-handleMessage :: Maybe BT.ServerMessage -> IO (Maybe String)
+handleMessage :: Maybe BT.ServerMessage -> IO ()
 handleMessage (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = help
-    | otherwise = case str =~ runPattern of
-        [[_, url]] -> asciiart url
-        _ -> return Nothing
+    | [[_, url]] <- str =~ runPattern = asciiart url
+    | otherwise = return ()
   where
-    helpPattern = concat ["^", sp, "asciiart\\:", ps, "help", sp]
+    helpPattern = concat ["^", sp, "asciiart\\:", ps, "help", sp, "$"]
     runPattern = concat ["^", sp, "asciiart\\:", ps, "(.*)$"]
     sp = "[ \\t]*"
     ps = "[ \\t]+"
-handleMessage _ = return Nothing
+handleMessage _ = return ()
 
-asciiart :: String -> IO (Maybe String)
+asciiart :: String -> IO ()
 asciiart picRef = case Map.lookup picRef buildIn of
     Just url -> generatePicture url
     Nothing -> generatePicture picRef
+
+generatePicture :: String -> IO ()
+generatePicture url = do
+    (e, s, _) <- readProcessWithExitCode "/usr/bin/jp2a"
+        [url, "--width=80", "--background=light"] []
+    case e of
+        ExitSuccess -> putStrLn s
+        ExitFailure _ -> return ()
+
+help :: IO ()
+help = putStrLn $ unlines
+    [ "asciiart: help - show this message"
+    , "asciiart: url - show asciiart of jpg linked to"
+    ]
 
 buildIn :: Map.Map String String
 buildIn = Map.fromList
@@ -57,17 +67,3 @@ buildIn = Map.fromList
     , ("just right", "http://static3.depositphotos.com/1001914/142/i/950/" ++
         "depositphotos_1429391-Hand-sign-ok.jpg")
     ]
-
-generatePicture :: String -> IO (Maybe String)
-generatePicture url = do
-    (e, s, _) <- readProcessWithExitCode "/usr/bin/jp2a"
-        [url, "--width=80", "--background=light"] []
-    case e of
-        ExitSuccess -> return $ Just s
-        ExitFailure _ -> return Nothing
-
-help :: IO (Maybe String)
-help = return $ Just (unlines
-    [ "asciiart: help - show this message"
-    , "asciiart: url - show asciiart of jpg linked to"
-    ])
