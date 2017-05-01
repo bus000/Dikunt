@@ -56,7 +56,6 @@ connect serv chan nick pass port execs = do
 
     return bot
 
-
 loop :: BT.Bot -> IO ()
 loop bot@(BT.Bot h nick chan pass _) = do
     write h $ BT.ClientNick nick
