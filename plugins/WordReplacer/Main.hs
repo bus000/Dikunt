@@ -71,9 +71,8 @@ handleMessage :: DB.Connection
     -> IO ()
 handleMessage conn nick (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = help nick
-    | str =~ addPattern = case str =~ addPattern of
-        [[_, word, replacement]] -> addReplacement conn word replacement
-        _ -> return ()
+    | [[_, word, replacement]] <- str =~ addPattern =
+        addReplacement conn word replacement
     | otherwise = replaceWords conn str
   where
     sp = "[ \\t]*"
