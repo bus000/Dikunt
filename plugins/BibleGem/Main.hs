@@ -18,29 +18,26 @@ main = do
 
     forever $ do
         line <- getLine
-        output <- biblegem nick line
+        handleInput nick $ readMay line
 
-        case output of
-            Just str -> putStrLn str
-            Nothing -> return ()
-
-biblegem :: String -> String -> IO (Maybe String)
-biblegem nick s = case readMay s :: Maybe BT.ServerMessage of
-    Just (BT.ServerPrivMsg _ _ str) -> if str =~ runPattern
-        then getGem
-        else return Nothing
-    _ -> return Nothing
+handleInput :: String -> Maybe BT.ServerMessage -> IO ()
+handleInput nick (Just (BT.ServerPrivMsg _ _ str))
+    | str =~ helpPattern = putStrLn $ help nick
+    | str =~ runPattern = getGem
   where
-    runPattern = concat ["^", sp, nick, "\\:", ps, "biblegem", sp, "$"]
+    helpPattern = concat ["^", sp, nick, ":", ps, "biblegem", ps, "help", sp,
+        "$"]
+    runPattern = concat ["^", sp, nick, ":", ps, "biblegem", sp, "$"]
     sp = "[ \\t]*"
     ps = "[ \\t]+"
+handleInput _ _ = return ()
 
-getGem :: IO (Maybe String)
+getGem :: IO ()
 getGem = do
     res <- openURI randomQuote
     case res of
-        Left _ -> return Nothing
-        Right passage -> return $ Just (format (unpack passage))
+        Left _ -> return ()
+        Right passage -> putStrLn (format (unpack passage))
 
 format :: String -> String
 format passage = case passage =~ runPattern :: [[String]] of
@@ -48,6 +45,12 @@ format passage = case passage =~ runPattern :: [[String]] of
     _ -> passage
   where
     runPattern = "^<b>(.*)<\\/b> (.*)$"
+
+help :: String -> String
+help nick = unlines
+    [ nick ++ ": biblegem help - Display this help message"
+    , nick ++ ": biblegem - Display random bible quote"
+    ]
 
 randomQuote :: String
 randomQuote = "http://labs.bible.org/api/?passage=random"
