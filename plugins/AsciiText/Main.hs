@@ -2,6 +2,7 @@ module Main ( main ) where
 
 import qualified BotTypes as BT
 import Control.Monad (forever)
+import System.Environment (getArgs)
 import Safe (readMay)
 import System.Exit (ExitCode(ExitSuccess, ExitFailure))
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
@@ -10,25 +11,26 @@ import Text.Regex.PCRE ((=~))
 
 main :: IO ()
 main = do
+    [nick, _] <- getArgs
+
     hSetBuffering stdout LineBuffering
     hSetBuffering stdin LineBuffering
 
     forever $ do
         line <- getLine
-        handleMessage (readMay line :: Maybe BT.ServerMessage)
+        handleMessage nick $ readMay line
 
-handleMessage :: Maybe BT.ServerMessage -> IO ()
-handleMessage (Just (BT.ServerPrivMsg _ _ str))
-    | str =~ helpPattern = help
-    | otherwise = case str =~ runPattern of
-        [[_, text]] -> asciitext text
-        _ -> return ()
+handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
+handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
+    | str =~ helpPattern = putStrLn $ help nick
+    | [[_, text]] <- str =~ runPattern = asciitext text
+    | otherwise = return ()
   where
-    helpPattern = concat ["^", sp, "asciitext\\:", ps, "help", sp]
-    runPattern = concat ["^", sp, "asciitext\\:", ps, "(.*)$"]
+    helpPattern = concat ["^", sp, "asciitext:", ps, "help", sp]
+    runPattern = concat ["^", sp, "asciitext:", ps, "(.*)$"]
     sp = "[ \\t]*"
     ps = "[ \\t]+"
-handleMessage _ = return ()
+handleMessage _ _ = return ()
 
 asciitext :: String -> IO ()
 asciitext text = do
@@ -37,8 +39,8 @@ asciitext text = do
         ExitSuccess -> putStrLn s
         ExitFailure _ -> return ()
 
-help :: IO ()
-help = putStrLn $ unlines
-    [ "asciitext: help - display this message"
+help :: String -> String
+help nick = unlines
+    [ nick ++ " asciitext help - display this message"
     , "asciitext: <text> - display text as asciitext"
     ]
