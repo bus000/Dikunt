@@ -1,7 +1,6 @@
 module Main where
 
 import qualified BotTypes as BT
-import Data.Maybe (mapMaybe)
 import Safe (readMay)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
