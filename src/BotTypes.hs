@@ -7,6 +7,7 @@ module BotTypes
     , IRCUser(..)
     , ServerMessage(..)
     , ClientMessage(..)
+    , nicknamePrefix
     ) where
 
 import Control.Concurrent.MVar (MVar)
@@ -106,3 +107,20 @@ bot :: Handle
     -- ^ Input and output file handles for plugins.
     -> Bot
 bot = Bot
+
+{- | Construct a IRCPrefix representing a NicknamePrefix of an IRCUser. -}
+nicknamePrefix :: Nickname
+    -- ^ Nick of the prefix.
+    -> Maybe Username
+    -- ^ Maybe username of the user.
+    -> Maybe String
+    -- ^ Maybe hostname of the user.
+    -> IRCPrefix
+nicknamePrefix nick Nothing Nothing =
+    NicknamePrefix $ IRCUser nick Nothing Nothing
+nicknamePrefix nick user Nothing =
+    NicknamePrefix $ IRCUser nick user Nothing
+nicknamePrefix nick Nothing host =
+    NicknamePrefix $ IRCUser nick Nothing host
+nicknamePrefix nick user host =
+    NicknamePrefix $ IRCUser nick user host
