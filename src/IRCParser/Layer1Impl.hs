@@ -204,6 +204,7 @@ parseIP6addr = form1 +++ form2
 -- nickname max length should still be 9 but it should be possible to configure
 -- the max length to be something else. This will probably require making the
 -- parser use the Reader monad with some configuration state.
+
 {- | Parse an IRC nickname of the form
  -     ( letter / special ) *8( letter / digit / special / "-" ). -}
 parseNickname :: ReadP String
@@ -211,7 +212,7 @@ parseNickname = do
     c1 <- parseLetter +++ parseSpecial
     rest <- many (parseLetter +++ parseDigit +++ parseSpecial +++ char '-')
 
-    if length rest <= 8 then return (c1:rest) else pfail
+    if length rest <= 30 then return (c1:rest) else pfail
 
 {- | Parse an IRC user which is any non empty sequence of characters that are
  - not NUL, CR, LF, " " and "@". -}
