@@ -24,10 +24,10 @@ type Realname = String
 
 {- | The IRC bot parameters. -}
 data Bot = Bot
-    { socket        :: Handle -- ^ The handle to communicate with the server.
-    , nickname      :: Nickname -- ^ The nickname used on the server.
-    , channel       :: Channel -- ^ The channel connected to.
-    , password      :: Password -- ^ The password to connect with.
+    { socket        :: !Handle -- ^ The handle to communicate with the server.
+    , nickname      :: !Nickname -- ^ The nickname used on the server.
+    , channel       :: !Channel -- ^ The channel connected to.
+    , password      :: !Password -- ^ The password to connect with.
     , pluginHandles :: MVar ([Handle], Handle) -- ^ Plugin in- and out- put.
     }
 
