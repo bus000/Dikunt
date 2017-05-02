@@ -25,9 +25,9 @@ main = do
 handleInput :: String -> Maybe BT.ServerMessage -> StateT String IO ()
 handleInput nick (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = lift $ help nick
-    | str =~ runPattern = case str =~ runPattern of
-        [[_, old, new]] -> get >>= \m -> lift $ putStrLn (replace old new m)
-        _ -> error "Should always match."
+    | [[_, old, new]] <- str =~ runPattern = do
+        m <- get
+        lift $ putStrLn (replace old new m)
     | otherwise = put str
   where
     helpPattern = concat ["^", sp, nick, ":", ps, "fix", ps, "help", sp]
