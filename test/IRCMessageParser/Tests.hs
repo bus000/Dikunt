@@ -407,10 +407,16 @@ parseMessage5 = [] @=? nub output
     str = ":wolfe.freenode.net 252 dikunttest123 28 :IRC Operators online"
     output = readP_to_S parseMessage str
 
+parseMessage6 :: Assertion
+parseMessage6 = [(expected, "")] @=? nub output
+  where
+    str = ":_Hephaestus!~Ghost@152.115.87.26 PRIVMSG #dikufags :Hm\r\n"
+    expected = BT.IRCMessage prefix command params trailing
+    prefix = Just $ BT.nicknamePrefix "_Hephaestus" (Just "~Ghost")
+        (Just "152.115.87.26")
+    command = BT.PRIVMSG
+    params = ["#dikufags"]
+    trailing = Just "Hm"
+    output = readP_to_S parseMessage str
+
 {-":NickServ!NickServ@services. NOTICE dikunttest123 :dikunttest123 is nota registered nickname."-}
-
-
-{-parsePrivMsg1 :: Assertion-}
-{-parsePrivMsg1 =-}
-  {-where-}
-    {-str = ":bus000_!~fluttersh@46.101.150.96 PRIVMSG #dikufags_test :asd\r\n"-}
