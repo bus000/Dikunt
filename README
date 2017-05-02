@@ -1,13 +1,71 @@
-External dependencies / tools
-=============================
-* jp2a - Jpeg To Ascii
-https://github.com/cslarsen/jp2a
-For URLs, compile with libcurl
+------------------------------------ DIKUNT ------------------------------------
 
-* TOIlet - display large colourful characters
+Bot for IRC chats. The bot receives messages from an IRC channel it is connected
+to and responds to those messages. The bot consist of a main program located in
+the ./main folder. The main program reads configuration and starts all plugins
+used by Dikunt. The plugins are located in the plugins folder. The plugins are
+given all messages the bot receives and any lines written to stdout on any
+plugin is send as a PRIVMSG to the channel the bot is connected to.
 
+--------------------------------- INSTALLATION ---------------------------------
 
-Usage
-=====
-$ cabal build
-$ ./dist/build/Dikunt/Dikunt <password>
+The installation depends on a couple of external tools
+
+ * jp2a - Jpeg To Ascii https://github.com/cslarsen/jp2a
+ * TOIlet - display large colourful characters
+
+To install the bot start by cloning the git project
+
+    $ git clone https://github.com/bus000/Dikunt/
+
+Then to install type
+
+    $ cabal install
+
+The bot will be installed where cabal deems it appropriate. To run the tests in
+the package run
+
+    $ cabal test
+
+To run the bot make sure that the executables is on your PATH and type
+
+    $ Dikunt --nickname=somenick \
+             --server=someserver \
+             --channel=somechannel
+
+----------------------------------- PLUGINS -----------------------------------
+
+AsciiPicture:
+    Takes URL's to jpg's and print asciiart version of the images using jp2a.
+
+AsciiText:
+    Takes a text string and print an asciiart version of the text with big
+    letters.
+
+BibleGem:
+    Print a random quote from the bible.
+
+DanishMoan:
+    Print a string like Åååååååhhh
+
+Fix:
+    Fix last message given vim like substitute command.
+
+Greetings:
+    Print greetings and goodbyes to users connecting and disconnecting
+    respectively.
+
+Help:
+    Print how to find help information on the modules.
+
+Insult:
+    Print an insult directed to another IRC user on the channel.
+
+News:
+    Print the latest BREAKING news from BBC.
+
+Trump:
+    Print a random trump quote generated using Markov chains.
+
+WordReplacer:
+    Replaces words in the PRIVMSG's from other users.
