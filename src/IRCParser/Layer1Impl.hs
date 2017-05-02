@@ -199,6 +199,11 @@ parseIP6addr = form1 +++ form2
 
         return $ prefix ++ ipv4End
 
+-- TODO: It seems like freenode actually allow nicknames to be more than 9
+-- characters long. Since we still want to conform to the standard the default
+-- nickname max length should still be 9 but it should be possible to configure
+-- the max length to be something else. This will probably require making the
+-- parser use the Reader monad with some configuration state.
 {- | Parse an IRC nickname of the form
  -     ( letter / special ) *8( letter / digit / special / "-" ). -}
 parseNickname :: ReadP String
