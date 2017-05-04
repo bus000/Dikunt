@@ -31,7 +31,7 @@ handleInput nick (Just (BT.ServerPrivMsg _ _ str))
     | otherwise = put str
   where
     helpPattern = concat ["^", sp, nick, ":", ps, "fix", ps, "help", sp]
-    runPattern = concat ["^", sp, "s/([a-zA-Z0-9]*)/([a-zA-Z0-9]*)", sp, "$"]
+    runPattern = concat ["^", sp, "s/([a-zA-Z0-9 ]*)/([a-zA-Z0-9 ]*)", sp, "$"]
     sp = "[ \\t]*"
     ps = "[ \\t]+"
 handleInput _ _ = return ()
