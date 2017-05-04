@@ -106,10 +106,12 @@ addReplacement :: DB.Connection
     -> IO ()
 addReplacement conn word replacement = do
     DB.executeNamed conn "INSERT OR REPLACE INTO replacements \
-        \(word, replacement) VALUES (:word, :replacement)" [":word" := word,
+        \(word, replacement) VALUES (:word, :replacement)" [":word" := word',
         ":replacement" := replacement]
 
     putStrLn "Added replacement"
+  where
+    word' = map toLower $ word
 
 {- | Replace all words present in the database with their replacements. -}
 replaceWords :: DB.Connection
