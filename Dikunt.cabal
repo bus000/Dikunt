@@ -183,3 +183,15 @@ executable Help
   GHC-Options:         -Wall
   hs-source-dirs:      plugins/Help/
   default-language:    Haskell2010
+
+executable Policeman
+  main-is:             Main.hs
+  build-depends:       base >=4.8 && <4.10,
+                       regex-pcre >=0.94.4,
+                       safe >=0.3.9,
+                       random-fu >=0.2.7.0,
+                       random-extras >=0.19,
+                       Dikunt
+  GHC-Options:         -Wall
+  hs-source-dirs:      plugins/Policeman/
+  default-language:    Haskell2010
