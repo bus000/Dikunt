@@ -90,9 +90,9 @@ help :: String
     -- ^ Nickname of Dikunt bot.
     -> IO ()
 help nick = putStrLn $ unlines
-    [ unwords [nick, "wordreplacer add <word1>=<word2> - add word1=word2 to"
+    [ unwords [nick, ": wordreplacer add <word1>=<word2> - add word1=word2 to"
         , "database"]
-    , unwords [nick, "wordreplacer help - display this message"]
+    , unwords [nick, ": wordreplacer help - display this message"]
     , "otherwise replaces words from database in messages"
     ]
 
