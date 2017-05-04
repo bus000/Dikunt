@@ -13,6 +13,8 @@ import Safe (readMay)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import Text.Regex.PCRE ((=~))
+import Data.List.Split (split, oneOf)
+import Data.Char (toLower)
 
 data Replacement = Replacement Int T.Text T.Text deriving (Show)
 
@@ -116,7 +118,7 @@ replaceWords :: DB.Connection
     -- ^ String to replace in.
     -> IO ()
 replaceWords conn line = do
-    replacements <- foldM getReplacements [] (words line)
+    replacements <- foldM getReplacements [] (wordsSpecial . map toLower $ line)
     unless (null replacements) $ putStrLn (replaceStrings replacements line)
   where
     getReplacements replacements word = do
@@ -132,10 +134,10 @@ replaceStrings :: [Replacement]
     -> String
     -- ^ The string to replace in.
     -> String
-replaceStrings replacements = unwords . map maybeReplace . words
+replaceStrings replacements = concat . map maybeReplace . wordsSpecial
   where
     replacements' = map getReplacement replacements
-    maybeReplace word = fromMaybe word (lookup word replacements')
+    maybeReplace word = fromMaybe word (lookup (map toLower $ word) replacements')
 
 {- | Utility function converting Replacement's to tuples of replacement. -}
 getReplacement :: Replacement
@@ -147,38 +149,33 @@ getReplacement (Replacement _ word replacement) =
 {- | List of default replacements. -}
 replacementList :: [(String, String)]
 replacementList =
-    [ ("Mark", "ShortGuy")
-    , ("Jan", "Tjekkeren")
-    , ("Magnus", "Glorious")
-    , ("August", "Motherless")
-    , ("Oleks", "Joleks")
+    [ ("mark", "ShortGuy")
+    , ("jan", "Tjekkeren")
+    , ("magnus", "Glorious")
+    , ("august", "Motherless")
+    , ("oleks", "Joleks")
     , ("10/10", "knæhøj karse")
     , ("ha!", "HAHAHAHAHAHHAHA!")
     , ("haha", "hilarious, just hilarious")
-    , ("Mads", "Twin")
-    , ("Troels", "Twin")
+    , ("mads", "Twin")
+    , ("troels", "Twin")
     , ("tjekker", "kontrollerer")
-    , ("Tjekker", "Kontrollerer")
     , ("tjekke", "kontrollere")
     , ("vim", "best editor")
     , ("emacs", "worst editor")
-    , ("fucking", "")
-    , ("fuck", "")
-    , ("Fucking", "")
-    , ("Fuck", "")
-    , ("Helvede", "Himlen")
     , ("helvede", "himlen")
     , ("0/10", "Mark's Bot")
     , ("danmark", "I DANMARK ER JEG FØDT DER HAR JEG HJEEEEEME")
-    , ("Danmark", "I DANMARK ER JEG FØDT DER HAR JEG HJEEEEEME")
-    , ("USA", "Murica'")
-    , ("Margrethe", "Hendes Majestæt Dronning Margrethe II")
+    , ("usa", "Murica'")
+    , ("margrethe", "Hendes Majestæt Dronning Margrethe II")
     , ("Henrik", "Hans Kongelige Højhed Prins Henrik")
-    , ("Frederik", "Hans Kongelige Højhed Kronprins Frederik, Prins til Danmark, greve af Monpezat")
-    , ("Joakim", "Hans Kongelige Højhed Prins Joachim")
-    , ("Mary", "Hendes Kongelige Højhed Kronprinsesse Mary")
+    , ("frederik", "Hans Kongelige Højhed Kronprins Frederik, Prins til Danmark, greve af Monpezat")
+    , ("joakim", "Hans Kongelige Højhed Prins Joachim")
+    , ("mary", "Hendes Kongelige Højhed Kronprinsesse Mary")
     , ("python", "python2.7")
-    , ("Python", "Python2.7")
     , ("latex", "LaTeX")
     , ("tex", "Tex")
     ]
+
+wordsSpecial :: String -> [String]
+wordsSpecial = split (oneOf " \n\t.:?!")
