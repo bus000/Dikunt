@@ -21,17 +21,17 @@ main = do
 handleMessage :: Maybe BT.ServerMessage -> IO ()
 handleMessage (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = help
-    | [[_, url]] <- str =~ runPattern = asciiart url
+    | [[_, url]] <- str =~ runPattern = asciipicture url
   where
-    helpPattern = concat ["^", sp, nick, ":", ps "asciiart", ps, "help", sp,
+    helpPattern = concat ["^", sp, nick, ":", ps "asciipicture", ps, "help", sp,
         "$"]
-    runPattern = concat ["^", sp, "asciiart\\:", ps, "(.*)$"]
+    runPattern = concat ["^", sp, "asciipicture:", ps, "(.*)$"]
     sp = "[ \\t]*"
     ps = "[ \\t]+"
 handleMessage _ = return ()
 
-asciiart :: String -> IO ()
-asciiart picRef = case Map.lookup picRef buildIn of
+asciipicture :: String -> IO ()
+asciipicture picRef = case Map.lookup picRef buildIn of
     Just url -> generatePicture url
     Nothing -> generatePicture picRef
 
@@ -45,8 +45,8 @@ generatePicture url = do
 
 help :: IO ()
 help = putStrLn $ unlines
-    [ "asciiart: help - show this message"
-    , "asciiart: url - show asciiart of jpg linked to"
+    [ "dikunt: asciipicture help - show this message"
+    , "asciipicture: url - show asciipicture of jpg linked to"
     ]
 
 buildIn :: Map.Map String String
