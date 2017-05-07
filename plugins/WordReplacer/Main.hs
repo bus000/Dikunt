@@ -74,7 +74,7 @@ handleMessage :: DB.Connection
 handleMessage conn nick (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = help nick
     | [[_, word, replacement]] <- str =~ addPattern =
-        addReplacement conn word replacement
+        addReplacement conn nick word replacement
     | otherwise = replaceWords conn str
   where
     sp = "[ \\t]*"
@@ -100,11 +100,13 @@ help nick = putStrLn $ unlines
 addReplacement :: DB.Connection
     -- ^ Connection to database.
     -> String
+    -- ^ Nick of the bot.
+    -> String
     -- ^ The word to replace.
     -> String
     -- ^ The replacement for the word.
     -> IO ()
-addReplacement conn word replacement
+addReplacement conn nick word replacement
     | nick == word' = putStrLn "Not allowed to bind nickname"
     | otherwise = do
         DB.executeNamed conn "INSERT OR REPLACE INTO replacements \
