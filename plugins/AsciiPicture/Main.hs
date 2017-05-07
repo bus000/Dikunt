@@ -8,27 +8,30 @@ import System.Exit (ExitCode(ExitSuccess, ExitFailure))
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import System.Process (readProcessWithExitCode)
 import Text.Regex.PCRE ((=~))
+import System.Environment (getArgs)
 
 main :: IO ()
 main = do
+    [nick, _] <- getArgs
+
     hSetBuffering stdout LineBuffering
     hSetBuffering stdin LineBuffering
 
     forever $ do
         line <- getLine
-        handleMessage (readMay line)
+        handleMessage nick $ readMay line
 
-handleMessage :: Maybe BT.ServerMessage -> IO ()
-handleMessage (Just (BT.ServerPrivMsg _ _ str))
+handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
+handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = help
     | [[_, url]] <- str =~ runPattern = asciiart url
   where
-    helpPattern = concat ["^", sp, nick, ":", ps "asciiart", ps, "help", sp,
+    helpPattern = concat ["^", sp, nick, ":", ps, "asciiart", ps, "help", sp,
         "$"]
     runPattern = concat ["^", sp, "asciiart\\:", ps, "(.*)$"]
     sp = "[ \\t]*"
     ps = "[ \\t]+"
-handleMessage _ = return ()
+handleMessage _ _ = return ()
 
 asciiart :: String -> IO ()
 asciiart picRef = case Map.lookup picRef buildIn of
