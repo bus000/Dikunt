@@ -26,8 +26,8 @@ handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = help
     | [[_, url]] <- str =~ runPattern = asciipicture url
   where
-    helpPattern = concat ["^", sp, nick, ":", ps "asciipicture", ps, "help", sp,
-        "$"]
+    helpPattern = concat ["^", sp, nick, ":", ps, "asciipicture", ps, "help",
+        sp, "$"]
     runPattern = concat ["^", sp, "asciipicture:", ps, "(.*)$"]
     sp = "[ \\t]*"
     ps = "[ \\t]+"
