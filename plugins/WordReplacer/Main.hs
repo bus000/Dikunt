@@ -79,10 +79,10 @@ handleMessage conn nick (Just (BT.ServerPrivMsg _ _ str))
   where
     sp = "[ \\t]*"
     ps = "[ \\t]+"
-    helpPattern = concat ["^", sp, nick, "\\:", ps, "wordreplacer", ps, "help",
+    helpPattern = concat ["^", sp, nick, ":", ps, "wordreplacer", ps, "help",
         sp, "$"]
-    addPattern = concat ["^", sp, nick, "\\:", ps, "wordreplacer", ps, "add",
-        ps, "([a-zA-Z0-9]*)=([a-zA-Z0-9]*)"]
+    addPattern = concat ["^", sp, nick, ":", ps, "wordreplacer", ps, "add", ps,
+        "([^= ]+)=([^=]*)", sp, "$"]
 handleMessage _ _ _ = return ()
 
 {- | Print help message. -}
@@ -90,9 +90,9 @@ help :: String
     -- ^ Nickname of Dikunt bot.
     -> IO ()
 help nick = putStrLn $ unlines
-    [ unwords [nick, ": wordreplacer add <word1>=<word2> - add word1=word2 to"
+    [ concat [nick, ": wordreplacer add <word1>=<word2> - add word1=word2 to "
         , "database"]
-    , unwords [nick, ": wordreplacer help - display this message"]
+    , concat [nick, ": wordreplacer help - display this message "]
     , "otherwise replaces words from database in messages"
     ]
 
@@ -104,12 +104,14 @@ addReplacement :: DB.Connection
     -> String
     -- ^ The replacement for the word.
     -> IO ()
-addReplacement conn word replacement = do
-    DB.executeNamed conn "INSERT OR REPLACE INTO replacements \
-        \(word, replacement) VALUES (:word, :replacement)" [":word" := word',
-        ":replacement" := replacement]
+addReplacement conn word replacement
+    | nick == word' = putStrLn "Not allowed to bind nickname"
+    | otherwise = do
+        DB.executeNamed conn "INSERT OR REPLACE INTO replacements \
+            \(word, replacement) VALUES (:word, :replacement)"
+            [":word" := word', ":replacement" := replacement]
 
-    putStrLn "Added replacement"
+        putStrLn "Added replacement"
   where
     word' = map toLower $ word
 
@@ -170,7 +172,7 @@ replacementList =
     , ("danmark", "I DANMARK ER JEG FØDT DER HAR JEG HJEEEEEME")
     , ("usa", "Murica'")
     , ("margrethe", "Hendes Majestæt Dronning Margrethe II")
-    , ("Henrik", "Hans Kongelige Højhed Prins Henrik")
+    , ("henrik", "Hans Kongelige Højhed Prins Henrik")
     , ("frederik", "Hans Kongelige Højhed Kronprins Frederik, Prins til Danmark, greve af Monpezat")
     , ("joakim", "Hans Kongelige Højhed Prins Joachim")
     , ("mary", "Hendes Kongelige Højhed Kronprinsesse Mary")
