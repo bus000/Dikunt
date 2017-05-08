@@ -59,8 +59,8 @@ wordReplacer :: String
     -- ^ Database connection with replacements.
     -> IO ()
 wordReplacer nick conn = forever $ do
-        line <- getLine
-        handleMessage conn nick $ readMay line
+    line <- getLine
+    handleMessage conn nick $ readMay line
 
 {- | Parse message and determine if it is a help message, an add message or if
  - the words should be replaced. -}
