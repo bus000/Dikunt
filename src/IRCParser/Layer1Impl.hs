@@ -217,7 +217,7 @@ parseNickname = do
 {- | Parse an IRC user which is any non empty sequence of characters that are
  - not NUL, CR, LF, " " and "@". -}
 parseUser :: ReadP String
-parseUser = munch1 (\c -> c `notElem` ['\0', '\r', '\n', ' ', '@'])
+parseUser = munch1 (`notElem` ['\0', '\r', '\n', ' ', '@'])
 
 {- | Parse an IRC letter which is any of the character a-Z. -}
 parseLetter :: ReadP Char
@@ -240,4 +240,4 @@ parseHexdigit = parseDigit +++ satisfy (`elem` ['A', 'B', 'C', 'D', 'E', 'F'])
 {- | Parse an IRC nospcrlfcl message which is any character not NUL, CR, LF,
  - " " and ":". -}
 parseNospcrlfcl :: ReadP Char
-parseNospcrlfcl = satisfy (\c -> c `notElem` ['\0', '\r', '\n', ' ', ':'])
+parseNospcrlfcl = satisfy (`notElem` ['\0', '\r', '\n', ' ', ':'])
