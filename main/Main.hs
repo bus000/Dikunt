@@ -21,7 +21,7 @@ import System.Console.CmdArgs
     , cmdArgs
     )
 
-data DikuntConfig = DikuntConfig
+data Dikunt = Dikunt
     { server     :: String
     , nickname   :: String
     , password   :: String
@@ -29,8 +29,8 @@ data DikuntConfig = DikuntConfig
     , port       :: Integer
     } deriving (Data, Typeable, Show, Eq)
 
-dikunt :: DikuntConfig
-dikunt = DikuntConfig
+dikunt :: Dikunt
+dikunt = Dikunt
     { server = "irc.freenode.org" &= help "Server to connect to"
     , nickname = "dikunt" &= help "Nick to use"
     , password = def &= help "Password to use"
@@ -39,14 +39,14 @@ dikunt = DikuntConfig
     } &=
         help "Bot to run on IRC channels" &=
         summary "Dikunt v0.0.1.0 (C) Magnus Stavngaard" &=
-        helpArg [explicit, name "h"] &=
-        versionArg [explicit, name "v"]
+        helpArg [explicit, name "help", name "h"] &=
+        versionArg [explicit, name "version", name "v"]
 
-mode :: IO DikuntConfig
+mode :: IO Dikunt
 mode = cmdArgs dikunt
 
-getBotConfig :: DikuntConfig -> BT.BotConfig
-getBotConfig (DikuntConfig serv nick pass chan p) =
+getBotConfig :: Dikunt -> BT.BotConfig
+getBotConfig (Dikunt serv nick pass chan p) =
     BT.BotConfig serv nick pass chan p
 
 main :: IO ()
