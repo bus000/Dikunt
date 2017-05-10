@@ -47,9 +47,8 @@ connect serv chan nick pass port execs = do
     h <- connectTo serv (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
 
-    handlesVar <- startMonitoring execs [nick, chan]
-
-    let bot = BT.bot h nick chan pass handlesVar
+    monitor <- startMonitoring execs [nick, chan]
+    let bot = BT.bot h nick chan pass monitor
 
     -- Start thread responding.
     _ <- forkIO $ respond bot
