@@ -25,13 +25,19 @@ Then to install type
 The bot will be installed where cabal deems it appropriate. To run the tests in
 the package run
 
+    $ cabal configure --enable-tests
+    $ cabal install --only-dependencies --enable-tests
     $ cabal test
 
 To run the bot make sure that the executables is on your PATH and type
 
-    $ Dikunt --nickname=somenick \
+    $ dikunt --nickname=somenick \
              --server=someserver \
              --channel=somechannel
+
+To generate documentation install the bot with the flag --enable-documentation.
+
+    $ cabal install --enable-documentation
 
 ----------------------------------- PLUGINS -----------------------------------
 
