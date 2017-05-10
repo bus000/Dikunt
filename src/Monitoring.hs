@@ -10,10 +10,24 @@
  - Responsible for opening and maintaining a running copy of each executable
  - given.
  -}
-module Monitoring ( startMonitoring ) where
+module Monitoring
+    ( startMonitoring
+
+    -- DikuntProcess type and getters and setters.
+    , DikuntProcess
+    , location
+    , outputHandle
+    , inputHandle
+    , processHandle
+
+    -- Monitor type.
+    , Monitor(..)
+    ) where
 
 import System.Environment (getEnvironment)
-import System.IO (hSetBuffering, BufferMode(..), Handle)
+import System.IO (hSetBuffering, BufferMode(..), Handle, hPutStrLn, stderr)
+import Control.Monad (forever)
+import Control.Concurrent (forkIO, threadDelay)
 import System.Process
     ( createProcess
     , std_out
@@ -23,18 +37,20 @@ import System.Process
     , createPipe
     , env
     , ProcessHandle
+    , getProcessExitCode
     )
-import Control.Concurrent.MVar (MVar, newMVar)
+import Control.Concurrent.MVar (MVar, newMVar, takeMVar, putMVar)
 import GHC.IO.Handle (hDuplicate)
 
 data DikuntProcess = DikuntProcess
-    { _location      :: FilePath
+    { location      :: FilePath
     , outputHandle  :: Handle
     , inputHandle   :: Handle
-    , _processHandle :: ProcessHandle
+    , processHandle :: ProcessHandle
     }
 
-type Monitor = [DikuntProcess]
+type Pipe = (Handle, Handle)
+data Monitor = Monitor [DikuntProcess] Pipe
 
 {- | Start a process for each file in the list of executable files given. Each
  - file is given a new stdin but all shares the same stdout. Whenever a program
@@ -45,16 +61,28 @@ startMonitoring :: [FilePath]
     -- ^ List of executable files.
     -> [String]
     -- ^ Arguments.
-    -> IO (MVar ([Handle], Handle))
+    -> IO (MVar Monitor)
 startMonitoring execs args = do
-    processes <- startAll execs args
+    monitor <- startAll execs args >>= \m -> newMVar m
 
-    let ins = map inputHandle processes
-        out = head $ map outputHandle processes
+    _ <- forkIO $ monitorProcesses monitor args
 
-    newMVar (ins, out)
+    return monitor
 
-    -- TODO: Spawn thread that monitors the plugins.
+monitorProcesses :: MVar Monitor -> [String] -> IO ()
+monitorProcesses monitorMVar args = forever $ do
+    threadDelay 30000000 -- Delay 30 seconds.
+    Monitor processes pipe <- takeMVar monitorMVar
+    processes' <- mapM (restartStopped pipe) processes
+    putMVar monitorMVar $ Monitor processes' pipe
+  where
+    restartStopped pipe process@(DikuntProcess loc _ _ pH) = do
+        exitCodeMay <- getProcessExitCode pH
+        case exitCodeMay of
+            Just code -> do
+                hPutStrLn stderr $ loc ++ " exited with exit code " ++ show code
+                start pipe args loc
+            Nothing -> return process
 
 {- | Start a process for each file given. -}
 startAll :: [FilePath]
@@ -63,23 +91,23 @@ startAll :: [FilePath]
     -- ^ Arguments.
     -> IO Monitor
 startAll files args = do
-    environment <- getEnvironment
-    (pipeRead, pipeWrite) <- createPipe -- Pipe to use as stdout.
+    pipe <- createPipe -- Pipe to use as stdout.
+    processes <- mapM (start pipe args) files
 
+    return $ Monitor processes pipe
+
+start :: Pipe -> [String] -> FilePath -> IO DikuntProcess
+start (houtRead, houtWrite) args file = do
     {- Don't buffer python stdin and stdout. -}
-    let newEnv = ("PYTHONUNBUFFERED", "1"):environment
+    environment <- fmap (\e -> ("PYTHONUNBUFFERED", "1"):e) $ getEnvironment
+    dupHoutWrite <- hDuplicate houtWrite
 
-    mapM (start newEnv pipeWrite pipeRead) files
-  where
-    start environment houtWrite houtRead file = do
-        dupHoutWrite <- hDuplicate houtWrite
+    (Just hin, _, _, procHandle) <- createProcess (proc file args)
+        { std_out = UseHandle dupHoutWrite
+        , std_in = CreatePipe
+        , env = Just environment
+        }
 
-        (Just hin, _, _, processHandle) <- createProcess (proc file args)
-            { std_out = UseHandle dupHoutWrite
-            , std_in = CreatePipe
-            , env = Just environment
-            }
+    hSetBuffering hin LineBuffering
 
-        hSetBuffering hin LineBuffering
-
-        return $ DikuntProcess file houtRead hin processHandle
+    return $ DikuntProcess file houtRead hin procHandle

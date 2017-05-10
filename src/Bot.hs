@@ -5,12 +5,12 @@ module Bot
     ) where
 
 import qualified BotTypes as BT
+import Monitoring (Monitor(..), startMonitoring, inputHandle)
 import Control.Concurrent (forkIO, readMVar, threadDelay)
 import Control.Exception (catch, IOException)
 import Control.Monad (forever)
 import IRCParser.IRCMessageParser (parseMessage)
 import IRCWriter.IRCWriter (writeMessage)
-import Monitoring (startMonitoring)
 import Network (connectTo, PortID(..))
 import Safe (readMay)
 import System.IO
@@ -69,7 +69,8 @@ loop bot@(BT.Bot h nick chan pass _) = do
 listen :: BT.Bot -> IO ()
 listen (BT.Bot h _ _ _ pluginHandles) = forever $ do
     s <- hGetLine h
-    (ins, _) <- readMVar pluginHandles
+    Monitor processes _ <- readMVar pluginHandles
+    let ins = map inputHandle processes
 
     case parseMessage (s ++ "\n") of
         Just (BT.ServerPing from) -> write h $ BT.ClientPong from
@@ -81,8 +82,8 @@ listen (BT.Bot h _ _ _ pluginHandles) = forever $ do
         hPutStrLn stderr err)
 
 respond :: BT.Bot -> IO ()
-respond bot@(BT.Bot h _ chan _ _) = forever $ do
-    (_, output) <- readMVar $ BT.pluginHandles bot
+respond (BT.Bot h _ chan _ monitor) = forever $ do
+    Monitor _ (output, _) <- readMVar monitor
 
     line <- hGetLine output
     case readMay line :: Maybe BT.ClientMessage of

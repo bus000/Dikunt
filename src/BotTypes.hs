@@ -12,6 +12,7 @@ module BotTypes
 
 import Control.Concurrent.MVar (MVar)
 import System.IO (Handle)
+import Monitoring (Monitor)
 
 type Nickname = String
 type Channel = String
@@ -28,7 +29,7 @@ data Bot = Bot
     , nickname      :: !Nickname -- ^ The nickname used on the server.
     , channel       :: !Channel -- ^ The channel connected to.
     , password      :: !Password -- ^ The password to connect with.
-    , pluginHandles :: MVar ([Handle], Handle) -- ^ Plugin in- and out- put.
+    , pluginMonitor :: MVar Monitor -- ^ Plugin in- and out- put.
     }
 
 {- | Represents an IRC command. -}
@@ -103,7 +104,7 @@ bot :: Handle
     -- ^ Channel to connect to, should start with a #.
     -> String
     -- ^ Password to use.
-    -> MVar ([Handle], Handle)
+    -> MVar Monitor
     -- ^ Input and output file handles for plugins.
     -> Bot
 bot = Bot
