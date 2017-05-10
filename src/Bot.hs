@@ -43,25 +43,19 @@ import Text.Printf (hPrintf)
 {- | Connect the bot to an IRC server with the channel, nick, pass and port
  - given. Starts a monitor for the list of plugins given which will maintain a
  - running copy of each plugin. -}
-connect :: BT.Servername
-    -- ^ URL to server to connect to.
-    -> BT.Channel
-    -- ^ Channel name to join.
-    -> BT.Nickname
-    -- ^ Nickname to use.
-    -> BT.Password
-    -- ^ Password to connect with.
-    -> Integer
-    -- ^ Port to use.
+connect :: BT.BotConfig
+    -- ^ Configuration for bot.
     -> [FilePath]
     -- ^ Plugins to load.
     -> IO BT.Bot
-connect serv chan nick pass port execs = do
+connect (BT.BotConfig serv nick pass chan port) execs = do
     h <- connectTo serv (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
 
     -- Start all plugins and a monitor for them.
     monitor <- startMonitoring execs [nick, chan]
+
+    -- Create the bot.
     let bot = BT.bot h nick chan pass monitor
 
     -- Start thread reading from plugins and propagating messages to channel.

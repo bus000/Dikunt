@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
+import qualified BotTypes as BT
 import Bot (connect, disconnect, loop)
 import Control.Exception (bracket)
 import Data.Configurator (load, Worth(..), require)
@@ -20,7 +21,7 @@ import System.Console.CmdArgs
     , cmdArgs
     )
 
-data Dikunt = Dikunt
+data DikuntConfig = DikuntConfig
     { server     :: String
     , nickname   :: String
     , password   :: String
@@ -28,8 +29,8 @@ data Dikunt = Dikunt
     , port       :: Integer
     } deriving (Data, Typeable, Show, Eq)
 
-dikunt :: Dikunt
-dikunt = Dikunt
+dikunt :: DikuntConfig
+dikunt = DikuntConfig
     { server = "irc.freenode.org" &= help "Server to connect to"
     , nickname = "dikunt" &= help "Nick to use"
     , password = def &= help "Password to use"
@@ -41,29 +42,25 @@ dikunt = Dikunt
         helpArg [explicit, name "h"] &=
         versionArg [explicit, name "v"]
 
-mode :: IO Dikunt
+mode :: IO DikuntConfig
 mode = cmdArgs dikunt
+
+getBotConfig :: DikuntConfig -> BT.BotConfig
+getBotConfig (DikuntConfig serv nick pass chan p) =
+    BT.BotConfig serv nick pass chan p
 
 main :: IO ()
 main = do
     arguments <- mode
     configName <- getDataFileName "data/dikunt.config"
     config <- load [ Required configName ]
-
     executables <- require config "pathPlugins" :: IO [String]
-
     dataFileLocations <- dataFiles
 
     print dataFileLocations
 
-    -- TODO: Make type representing these bot parameters.
-    let serv = server arguments
-        pass = password arguments
-        nick = nickname arguments
-        chan = channel arguments
-        port' = port arguments
-
-    bracket (connect serv chan nick pass port' executables) disconnect loop
+    -- Start, loop and stop bot.
+    bracket (connect (getBotConfig arguments) executables) disconnect loop
 
 dataFiles :: IO [String]
 dataFiles = mapM getDataFileName

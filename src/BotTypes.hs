@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 module BotTypes
     ( Bot(..)
     , bot
@@ -8,6 +9,9 @@ module BotTypes
     , ServerMessage(..)
     , ClientMessage(..)
     , nicknamePrefix
+
+    -- Bot configuration declaration.
+    , BotConfig(..)
 
     -- Type declarations.
     , Nickname
@@ -32,6 +36,14 @@ type Username = String
 type Hostname = String
 type Mode = Integer
 type Realname = String
+
+data BotConfig = BotConfig
+    { configServer     :: Servername
+    , configNickname   :: Nickname
+    , configPassword   :: Password
+    , configChannel    :: Channel
+    , configPort       :: Integer
+    } deriving (Show, Eq)
 
 {- | The IRC bot parameters. -}
 data Bot = Bot
