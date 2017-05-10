@@ -1,7 +1,22 @@
+{- |
+ - Module      : Bot
+ - Description : Start, maintain and end connection to IRC channel.
+ - Copyright   : (c) Magnus Stavngaard, 2016
+ - License     : BSD-3
+ - Maintainer  : magnus@stavngaard.dk
+ - Stability   : experimental
+ - Portability : POSIX
+ -
+ - Module exports 3 functions that are used to create, maintain and stop bots
+ - running on IRC channels. The function connect takes configuration data and
+ - sets up a connection to an IRC server. The function loop reads and parses
+ - messages from the IRC server and pass them on to plugins handling the
+ - messages. The function disconnect drops the connection to the IRC server.
+ -}
 module Bot
     ( connect
-    , disconnect
     , loop
+    , disconnect
     ) where
 
 import qualified BotTypes as BT
@@ -25,18 +40,16 @@ import System.IO
     )
 import Text.Printf (hPrintf)
 
-disconnect :: BT.Bot -> IO ()
-disconnect = hClose . BT.socket
-
 {- | Connect the bot to an IRC server with the channel, nick, pass and port
- - given. -}
-connect :: String
+ - given. Starts a monitor for the list of plugins given which will maintain a
+ - running copy of each plugin. -}
+connect :: BT.Servername
     -- ^ URL to server to connect to.
-    -> String
+    -> BT.Channel
     -- ^ Channel name to join.
-    -> String
+    -> BT.Nickname
     -- ^ Nickname to use.
-    -> String
+    -> BT.Password
     -- ^ Password to connect with.
     -> Integer
     -- ^ Port to use.
@@ -47,15 +60,21 @@ connect serv chan nick pass port execs = do
     h <- connectTo serv (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
 
+    -- Start all plugins and a monitor for them.
     monitor <- startMonitoring execs [nick, chan]
     let bot = BT.bot h nick chan pass monitor
 
-    -- Start thread responding.
+    -- Start thread reading from plugins and propagating messages to channel.
     _ <- forkIO $ respond bot
 
     return bot
 
-loop :: BT.Bot -> IO ()
+{- | Register on channel with nickname and listen for messages from the server
+ - the bot is connected to. The messages are parsed and passed to the list of
+ - plugins in the bot. -}
+loop :: BT.Bot
+    -- ^ Bot to listen for messages from.
+    -> IO ()
 loop bot@(BT.Bot h nick chan pass _) = do
     write h $ BT.ClientNick nick
     write h $ BT.ClientUser nick 0 "DikuntBot"
@@ -65,7 +84,17 @@ loop bot@(BT.Bot h nick chan pass _) = do
 
     listen bot
 
-listen :: BT.Bot -> IO ()
+{- | Disconnect a bot from the server it is connected to. The functions should
+ - be called when a bot is no longer used. -}
+disconnect :: BT.Bot
+    -- ^ Bot to disconnect.
+    -> IO ()
+disconnect = hClose . BT.socket
+
+{- | Listen and handle messages from the IRC server. -}
+listen :: BT.Bot
+    -- ^ Bot to listen for messages for.
+    -> IO ()
 listen (BT.Bot h _ _ _ pluginHandles) = forever $ do
     s <- hGetLine h
     Monitor processes _ <- readMVar pluginHandles
@@ -80,7 +109,12 @@ listen (BT.Bot h _ _ _ pluginHandles) = forever $ do
         let err = show (e :: IOException)
         hPutStrLn stderr err)
 
-respond :: BT.Bot -> IO ()
+{- | Read from the output part of the pipe in the monitor and write messages
+ - produced to the IRC channel. The function sleeps for 1 second after each
+ - message write. If one sends messages to fast to IRC you are disconnected. -}
+respond :: BT.Bot
+    -- ^ Bot to respond for.
+    -> IO ()
 respond (BT.Bot h _ chan _ monitor) = forever $ do
     Monitor _ (output, _) <- readMVar monitor
 
@@ -91,5 +125,10 @@ respond (BT.Bot h _ chan _ monitor) = forever $ do
 
     threadDelay 1000000
 
-write :: Handle -> BT.ClientMessage -> IO ()
+{- | Write a clientmessage to a server handle. -}
+write :: Handle
+    -- ^ Server handle to write to.
+    -> BT.ClientMessage
+    -- ^ Message to write.
+    -> IO ()
 write h mes = hPrintf h $ writeMessage mes

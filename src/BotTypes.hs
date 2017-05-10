@@ -8,6 +8,16 @@ module BotTypes
     , ServerMessage(..)
     , ClientMessage(..)
     , nicknamePrefix
+
+    -- Type declarations.
+    , Nickname
+    , Channel
+    , Password
+    , Servername
+    , Username
+    , Hostname
+    , Mode
+    , Realname
     ) where
 
 import Control.Concurrent.MVar (MVar)
