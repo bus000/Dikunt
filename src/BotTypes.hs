@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings #-}
 module BotTypes
     ( Bot(..)
     , bot
@@ -24,9 +25,20 @@ module BotTypes
     , Realname
     ) where
 
+import Data.Text (Text)
 import Control.Concurrent.MVar (MVar)
 import System.IO (Handle)
 import Monitoring (Monitor)
+import Data.Aeson
+    ( ToJSON(..)
+    , FromJSON(..)
+    , withObject
+    , (.=)
+    , (.:)
+    , (.:?)
+    , object
+    )
+import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
 
 type Nickname = String
 type Channel = String
@@ -83,6 +95,48 @@ data IRCPrefix = ServernamePrefix Servername
 data IRCUser = IRCUser Nickname (Maybe Username) (Maybe Hostname)
     deriving (Show, Read, Eq)
 
+instance ToJSON IRCUser where
+    toJSON (IRCUser nick Nothing Nothing) = object
+        [ "nickname" .= nick
+        ]
+
+    toJSON (IRCUser nick Nothing (Just host)) = object
+        [ "nickname" .= nick
+        , "hostname" .= host
+        ]
+
+    toJSON (IRCUser nick (Just user) Nothing) = object
+        [ "nickname" .= nick
+        , "username" .= user
+        ]
+
+    toJSON (IRCUser nick (Just user) (Just host)) = object
+        [ "nickname" .= nick
+        , "username" .= user
+        , "hostname" .= host
+        ]
+
+instance FromJSON IRCUser where
+    parseJSON = withObject "IRCUser" $ \o ->
+        IRCUser <$> o .: "nickname" <*> o .:? "username" <*> o .:? "hostname"
+
+instance Arbitrary IRCUser where
+    arbitrary = do
+        nick <- arbitrary
+        maybeUser <- arbitrary
+        maybeHost <- arbitrary
+
+        return $ IRCUser nick maybeUser maybeHost
+
+    shrink (IRCUser nick Nothing Nothing) = []
+    shrink (IRCUser nick Nothing (Just host)) = [IRCUser nick Nothing Nothing]
+    shrink (IRCUser nick (Just user) Nothing) = [IRCUser nick Nothing Nothing]
+    shrink (IRCUser nick (Just user) (Just host)) =
+        [ IRCUser nick Nothing Nothing
+        , IRCUser nick Nothing (Just host)
+        , IRCUser nick (Just user) Nothing
+        ]
+
 data ServerMessage = ServerNick IRCUser Nickname
     | ServerJoin IRCUser Channel
     | ServerPart IRCUser Channel String
@@ -94,6 +148,122 @@ data ServerMessage = ServerNick IRCUser Nickname
     | ServerPing Servername
     | ServerReply Servername Integer [String] (Maybe String)
     deriving (Eq, Show, Read)
+
+instance ToJSON ServerMessage where
+    toJSON (ServerNick ircUser nick) = object
+        [ "type" .= ("NICK" :: Text)
+        , "ircUser" .= ircUser
+        , "nickname" .= nick
+        ]
+    toJSON (ServerJoin ircUser chan) = object
+        [ "type" .= ("JOIN" :: Text)
+        , "ircUser" .= ircUser
+        , "channel" .= chan
+        ]
+    toJSON (ServerPart ircUser chan reason) = object
+        [ "type" .= ("PART" :: Text)
+        , "ircUser" .= ircUser
+        , "channel" .= chan
+        , "reason" .= reason
+        ]
+    toJSON (ServerQuit ircUser reason) = object
+        [ "type" .= ("QUIT" :: Text)
+        , "ircUser" .= ircUser
+        , "reason" .= reason
+        ]
+    toJSON (ServerTopic ircUser chan topic) = object
+        [ "type" .= ("TOPIC" :: Text)
+        , "ircUser" .= ircUser
+        , "channel" .= chan
+        , "topic" .= topic
+        ]
+    toJSON (ServerInvite ircUser nick chan) = object
+        [ "type" .= ("INVITE" :: Text)
+        , "ircUser" .= ircUser
+        , "nickname" .= nick
+        , "channel" .= chan
+        ]
+    toJSON (ServerPrivMsg ircUser nick message) = object
+        [ "type" .= ("PRIVMSG" :: Text)
+        , "ircUser" .= ircUser
+        , "nickname" .= nick
+        , "message" .= message
+        ]
+    toJSON (ServerNotice ircUser nick message) = object
+        [ "type" .= ("NOTICE" :: Text)
+        , "ircUser" .= ircUser
+        , "nickname" .= nick
+        , "message" .= message
+        ]
+    toJSON (ServerPing servername) = object
+        [ "type" .= ("PING" :: Text)
+        , "servername" .= servername
+        ]
+    toJSON (ServerReply servername numeric args (Just trailing)) = object
+        [ "type" .= ("REPLY" :: Text)
+        , "servername" .= servername
+        , "numeric" .= numeric
+        , "args" .= args
+        , "trailing" .= trailing
+        ]
+    toJSON (ServerReply servername numeric args Nothing) = object
+        [ "type" .= ("REPLY" :: Text)
+        , "servername" .= servername
+        , "numeric" .= numeric
+        , "args" .= args
+        ]
+
+instance FromJSON ServerMessage where
+    parseJSON = withObject "ServerMessage" $ \o -> do
+        command <- o .: "command"
+        case command of
+            "NICK" -> do
+                ircUser <- o .: "ircUser"
+                nick <- o .: "nickname"
+                return $ ServerNick ircUser nick
+            "JOIN" -> do
+                ircUser <- o .: "ircUser"
+                channel <- o .: "channel"
+                return $ ServerJoin ircUser channel
+            "PART" -> do
+                ircUser <- o .: "ircUser"
+                channel <- o .: "channel"
+                reason <- o .: "reason"
+                return $ ServerPart ircUser channel reason
+            "QUIT" -> do
+                ircUser <- o .: "ircUser"
+                reason <- o .: "reason"
+                return $ ServerQuit ircUser reason
+            "TOPIC" -> do
+                ircUser <- o .: "ircUser"
+                channel <- o .: "channel"
+                topic <- o .: "topic"
+                return $ ServerTopic ircUser channel topic
+            "INVITE" -> do
+                ircUser <- o .: "ircUser"
+                nickname <- o .: "nickname"
+                channel <- o .: "channel"
+                return $ ServerInvite ircUser nickname channel
+            "PRIVMSG" -> do
+                ircUser <- o .: "ircUser"
+                nickname <- o .: "nickname"
+                message <- o .: "message"
+                return $ ServerPrivMsg ircUser nickname message
+            "NOTICE" -> do
+                ircUser <- o .: "ircUser"
+                nickname <- o .: "nickname"
+                message <- o .: "message"
+                return $ ServerNotice ircUser nickname message
+            "PING" -> do
+                servername <- o .: "servername"
+                return $ ServerPing servername
+            "REPLY" -> do
+                servername <- o .: "servername"
+                numeric <- o .: "replynumber"
+                args <- o .: "args"
+                trailing <- o .:? "trailing"
+                return $ ServerReply servername numeric args trailing
+            _ -> fail $ "Unknown command " ++ command
 
 data ClientMessage = ClientPass Password
     | ClientNick Nickname
