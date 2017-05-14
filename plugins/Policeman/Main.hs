@@ -62,6 +62,8 @@ curseWords =
     , "motherfucker"
     , "fucker"
     , "gay"
+    , "fanden"
+    , "helvede"
     ]
 
 wordsSpecial :: String -> [String]
