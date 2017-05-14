@@ -39,6 +39,7 @@ import Data.Aeson
     , object
     )
 import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
+import Test.QuickCheck.Gen (oneof)
 
 type Nickname = String
 type Channel = String
@@ -151,63 +152,63 @@ data ServerMessage = ServerNick IRCUser Nickname
 
 instance ToJSON ServerMessage where
     toJSON (ServerNick ircUser nick) = object
-        [ "type" .= ("NICK" :: Text)
+        [ "command" .= ("NICK" :: Text)
         , "ircUser" .= ircUser
         , "nickname" .= nick
         ]
     toJSON (ServerJoin ircUser chan) = object
-        [ "type" .= ("JOIN" :: Text)
+        [ "command" .= ("JOIN" :: Text)
         , "ircUser" .= ircUser
         , "channel" .= chan
         ]
     toJSON (ServerPart ircUser chan reason) = object
-        [ "type" .= ("PART" :: Text)
+        [ "command" .= ("PART" :: Text)
         , "ircUser" .= ircUser
         , "channel" .= chan
         , "reason" .= reason
         ]
     toJSON (ServerQuit ircUser reason) = object
-        [ "type" .= ("QUIT" :: Text)
+        [ "command" .= ("QUIT" :: Text)
         , "ircUser" .= ircUser
         , "reason" .= reason
         ]
     toJSON (ServerTopic ircUser chan topic) = object
-        [ "type" .= ("TOPIC" :: Text)
+        [ "command" .= ("TOPIC" :: Text)
         , "ircUser" .= ircUser
         , "channel" .= chan
         , "topic" .= topic
         ]
     toJSON (ServerInvite ircUser nick chan) = object
-        [ "type" .= ("INVITE" :: Text)
+        [ "command" .= ("INVITE" :: Text)
         , "ircUser" .= ircUser
         , "nickname" .= nick
         , "channel" .= chan
         ]
     toJSON (ServerPrivMsg ircUser nick message) = object
-        [ "type" .= ("PRIVMSG" :: Text)
+        [ "command" .= ("PRIVMSG" :: Text)
         , "ircUser" .= ircUser
         , "nickname" .= nick
         , "message" .= message
         ]
     toJSON (ServerNotice ircUser nick message) = object
-        [ "type" .= ("NOTICE" :: Text)
+        [ "command" .= ("NOTICE" :: Text)
         , "ircUser" .= ircUser
         , "nickname" .= nick
         , "message" .= message
         ]
     toJSON (ServerPing servername) = object
-        [ "type" .= ("PING" :: Text)
+        [ "command" .= ("PING" :: Text)
         , "servername" .= servername
         ]
     toJSON (ServerReply servername numeric args (Just trailing)) = object
-        [ "type" .= ("REPLY" :: Text)
+        [ "command" .= ("REPLY" :: Text)
         , "servername" .= servername
         , "numeric" .= numeric
         , "args" .= args
         , "trailing" .= trailing
         ]
     toJSON (ServerReply servername numeric args Nothing) = object
-        [ "type" .= ("REPLY" :: Text)
+        [ "command" .= ("REPLY" :: Text)
         , "servername" .= servername
         , "numeric" .= numeric
         , "args" .= args
@@ -259,11 +260,37 @@ instance FromJSON ServerMessage where
                 return $ ServerPing servername
             "REPLY" -> do
                 servername <- o .: "servername"
-                numeric <- o .: "replynumber"
+                numeric <- o .: "numeric"
                 args <- o .: "args"
                 trailing <- o .:? "trailing"
                 return $ ServerReply servername numeric args trailing
             _ -> fail $ "Unknown command " ++ command
+
+instance Arbitrary ServerMessage where
+    arbitrary = do
+        user <- arbitrary
+        nick <- arbitrary
+        chan <- arbitrary
+        topic <- arbitrary
+        reason <- arbitrary
+        message <- arbitrary
+        servername <- arbitrary
+        code <- arbitrary
+        args <- arbitrary
+        trailing <- arbitrary
+
+        oneof
+            [ return $ ServerNick user nick
+            , return $ ServerJoin user chan
+            , return $ ServerPart user chan reason
+            , return $ ServerQuit user reason
+            , return $ ServerTopic user chan topic
+            , return $ ServerInvite user nick chan
+            , return $ ServerPrivMsg user nick message
+            , return $ ServerNotice user nick message
+            , return $ ServerPing servername
+            , return $ ServerReply servername code args trailing
+            ]
 
 data ClientMessage = ClientPass Password
     | ClientNick Nickname

@@ -17,12 +17,25 @@ import Test.Tasty.QuickCheck (testProperty)
 tests :: TestTree
 tests = testGroup "IRC Message Parser Tests"
     [ unitTests
+    , qcTests
     ]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit Tests"
     [ jsonTests
     ]
+
+qcTests :: TestTree
+qcTests = testGroup "QuickCheck Tests"
+    [ testProperty "jsonIRCUser" jsonIRCUser
+    , testProperty "jsonServerMessage" jsonServerMessage
+    ]
+
+jsonIRCUser :: BT.IRCUser -> Bool
+jsonIRCUser user = Just user == (decode . encode) user
+
+jsonServerMessage :: BT.ServerMessage -> Bool
+jsonServerMessage message = Just message == (decode . encode) message
 
 jsonTests :: TestTree
 jsonTests = testGroup "Layer 1 Tests"
