@@ -129,14 +129,23 @@ instance Arbitrary IRCUser where
 
         return $ IRCUser nick maybeUser maybeHost
 
-    shrink (IRCUser nick Nothing Nothing) = []
+    shrink (IRCUser nick Nothing Nothing) =
+        [IRCUser nick' Nothing Nothing | (nick') <- shrink nick]
+
     shrink (IRCUser nick Nothing (Just host)) = [IRCUser nick Nothing Nothing]
+        ++ [IRCUser nick' Nothing (Just host') |
+            (nick', host') <- shrink (nick, host)]
+
     shrink (IRCUser nick (Just user) Nothing) = [IRCUser nick Nothing Nothing]
+        ++ [IRCUser nick' (Just user') Nothing |
+            (nick', user') <- shrink (nick, user)]
+
     shrink (IRCUser nick (Just user) (Just host)) =
         [ IRCUser nick Nothing Nothing
         , IRCUser nick Nothing (Just host)
         , IRCUser nick (Just user) Nothing
-        ]
+        ] ++ [IRCUser nick' (Just user') (Just host') |
+            (nick', user', host') <- shrink (nick, user, host)]
 
 data ServerMessage = ServerNick IRCUser Nickname
     | ServerJoin IRCUser Channel
@@ -298,7 +307,7 @@ data ClientMessage = ClientPass Password
     | ClientOper Username Password
     | ClientMode Nickname String
     | ClientQuit String -- Reason for leaving.
-    | ClientJoin [(String, String)]
+    | ClientJoin [(Channel, String)]
     | ClientPart [Channel] (Maybe String)
     | ClientTopic Channel (Maybe String)
     | ClientNames [Channel]
@@ -313,6 +322,214 @@ data ClientMessage = ClientPass Password
     | ClientPing Servername
     | ClientPong Servername
     deriving (Eq, Show, Read)
+
+instance ToJSON ClientMessage where
+    toJSON (ClientPass pass) = object
+        [ "command" .= ("PASS" :: Text)
+        , "password" .= pass
+        ]
+    toJSON (ClientNick nick) = object
+        [ "command" .= ("NICK" :: Text)
+        , "nickname" .= nick
+        ]
+    toJSON (ClientUser user mode realname) = object
+        [ "command" .= ("USER" :: Text)
+        , "username" .= user
+        , "mode" .= mode
+        , "realname" .= realname
+        ]
+    toJSON (ClientOper user pass) = object
+        [ "command" .= ("OPER" :: Text)
+        , "username" .= user
+        , "password" .= pass
+        ]
+    toJSON (ClientMode nick mode) = object
+        [ "command" .= ("MODE" :: Text)
+        , "nickname" .= nick
+        , "mode" .= mode
+        ]
+    toJSON (ClientQuit reason) = object
+        [ "command" .= ("QUIT" :: Text)
+        , "reason" .= reason
+        ]
+    toJSON (ClientJoin channelKeys) = object
+        [ "command" .= ("JOIN" :: Text)
+        , "channelkeys" .= map toChannelKey channelKeys
+        ]
+    toJSON (ClientPart chans reason) = object
+        [ "command" .= ("PART" :: Text)
+        , "channels" .= chans
+        , "reason" .= reason
+        ]
+    toJSON (ClientTopic chan topic) = object
+        [ "command" .= ("TOPIC" :: Text)
+        , "channel" .= chan
+        , "topic" .= topic
+        ]
+    toJSON (ClientNames chans) = object
+        [ "command" .= ("NAMES" :: Text)
+        , "channels" .= chans
+        ]
+    toJSON (ClientList chans) = object
+        [ "command" .= ("LIST" :: Text)
+        , "channels" .= chans
+        ]
+    toJSON (ClientInvite nick chan) = object
+        [ "command" .= ("INVITE" :: Text)
+        , "nickname" .= nick
+        , "channel" .= chan
+        ]
+    toJSON (ClientPrivMsg ircUser message) = object
+        [ "command" .= ("PRIVMSG" :: Text)
+        , "ircUser" .= ircUser
+        , "message" .= message
+        ]
+    toJSON (ClientPrivMsgChan chan message) = object
+        [ "command" .= ("PRIVMSG" :: Text)
+        , "channel" .= chan
+        , "message" .= message
+        ]
+    toJSON (ClientNotice ircUser message) = object
+        [ "command" .= ("NOTICE" :: Text)
+        , "ircUser" .= ircUser
+        , "message" .= message
+        ]
+    toJSON (ClientWho mask) = object
+        [ "command" .= ("WHO" :: Text)
+        , "mask" .= mask
+        ]
+    toJSON (ClientWhoIs servername username) = object
+        [ "command" .= ("WHOIS" :: Text)
+        , "servername" .= servername
+        , "username" .= username
+        ]
+    toJSON (ClientWhoWas username count servername) = object
+        [ "command" .= ("WHOWAS" :: Text)
+        , "count" .= count
+        , "servername" .= servername
+        ]
+    toJSON (ClientPing servername) = object
+        [ "command" .= ("PING" :: Text)
+        , "servername" .= servername
+        ]
+    toJSON (ClientPong servername) = object
+        [ "command" .= ("PONG" :: Text)
+        , "servername" .= servername
+        ]
+
+instance FromJSON ClientMessage where
+    parseJSON = withObject "ClientMessage" $ \o -> do
+        command <- o .: "command"
+        case command of
+            "PASS" -> do
+                pass <- o .: "password"
+                return $ ClientPass pass
+            "NICK" -> do
+                nick <- o .: "nickname"
+                return $ ClientNick nick
+            "USER" -> do
+                username <- o .: "username"
+                mode <- o .: "mode"
+                realname <- o .: "realname"
+                return $ ClientUser username mode realname
+            "OPER" -> do
+                user <- o .: "username"
+                pass <- o .: "password"
+                return $ ClientOper user pass
+            "MODE" -> do
+                nick <- o .: "nickname"
+                mode <- o .: "mode"
+                return $ ClientMode nick mode
+            "QUIT" -> do
+                reason <- o .: "reason"
+                return $ ClientQuit reason
+            "JOIN" -> do
+                channelKeys <- o .: "channelkeys"
+                return $ ClientJoin (map fromChannelKey channelKeys)
+            "PART" -> do
+                channels <- o .: "channels"
+                reason <- o .: "reason"
+                return $ ClientPart channels reason
+            "TOPIC" -> do
+                chan <- o .: "channel"
+                topic <- o .: "topic"
+                return $ ClientTopic chan topic
+            "NAMES" -> do
+                channels <- o .: "channels"
+                return $ ClientNames channels
+            "LIST" -> do
+                channels <- o .: "channels"
+                return $ ClientList channels
+            "INVITE" -> do
+                nick <- o .: "nickname"
+                chan <- o .: "channel"
+                return $ ClientInvite nick chan
+            "PRIVMSG" -> do
+                ircUser <- o .: "ircUser"
+                message <- o .: "message"
+                return $ ClientPrivMsg ircUser message
+            "PRIVMSG" -> do
+                chan <- o .: "channel"
+                message <- o .: "message"
+                return $ ClientPrivMsgChan chan message
+            "NOTICE" -> do
+                ircUser <- o .: "ircUser"
+                message <- o .: "message"
+                return $ ClientNotice ircUser message
+            "WHO" -> do
+                mask <- o .: "mask"
+                return $ ClientWho mask
+            "WHOIS" -> do
+                servername <- o .: "servername"
+                user <- o .: "username"
+                return $ ClientWhoIs servername user
+            "WHOWAS" -> do
+                user <- o .: "username"
+                count <- o .: "count"
+                servername <- o .: "servername"
+                return $ ClientWhoWas user count servername
+            "PING" -> do
+                servername <- o .: "servername"
+                return $ ClientPing servername
+            "PONG" -> do
+                servername <- o .: "servername"
+                return $ ClientPong servername
+            _ -> fail $ "Unknown command " ++ command
+
+instance Arbitrary ClientMessage where
+    arbitrary = do
+        user <- arbitrary
+        pass <- arbitrary
+        nick <- arbitrary
+        mode <- arbitrary
+        mode2 <- arbitrary
+        realname <- arbitrary
+        reason <- arbitrary
+        channelKeys <- arbitrary
+        channels <- arbitrary
+        maybeReason <- arbitrary
+
+    oneof
+        [ ClientPass pass
+        , ClientNick nick
+        , ClientUser user mode realname
+        , ClientOper user pass
+        , ClientMode nick mode2
+        , ClientQuit reason
+        , ClientJoin channelKeys
+        , ClientPart channels maybeReason
+ClientTopic Channel (Maybe String)
+ClientNames [Channel]
+ClientList [Channel]
+ClientInvite Nickname Channel
+ClientPrivMsg IRCUser String
+ClientPrivMsgChan Channel String
+ClientNotice IRCUser String
+ClientWho String
+ClientWhoIs (Maybe Servername) Username
+ClientWhoWas Username (Maybe Integer) (Maybe Servername)
+ClientPing Servername
+ClientPong Servername
 
 {- | Construct a Bot to handle a IRC chat. -}
 bot :: Handle
@@ -344,3 +561,22 @@ nicknamePrefix nick Nothing host =
     NicknamePrefix $ IRCUser nick Nothing host
 nicknamePrefix nick user host =
     NicknamePrefix $ IRCUser nick user host
+
+-- TODO: Write something (helper for json).
+data ChannelKey = ChannelKey Channel String
+
+instance ToJSON ChannelKey where
+    toJSON (ChannelKey chan key) = object
+        [ "channel" .= chan
+        , "key" .= key
+        ]
+
+instance FromJSON ChannelKey where
+    parseJSON = withObject "ChannelKey" $ \o ->
+        ChannelKey <$> o .: "channel" <*> o .: "key"
+
+toChannelKey :: (Channel, String) -> ChannelKey
+toChannelKey (chan, key) = ChannelKey chan key
+
+fromChannelKey :: ChannelKey -> (Channel, String)
+fromChannelKey (ChannelKey chan key) = (chan, key)
