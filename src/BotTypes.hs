@@ -465,13 +465,13 @@ instance FromJSON ClientMessage where
                 chan <- o .: "channel"
                 return $ ClientInvite nick chan
             "PRIVMSG" -> do
-                ircUser <- o .: "ircUser"
+                ircUser <- o .:? "ircUser"
+                chan <- o .:? "channel"
                 message <- o .: "message"
-                return $ ClientPrivMsg ircUser message
-            "PRIVMSG" -> do
-                chan <- o .: "channel"
-                message <- o .: "message"
-                return $ ClientPrivMsgChan chan message
+                case (ircUser, chan) of
+                    (Just u, Nothing) -> return $ ClientPrivMsg u message
+                    (Nothing, Just c) -> return $ ClientPrivMsgChan c message
+                    _ -> fail "Either both user and chan or none of them"
             "NOTICE" -> do
                 ircUser <- o .: "ircUser"
                 message <- o .: "message"
@@ -509,27 +509,29 @@ instance Arbitrary ClientMessage where
         channels <- arbitrary
         maybeReason <- arbitrary
 
-    oneof
-        [ ClientPass pass
-        , ClientNick nick
-        , ClientUser user mode realname
-        , ClientOper user pass
-        , ClientMode nick mode2
-        , ClientQuit reason
-        , ClientJoin channelKeys
-        , ClientPart channels maybeReason
-ClientTopic Channel (Maybe String)
-ClientNames [Channel]
-ClientList [Channel]
-ClientInvite Nickname Channel
-ClientPrivMsg IRCUser String
-ClientPrivMsgChan Channel String
-ClientNotice IRCUser String
-ClientWho String
-ClientWhoIs (Maybe Servername) Username
-ClientWhoWas Username (Maybe Integer) (Maybe Servername)
-ClientPing Servername
-ClientPong Servername
+        oneof
+            [ return $ ClientPass pass
+            , return $ ClientNick nick
+            , return $ ClientUser user mode realname
+            , return $ ClientOper user pass
+            , return $ ClientMode nick mode2
+            , return $ ClientQuit reason
+            , return $ ClientJoin channelKeys
+            , return $ ClientPart channels maybeReason
+            , arbitrary >>= \(c, t) -> return $ ClientTopic c t
+            ]
+{-ClientTopic Channel (Maybe String)-}
+{-ClientNames [Channel]-}
+{-ClientList [Channel]-}
+{-ClientInvite Nickname Channel-}
+{-ClientPrivMsg IRCUser String-}
+{-ClientPrivMsgChan Channel String-}
+{-ClientNotice IRCUser String-}
+{-ClientWho String-}
+{-ClientWhoIs (Maybe Servername) Username-}
+{-ClientWhoWas Username (Maybe Integer) (Maybe Servername)-}
+{-ClientPing Servername-}
+{-ClientPong Servername-}
 
 {- | Construct a Bot to handle a IRC chat. -}
 bot :: Handle
