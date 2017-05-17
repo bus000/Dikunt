@@ -23,10 +23,13 @@ main = do
 handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
 handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = putStrLn $ help nick
-    | [[_, text]] <- str =~ runPattern = asciitext text
+    | [[_, text]] <- str =~ runPattern1 = asciitext text
+    | [[_, text]] <- str =~ runPattern2 = asciitext text
   where
-    helpPattern = concat ["^", sp, "asciitext:", ps, "help", sp]
-    runPattern = concat ["^", sp, "asciitext:", ps, "(.*)$"]
+    helpPattern = concat ["^", sp, nick, ":", ps, "asciitext", ps, "help", sp,
+        "$"]
+    runPattern1 = concat ["^", sp, "asciitext:", ps, "(.*)$"]
+    runPattern2 = concat ["^", sp, nick, ":", ps, "asciitext", ps, "(.*)$"]
     sp = "[ \\t]*"
     ps = "[ \\t]+"
 handleMessage _ _ = return ()

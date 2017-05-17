@@ -24,11 +24,17 @@ main = do
 handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
 handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = help
-    | [[_, url]] <- str =~ runPattern = asciipicture url
+    | [[_, url]] <- str =~ runPattern1 = asciipicture url
+    | [[_, url]] <- str =~ runPattern2 = asciipicture url
+    | [[_, url]] <- str =~ runPattern3 = asciipicture url
+    | [[_, url]] <- str =~ runPattern4 = asciipicture url
   where
     helpPattern = concat ["^", sp, nick, ":", ps, "asciipicture", ps, "help",
         sp, "$"]
-    runPattern = concat ["^", sp, "asciipicture:", ps, "(.*)$"]
+    runPattern1 = concat ["^", sp, "asciipicture:", ps, "(.*)$"]
+    runPattern2 = concat ["^", sp, "asciiart:", ps, "(.*)$"]
+    runPattern3 = concat ["^", sp, nick, ":", ps, "asciiart", ps, "(.*)$"]
+    runPattern4 = concat ["^", sp, nick, ":", ps, "asciipicture", ps, "(.*)$"]
     sp = "[ \\t]*"
     ps = "[ \\t]+"
 handleMessage _ _ = return ()
