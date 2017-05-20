@@ -29,6 +29,7 @@ qcTests :: TestTree
 qcTests = testGroup "QuickCheck Tests"
     [ testProperty "jsonIRCUser" jsonIRCUser
     , testProperty "jsonServerMessage" jsonServerMessage
+    , testProperty "jsonClientMessage" jsonClientMessage
     ]
 
 jsonIRCUser :: BT.IRCUser -> Bool
@@ -36,6 +37,9 @@ jsonIRCUser user = Just user == (decode . encode) user
 
 jsonServerMessage :: BT.ServerMessage -> Bool
 jsonServerMessage message = Just message == (decode . encode) message
+
+jsonClientMessage :: BT.ClientMessage -> Bool
+jsonClientMessage message = Just message == (decode . encode) message
 
 jsonTests :: TestTree
 jsonTests = testGroup "Layer 1 Tests"

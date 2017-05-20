@@ -233,37 +233,37 @@ instance FromJSON ServerMessage where
                 return $ ServerNick ircUser nick
             "JOIN" -> do
                 ircUser <- o .: "ircUser"
-                channel <- o .: "channel"
-                return $ ServerJoin ircUser channel
+                chan <- o .: "channel"
+                return $ ServerJoin ircUser chan
             "PART" -> do
                 ircUser <- o .: "ircUser"
-                channel <- o .: "channel"
+                chan <- o .: "channel"
                 reason <- o .: "reason"
-                return $ ServerPart ircUser channel reason
+                return $ ServerPart ircUser chan reason
             "QUIT" -> do
                 ircUser <- o .: "ircUser"
                 reason <- o .: "reason"
                 return $ ServerQuit ircUser reason
             "TOPIC" -> do
                 ircUser <- o .: "ircUser"
-                channel <- o .: "channel"
+                chan <- o .: "channel"
                 topic <- o .: "topic"
-                return $ ServerTopic ircUser channel topic
+                return $ ServerTopic ircUser chan topic
             "INVITE" -> do
                 ircUser <- o .: "ircUser"
-                nickname <- o .: "nickname"
-                channel <- o .: "channel"
-                return $ ServerInvite ircUser nickname channel
+                nick <- o .: "nickname"
+                chan <- o .: "channel"
+                return $ ServerInvite ircUser nick chan
             "PRIVMSG" -> do
                 ircUser <- o .: "ircUser"
-                nickname <- o .: "nickname"
+                nick <- o .: "nickname"
                 message <- o .: "message"
-                return $ ServerPrivMsg ircUser nickname message
+                return $ ServerPrivMsg ircUser nick message
             "NOTICE" -> do
                 ircUser <- o .: "ircUser"
-                nickname <- o .: "nickname"
+                nick <- o .: "nickname"
                 message <- o .: "message"
-                return $ ServerNotice ircUser nickname message
+                return $ ServerNotice ircUser nick message
             "PING" -> do
                 servername <- o .: "servername"
                 return $ ServerPing servername
@@ -276,30 +276,18 @@ instance FromJSON ServerMessage where
             _ -> fail $ "Unknown command " ++ command
 
 instance Arbitrary ServerMessage where
-    arbitrary = do
-        user <- arbitrary
-        nick <- arbitrary
-        chan <- arbitrary
-        topic <- arbitrary
-        reason <- arbitrary
-        message <- arbitrary
-        servername <- arbitrary
-        code <- arbitrary
-        args <- arbitrary
-        trailing <- arbitrary
-
-        oneof
-            [ return $ ServerNick user nick
-            , return $ ServerJoin user chan
-            , return $ ServerPart user chan reason
-            , return $ ServerQuit user reason
-            , return $ ServerTopic user chan topic
-            , return $ ServerInvite user nick chan
-            , return $ ServerPrivMsg user nick message
-            , return $ ServerNotice user nick message
-            , return $ ServerPing servername
-            , return $ ServerReply servername code args trailing
-            ]
+    arbitrary = oneof
+        [ arbitrary >>= \(u, n)       -> return $ ServerNick u n
+        , arbitrary >>= \(u, c)       -> return $ ServerJoin u c
+        , arbitrary >>= \(u, c, r)    -> return $ ServerPart u c r
+        , arbitrary >>= \(u, r)       -> return $ ServerQuit u r
+        , arbitrary >>= \(u, c, t)    -> return $ ServerTopic u c t
+        , arbitrary >>= \(u, n, c)    -> return $ ServerInvite u n c
+        , arbitrary >>= \(u, n, m)    -> return $ ServerPrivMsg u n m
+        , arbitrary >>= \(u, n, m)    -> return $ ServerNotice u n m
+        , arbitrary >>= \s            -> return $ ServerPing s
+        , arbitrary >>= \(s, c, a, t) -> return $ ServerReply s c a t
+        ]
 
 data ClientMessage = ClientPass Password
     | ClientNick Nickname
@@ -405,6 +393,7 @@ instance ToJSON ClientMessage where
         ]
     toJSON (ClientWhoWas username count servername) = object
         [ "command" .= ("WHOWAS" :: Text)
+        , "username" .= username
         , "count" .= count
         , "servername" .= servername
         ]
@@ -485,8 +474,8 @@ instance FromJSON ClientMessage where
                 return $ ClientWhoIs servername user
             "WHOWAS" -> do
                 user <- o .: "username"
-                count <- o .: "count"
-                servername <- o .: "servername"
+                count <- o .:? "count"
+                servername <- o .:? "servername"
                 return $ ClientWhoWas user count servername
             "PING" -> do
                 servername <- o .: "servername"
@@ -497,41 +486,28 @@ instance FromJSON ClientMessage where
             _ -> fail $ "Unknown command " ++ command
 
 instance Arbitrary ClientMessage where
-    arbitrary = do
-        user <- arbitrary
-        pass <- arbitrary
-        nick <- arbitrary
-        mode <- arbitrary
-        mode2 <- arbitrary
-        realname <- arbitrary
-        reason <- arbitrary
-        channelKeys <- arbitrary
-        channels <- arbitrary
-        maybeReason <- arbitrary
-
-        oneof
-            [ return $ ClientPass pass
-            , return $ ClientNick nick
-            , return $ ClientUser user mode realname
-            , return $ ClientOper user pass
-            , return $ ClientMode nick mode2
-            , return $ ClientQuit reason
-            , return $ ClientJoin channelKeys
-            , return $ ClientPart channels maybeReason
-            , arbitrary >>= \(c, t) -> return $ ClientTopic c t
-            ]
-{-ClientTopic Channel (Maybe String)-}
-{-ClientNames [Channel]-}
-{-ClientList [Channel]-}
-{-ClientInvite Nickname Channel-}
-{-ClientPrivMsg IRCUser String-}
-{-ClientPrivMsgChan Channel String-}
-{-ClientNotice IRCUser String-}
-{-ClientWho String-}
-{-ClientWhoIs (Maybe Servername) Username-}
-{-ClientWhoWas Username (Maybe Integer) (Maybe Servername)-}
-{-ClientPing Servername-}
-{-ClientPong Servername-}
+    arbitrary = oneof
+        [ arbitrary >>= \p         -> return $ ClientPass p
+        , arbitrary >>= \n         -> return $ ClientNick n
+        , arbitrary >>= \(u, m, r) -> return $ ClientUser u m r
+        , arbitrary >>= \(u, p)    -> return $ ClientOper u p
+        , arbitrary >>= \(n, m)    -> return $ ClientMode n m
+        , arbitrary >>= \r         -> return $ ClientQuit r
+        , arbitrary >>= \c         -> return $ ClientJoin c
+        , arbitrary >>= \(c, r)    -> return $ ClientPart c r
+        , arbitrary >>= \(c, t)    -> return $ ClientTopic c t
+        , arbitrary >>= \c         -> return $ ClientNames c
+        , arbitrary >>= \c         -> return $ ClientList c
+        , arbitrary >>= \(n, c)    -> return $ ClientInvite n c
+        , arbitrary >>= \(u, m)    -> return $ ClientPrivMsg u m
+        , arbitrary >>= \(c, m)    -> return $ ClientPrivMsgChan c m
+        , arbitrary >>= \(u, m)    -> return $ ClientNotice u m
+        , arbitrary >>= \w         -> return $ ClientWho w
+        , arbitrary >>= \(s, u)    -> return $ ClientWhoIs s u
+        , arbitrary >>= \(u, n, s) -> return $ ClientWhoWas u n s
+        , arbitrary >>= \s         -> return $ ClientPing s
+        , arbitrary >>= \s         -> return $ ClientPong s
+        ]
 
 {- | Construct a Bot to handle a IRC chat. -}
 bot :: Handle
