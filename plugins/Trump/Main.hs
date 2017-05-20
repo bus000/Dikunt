@@ -4,11 +4,13 @@ import qualified BotTypes as BT
 import Control.Monad (forever)
 import qualified Data.MarkovChain as MC
 import Paths_Dikunt
-import Safe (readMay)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..), readFile)
 import System.Random (newStdGen, StdGen)
 import Text.Regex.PCRE ((=~))
+import Data.Aeson (decode)
+import qualified Data.Text.Lazy.IO as T
+import qualified Data.Text.Lazy.Encoding as T
 
 main :: IO ()
 main = do
@@ -21,15 +23,13 @@ main = do
     trumpData <- readFile trumpFile
 
     forever $ do
-        line <- getLine
-        handleMessage (readMay line :: Maybe BT.ServerMessage) nick trumpData
+        line <- T.getLine
+        handleMessage nick trumpData $ (decode . T.encodeUtf8) line
 
-handleMessage :: Maybe BT.ServerMessage -> String -> String -> IO ()
-handleMessage (Just (BT.ServerPrivMsg BT.IRCUser{} _ msg)) nick trumpData
+handleMessage :: String -> String -> Maybe BT.ServerMessage -> IO ()
+handleMessage nick trumpData (Just (BT.ServerPrivMsg BT.IRCUser{} _ msg))
     | msg =~ helpPattern = putStrLn $ help nick
-    | msg =~ runPattern = newStdGen >>= \r ->
-        putStrLn (trumpQuote trumpData r)
-    | otherwise = return ()
+    | msg =~ runPattern = newStdGen >>= \r -> putStrLn (trumpQuote trumpData r)
   where
     helpPattern = concat ["^", sp, nick, ":", ps, "trump", ps, "help", sp, "$"]
     runPattern = concat ["^", sp, nick, ":", ps, "trump", sp, "$"]

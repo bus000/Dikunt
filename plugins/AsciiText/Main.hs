@@ -3,11 +3,13 @@ module Main ( main ) where
 import qualified BotTypes as BT
 import Control.Monad (forever)
 import System.Environment (getArgs)
-import Safe (readMay)
 import System.Exit (ExitCode(ExitSuccess, ExitFailure))
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import System.Process (readProcessWithExitCode)
 import Text.Regex.PCRE ((=~))
+import Data.Aeson (decode)
+import qualified Data.Text.Lazy.IO as T
+import qualified Data.Text.Lazy.Encoding as T
 
 main :: IO ()
 main = do
@@ -17,8 +19,8 @@ main = do
     hSetBuffering stdin LineBuffering
 
     forever $ do
-        line <- getLine
-        handleMessage nick $ readMay line
+        line <- T.getLine
+        handleMessage nick $ (decode . T.encodeUtf8) line
 
 handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
 handleMessage nick (Just (BT.ServerPrivMsg _ _ str))

@@ -3,10 +3,12 @@ module Main ( main ) where
 
 import qualified BotTypes as BT
 import Control.Monad (forever, unless)
+import Data.Aeson (decode)
 import qualified Data.Text as T
+import qualified Data.Text.Lazy.Encoding as T
+import qualified Data.Text.Lazy.IO as T
 import qualified Database.SQLite.Simple as DB
 import Paths_Dikunt
-import Safe (readMay)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import Text.Regex.PCRE ((=~))
@@ -38,11 +40,8 @@ insulter nick conn = do
     insertDefaultData conn
 
     forever $ do
-        line <- getLine
-
-        case readMay line :: Maybe BT.ServerMessage of
-            Just message -> handleMessage conn nick message
-            Nothing -> return ()
+        line <- T.getLine
+        handleMessage conn nick $ (decode . T.encodeUtf8) line
   where
     createDatabase c = DB.execute_ c "CREATE TABLE IF NOT EXISTS insults \
             \(id INTEGER PRIMARY KEY, insult TEXT UNIQUE)"
@@ -51,13 +50,10 @@ insulter nick conn = do
         DB.execute c "INSERT OR REPLACE INTO insults (insult) VALUES (?)"
             [insult]
 
-handleMessage :: DB.Connection -> String -> BT.ServerMessage -> IO ()
-handleMessage conn nick (BT.ServerPrivMsg _ _ str)
+handleMessage :: DB.Connection -> String -> Maybe BT.ServerMessage -> IO ()
+handleMessage conn nick (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern nick = help nick
-    | str =~ insultPattern nick = case str =~ insultPattern nick of
-        [[_, usernick]] -> getInsult conn usernick
-        _ -> return ()
-    | otherwise = return ()
+    | [[_, usernick]] <- str =~ insultPattern nick = getInsult conn usernick
 handleMessage _ _ _ = return ()
 
 getInsult :: DB.Connection -> String -> IO ()
@@ -82,8 +78,10 @@ insultPattern nick = concat ["^", sp, nick, "\\:", ps, "insult", ps,
     ps = "[ \\t]+"
 
 help :: String -> IO ()
-help nick = putStrLn $ concat [nick, ": insult <usernick> - Send an insult to"
-    , "<usernick>"]
+help nick = putStrLn $ unlines
+    [ nick ++ ": insult <usernick> - Send an insult to <usernick>"
+    , nick ++ ": insult help - Display this message."
+    ]
 
 {- Insults come from http://www.gotlines.com/insults/ -}
 insults :: [String]

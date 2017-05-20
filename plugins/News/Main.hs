@@ -4,17 +4,14 @@ import qualified BotTypes as BT
 import Control.Error.Util (note)
 import Control.Monad (forever)
 import Network.Download (openAsFeed)
-import Safe (readMay)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
-import Text.Feed.Query
-    ( feedItems
-    , getItemTitle
-    , getItemLink
-    , getItemDescription
-    )
+import Text.Feed.Query (feedItems, getItemTitle, getItemLink, getItemDescription)
 import Text.Feed.Types (Item)
 import Text.Regex.PCRE ((=~))
+import Data.Aeson (decode)
+import qualified Data.Text.Lazy.IO as T
+import qualified Data.Text.Lazy.Encoding as T
 
 main :: IO ()
 main = do
@@ -24,11 +21,11 @@ main = do
     hSetBuffering stdin LineBuffering
 
     forever $ do
-        line <- getLine
-        handleMessage (readMay line :: Maybe BT.ServerMessage) nick
+        line <- T.getLine
+        handleMessage nick $ (decode . T.encodeUtf8) line
 
-handleMessage :: Maybe BT.ServerMessage -> String -> IO ()
-handleMessage (Just (BT.ServerPrivMsg BT.IRCUser{} _ msg)) nick
+handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
+handleMessage nick (Just (BT.ServerPrivMsg BT.IRCUser{} _ msg))
     | msg =~ helpPattern = help nick
     | msg =~ runPattern = giveNews
   where

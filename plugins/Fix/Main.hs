@@ -3,8 +3,10 @@ module Main (main) where
 import qualified BotTypes as BT
 import Control.Monad (forever)
 import Control.Monad.State.Strict (runStateT, StateT, get, lift, put)
+import Data.Aeson (decode)
 import Data.List.Utils (replace)
-import Safe (readMay)
+import qualified Data.Text.Lazy.Encoding as T
+import qualified Data.Text.Lazy.IO as T
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import Text.Regex.PCRE ((=~))
@@ -17,8 +19,8 @@ main = do
     hSetBuffering stdin LineBuffering
 
     _ <- runStateT (forever $ do
-        line <- lift getLine
-        handleInput nick $ readMay line) ""
+        line <- lift T.getLine
+        handleInput nick $ (decode . T.encodeUtf8) line) ""
 
     return ()
 

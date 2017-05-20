@@ -20,24 +20,26 @@ module Bot
     ) where
 
 import qualified BotTypes as BT
-import Monitoring (Monitor(..), startMonitoring, inputHandle)
 import Control.Concurrent (forkIO, readMVar, threadDelay)
 import Control.Exception (catch, IOException)
 import Control.Monad (forever)
 import IRCParser.IRCMessageParser (parseMessage)
 import IRCWriter.IRCWriter (writeMessage)
+import Monitoring (Monitor(..), startMonitoring, inputHandle)
 import Network (connectTo, PortID(..))
-import Safe (readMay)
 import System.IO
     ( hClose
     , hSetBuffering
     , hGetLine
     , BufferMode(..)
-    , hPrint
-    , Handle
     , hPutStrLn
+    , Handle
     , stderr
     )
+import Data.Aeson (encode, decode, FromJSON, ToJSON)
+import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy.Encoding as T
+import qualified Data.Text.Lazy.IO as T
 import Text.Printf (hPrintf)
 
 {- | Connect the bot to an IRC server with the channel, nick, pass and port
@@ -96,12 +98,12 @@ listen (BT.Bot h _ _ _ pluginHandles) = forever $ do
 
     case parseMessage (s ++ "\n") of
         Just (BT.ServerPing from) -> write h $ BT.ClientPong from
-        Just message -> mapM_ (safePrint message) ins
-        Nothing -> hPutStrLn stderr $ "Could not parse message \"" ++ s ++ "\""
+        Just message -> mapM_ (safePrint $ jsonEncode message) ins
+        Nothing -> hPutStrLn stderr $
+            "Could not parse message \"" ++ init s ++ "\""
   where
-    safePrint msg processHandle = catch (hPrint processHandle msg) (\e -> do
-        let err = show (e :: IOException)
-        hPutStrLn stderr err)
+    safePrint msg processHandle = T.hPutStrLn processHandle msg `catch` (\e ->
+        hPutStrLn stderr $ show (e :: IOException))
 
 {- | Read from the output part of the pipe in the monitor and write messages
  - produced to the IRC channel. The function sleeps for 1 second after each
@@ -112,10 +114,10 @@ respond :: BT.Bot
 respond (BT.Bot h _ chan _ monitor) = forever $ do
     Monitor _ (output, _) <- readMVar monitor
 
-    line <- hGetLine output
-    case readMay line :: Maybe BT.ClientMessage of
+    line <- T.hGetLine output
+    case jsonDecode line of
         Just message -> write h message
-        Nothing -> write h $ BT.ClientPrivMsgChan chan line
+        Nothing -> write h $ BT.ClientPrivMsgChan chan (T.unpack line)
 
     threadDelay 1000000
 
@@ -126,3 +128,9 @@ write :: Handle
     -- ^ Message to write.
     -> IO ()
 write h mes = hPrintf h $ writeMessage mes
+
+jsonEncode :: ToJSON a => a -> T.Text
+jsonEncode = T.decodeUtf8 . encode
+
+jsonDecode :: FromJSON a => T.Text -> Maybe a
+jsonDecode = decode . T.encodeUtf8

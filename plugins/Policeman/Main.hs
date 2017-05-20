@@ -5,10 +5,12 @@ import Control.Monad (forever)
 import Data.Char (toLower)
 import Data.Random (sample)
 import Data.Random.Extras (choice)
-import Safe (readMay)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import Text.Regex.PCRE ((=~))
+import Data.Aeson (decode)
+import qualified Data.Text.Lazy.IO as T
+import qualified Data.Text.Lazy.Encoding as T
 
 main :: IO ()
 main = do
@@ -18,8 +20,8 @@ main = do
     hSetBuffering stdin LineBuffering
 
     forever $ do
-        line <- getLine
-        handleMessage nick (readMay line)
+        line <- T.getLine
+        handleMessage nick $ (decode . T.encodeUtf8) line
 
 handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
 handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
@@ -62,6 +64,8 @@ curseWords =
     , "motherfucker"
     , "fucker"
     , "gay"
+    , "fanden"
+    , "helvede"
     ]
 
 wordsSpecial :: String -> [String]

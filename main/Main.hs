@@ -2,11 +2,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
-import qualified BotTypes as BT
 import Bot (connect, disconnect, loop)
+import qualified BotTypes as BT
 import Control.Exception (bracket)
 import Data.Configurator (load, Worth(..), require)
-import Paths_Dikunt
+import Data.Version (showVersion)
+import Paths_Dikunt (getDataFileName, version)
 import System.Console.CmdArgs
     ( Data
     , Typeable
@@ -29,8 +30,8 @@ data Dikunt = Dikunt
     , port       :: Integer
     } deriving (Data, Typeable, Show, Eq)
 
-dikunt :: Dikunt
-dikunt = Dikunt
+dikunt :: String -> Dikunt
+dikunt vers = Dikunt
     { server = "irc.freenode.org" &= help "Server to connect to"
     , nickname = "dikunt" &= help "Nick to use"
     , password = def &= help "Password to use"
@@ -38,20 +39,16 @@ dikunt = Dikunt
     , port = 6667 &= help "Port to connect to"
     } &=
         help "Bot to run on IRC channels" &=
-        summary "Dikunt v0.0.1.0 (C) Magnus Stavngaard" &=
+        summary ("Dikunt v" ++ vers ++ " (C) Magnus Stavngaard") &=
         helpArg [explicit, name "help", name "h"] &=
         versionArg [explicit, name "version", name "v"]
 
-mode :: IO Dikunt
-mode = cmdArgs dikunt
-
 getBotConfig :: Dikunt -> BT.BotConfig
-getBotConfig (Dikunt serv nick pass chan p) =
-    BT.BotConfig serv nick pass chan p
+getBotConfig (Dikunt serv nick pass chan p) = BT.BotConfig serv nick pass chan p
 
 main :: IO ()
 main = do
-    arguments <- mode
+    arguments <- cmdArgs $ dikunt (showVersion version)
     configName <- getDataFileName "data/dikunt.config"
     config <- load [ Required configName ]
     executables <- require config "pathPlugins" :: IO [String]
