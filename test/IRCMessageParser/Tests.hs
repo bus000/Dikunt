@@ -66,6 +66,7 @@ layer1UnitTests = testGroup "Layer 1 Tests"
     , testCase "parseHostname1" parseHostname1
     , testCase "parseHostname2" parseHostname2
     , testCase "parseHostname3" parseHostname3
+    , testCase "parseHostname4" parseHostname4
 
     {- Host tests. -}
     , testCase "parseHost1" parseHost1
@@ -75,6 +76,7 @@ layer1UnitTests = testGroup "Layer 1 Tests"
     , testCase "parseNicknamePrefix1" parseNicknamePrefix1
     , testCase "parseNicknamePrefix2" parseNicknamePrefix2
     , testCase "parseNicknamePrefix3" parseNicknamePrefix3
+    , testCase "parseNicknamePrefix4" parseNicknamePrefix4
 
     {- Servername prefix tests. -}
     , testCase "parseServername1" parseServername1
@@ -107,6 +109,7 @@ layer1UnitTests = testGroup "Layer 1 Tests"
     , testCase "parseMessage4" parseMessage4
     , testCase "parseMessage5" parseMessage5
     , testCase "parseMessage6" parseMessage6
+    , testCase "parseMessage7" parseMessage7
     ]
 
 layer2UnitTests :: TestTree
@@ -212,6 +215,11 @@ parseHostname3 :: Assertion
 parseHostname3 = readP_to_S parseHostname str @=? []
   where str = ".wolfe.free-node.net NOTICE *:123"
 
+parseHostname4 :: Assertion
+parseHostname4 = assertBool "" $ ("gateway/web/freenode/ip.185.555.888.244", "")
+    `elem` readP_to_S parseHostname str
+  where str = "gateway/web/freenode/ip.185.555.888.244"
+
 parseHost1 :: Assertion
 parseHost1 = assertBool "" $ ("wolfe.freenode.net", " NOTICE *:123") `elem`
     readP_to_S parseHost str
@@ -247,6 +255,16 @@ parseNicknamePrefix3 = assertBool "" $ (expected, rest) `elem` output
     expected = BT.NicknamePrefix
         (BT.IRCUser "bus000_" Nothing Nothing)
     rest = " PRIVMSG"
+    output = readP_to_S parseNicknamePrefix str
+
+parseNicknamePrefix4 :: Assertion
+parseNicknamePrefix4 = assertBool "" $ (expected, rest) `elem` output
+  where
+    str = concat [":_Hephaestus!b98067f4@gateway/web/freenode/",
+        "ip.185.555.888.244 PRIVMSG #dikufags :What uup peeps?"]
+    expected = BT.NicknamePrefix (BT.IRCUser "_Hephaestus" (Just "b98067f4")
+        (Just "gateway/web/freenode/ip.185.555.888.244"))
+    rest = " PRIVMSG #dikufags :What uup peeps?"
     output = readP_to_S parseNicknamePrefix str
 
 parseServername1 :: Assertion
@@ -417,6 +435,19 @@ parseMessage6 = [(expected, "")] @=? nub output
     command = BT.PRIVMSG
     params = ["#dikufags"]
     trailing = Just "Hm"
+    output = readP_to_S parseMessage str
+
+parseMessage7 :: Assertion
+parseMessage7 = [(expected, "")] @=? nub output
+  where
+    str = concat [":_Hephaestus!b98067f4@gateway/web/freenode/",
+        "ip.185.555.888.244 PRIVMSG #dikufags :What uup peeps?"]
+    expected = BT.IRCMessage prefix command params trailing
+    prefix = Just $ BT.nicknamePrefix "_Hephaestus" (Just "b98067f4")
+        (Just "gateway/web/freenode/ip.185.555.888.244")
+    command = BT.PRIVMSG
+    params = ["#dikufags"]
+    trailing = Just "What uup peeps?"
     output = readP_to_S parseMessage str
 
 {-":NickServ!NickServ@services. NOTICE dikunttest123 :dikunttest123 is nota registered nickname."-}
