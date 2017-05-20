@@ -5,7 +5,7 @@ license-file:        LICENSE
 author:              Magnus Stavngaard
 maintainer:          magnus@stavngaard.dk
 category:            Network
-build-type:          Simple
+build-type:          Custom
 extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 data-files:          data/dikunt.config,
