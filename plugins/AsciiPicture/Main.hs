@@ -25,7 +25,7 @@ main = do
 
 handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
 handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
-    | str =~ helpPattern = help
+    | str =~ helpPattern = help nick
     | [[_, url]] <- str =~ runPattern1 = asciipicture url
     | [[_, url]] <- str =~ runPattern2 = asciipicture url
     | [[_, url]] <- str =~ runPattern3 = asciipicture url

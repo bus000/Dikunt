@@ -129,8 +129,14 @@ write :: Handle
     -> IO ()
 write h mes = hPrintf h $ writeMessage mes
 
-jsonEncode :: ToJSON a => a -> T.Text
+{- | Encode a value as JSON in a Lazy UTF8 text format. -}
+jsonEncode :: ToJSON a => a
+    -- ^ Value to encode.
+    -> T.Text
 jsonEncode = T.decodeUtf8 . encode
 
-jsonDecode :: FromJSON a => T.Text -> Maybe a
+{- | Decode a value from a Lazy UTF8 text JSON. -}
+jsonDecode :: FromJSON a => T.Text
+    -- ^ Text to decode.
+    -> Maybe a
 jsonDecode = decode . T.encodeUtf8
