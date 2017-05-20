@@ -7,10 +7,12 @@ import Control.Monad (forever)
 import Data.Char (toLower)
 import Data.Configurator (load, Worth(..), require)
 import Paths_Dikunt
-import Safe (readMay)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import Text.Regex.PCRE ((=~))
+import Data.Aeson (decode)
+import qualified Data.Text.Lazy.IO as T
+import qualified Data.Text.Lazy.Encoding as T
 
 main :: IO ()
 main = do
@@ -24,8 +26,8 @@ main = do
     hSetBuffering stdin LineBuffering
 
     forever $ do
-        line <- getLine
-        handleInput nick executables $ readMay line
+        line <- T.getLine
+        handleInput nick executables $ (decode . T.encodeUtf8) line
 
 handleInput :: String -> [String] -> Maybe BT.ServerMessage -> IO ()
 handleInput nick executables (Just (BT.ServerPrivMsg _ _ str))

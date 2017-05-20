@@ -2,13 +2,15 @@ module Main ( main ) where
 
 import qualified BotTypes as BT
 import Control.Monad (forever)
+import Data.Aeson (decode)
 import qualified Data.Map as Map
-import Safe (readMay)
+import qualified Data.Text.Lazy.Encoding as T
+import qualified Data.Text.Lazy.IO as T
+import System.Environment (getArgs)
 import System.Exit (ExitCode(ExitSuccess, ExitFailure))
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import System.Process (readProcessWithExitCode)
 import Text.Regex.PCRE ((=~))
-import System.Environment (getArgs)
 
 main :: IO ()
 main = do
@@ -18,12 +20,12 @@ main = do
     hSetBuffering stdin LineBuffering
 
     forever $ do
-        line <- getLine
-        handleMessage nick $ readMay line
+        line <- T.getLine
+        handleMessage nick $ (decode . T.encodeUtf8) line
 
 handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
 handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
-    | str =~ helpPattern = help
+    | str =~ helpPattern = help nick
     | [[_, url]] <- str =~ runPattern = asciipicture url
   where
     helpPattern = concat ["^", sp, nick, ":", ps, "asciipicture", ps, "help",
@@ -46,9 +48,9 @@ generatePicture url = do
         ExitSuccess -> putStrLn s
         ExitFailure _ -> return ()
 
-help :: IO ()
-help = putStrLn $ unlines
-    [ "dikunt: asciipicture help - show this message"
+help :: String -> IO ()
+help nick = putStrLn $ unlines
+    [ nick ++ ": asciipicture help - show this message"
     , "asciipicture: url - show asciipicture of jpg linked to"
     ]
 

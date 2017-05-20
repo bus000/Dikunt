@@ -9,12 +9,14 @@ import qualified Data.Text as T
 import qualified Database.SQLite.Simple as DB
 import Database.SQLite.Simple (NamedParam((:=)))
 import Paths_Dikunt
-import Safe (readMay)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import Text.Regex.PCRE ((=~))
 import Data.List.Split (split, oneOf)
 import Data.Char (toLower)
+import Data.Aeson (decode)
+import qualified Data.Text.Lazy.IO as T
+import qualified Data.Text.Lazy.Encoding as T
 
 data Replacement = Replacement Int T.Text T.Text deriving (Show)
 
@@ -59,8 +61,8 @@ wordReplacer :: String
     -- ^ Database connection with replacements.
     -> IO ()
 wordReplacer nick conn = forever $ do
-    line <- getLine
-    handleMessage conn nick $ readMay line
+    line <- T.getLine
+    handleMessage conn nick $ (decode . T.encodeUtf8) line
 
 {- | Parse message and determine if it is a help message, an add message or if
  - the words should be replaced. -}
