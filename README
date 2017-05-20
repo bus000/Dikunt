@@ -75,3 +75,6 @@ Trump:
 
 WordReplacer:
     Replaces words in the PRIVMSG's from other users.
+
+Policeman:
+    Print warning to users using swear words.
