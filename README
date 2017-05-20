@@ -78,3 +78,6 @@ WordReplacer:
 
 Policeman:
     Print warning to users using swear words.
+
+TicTacToe:
+    Play a game of TicTacToe with the bot.
