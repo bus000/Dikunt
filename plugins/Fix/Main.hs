@@ -13,7 +13,7 @@ import Text.Regex.PCRE ((=~))
 
 main :: IO ()
 main = do
-    [nick, _] <- getArgs
+    (nick:_) <- getArgs
 
     hSetBuffering stdout LineBuffering
     hSetBuffering stdin LineBuffering

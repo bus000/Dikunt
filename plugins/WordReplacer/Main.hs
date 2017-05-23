@@ -28,7 +28,7 @@ instance DB.ToRow Replacement where
 
 main :: IO ()
 main = do
-    [nick, _] <- getArgs
+    (nick:_) <- getArgs
 
     hSetBuffering stdout LineBuffering
     hSetBuffering stdin LineBuffering

@@ -49,13 +49,15 @@ connect :: BT.BotConfig
     -- ^ Configuration for bot.
     -> [FilePath]
     -- ^ Plugins to load.
+    -> [String]
+    -- ^ Extra plugin args.
     -> IO BT.Bot
-connect (BT.BotConfig serv nick pass chan port) execs = do
+connect (BT.BotConfig serv nick pass chan port) execs args = do
     h <- connectTo serv (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
 
     -- Start all plugins and a monitor for them.
-    monitor <- startMonitoring execs [nick, chan]
+    monitor <- startMonitoring execs (nick:chan:args)
 
     -- Create the bot.
     let bot = BT.bot h nick chan pass monitor

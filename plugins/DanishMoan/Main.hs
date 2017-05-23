@@ -12,7 +12,7 @@ import qualified Data.Text.Lazy.Encoding as T
 
 main :: IO ()
 main = do
-    [nick, _] <- getArgs
+    (nick:_) <- getArgs
 
     hSetBuffering stdout LineBuffering
     hSetBuffering stdin LineBuffering

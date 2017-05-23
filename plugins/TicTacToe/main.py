@@ -7,7 +7,8 @@ import re
 import random
 
 # Setup.
-[filename, botnick, channel] = sys.argv
+botnick = sys.argv[1]
+channel = sys.argv[2]
 
 # Mapping from nicknames to games.
 games = {}
@@ -118,7 +119,7 @@ def play_game_move(mes, nick, move):
         del games[nick]
 
 def display_help():
-    print(botnick + ": tictactoe help - Dispay this message.")
+    print(botnick + ": tictactoe help - Display this message.")
     print(botnick + ": tictactoe start - Start a game of TicTacToe.")
 
 def handle_message(mes, nick):

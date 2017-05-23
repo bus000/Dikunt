@@ -28,6 +28,7 @@ data Dikunt = Dikunt
     , password   :: String
     , channel    :: String
     , port       :: Integer
+    , pluginArgs :: [String]
     } deriving (Data, Typeable, Show, Eq)
 
 dikunt :: String -> Dikunt
@@ -37,6 +38,8 @@ dikunt vers = Dikunt
     , password = def &= help "Password to use"
     , channel = "#dikufags" &= help "Channel to connect to"
     , port = 6667 &= help "Port to connect to"
+    , pluginArgs = [] &= explicit &= name "plugin-arg" &=
+        help "Argument that is passed to all plugins started by Dikunt."
     } &=
         help "Bot to run on IRC channels" &=
         summary ("Dikunt v" ++ vers ++ " (C) Magnus Stavngaard") &=
@@ -44,7 +47,8 @@ dikunt vers = Dikunt
         versionArg [explicit, name "version", name "v"]
 
 getBotConfig :: Dikunt -> BT.BotConfig
-getBotConfig (Dikunt serv nick pass chan p) = BT.BotConfig serv nick pass chan p
+getBotConfig (Dikunt serv nick pass chan p _) =
+    BT.BotConfig serv nick pass chan p
 
 main :: IO ()
 main = do
@@ -54,10 +58,14 @@ main = do
     executables <- require config "pathPlugins" :: IO [String]
     dataFileLocations <- dataFiles
 
+    -- Print data file locations so they can be found.
     print dataFileLocations
 
+    let botConfig = getBotConfig arguments
+        pluginArguments = pluginArgs arguments
+
     -- Start, loop and stop bot.
-    bracket (connect (getBotConfig arguments) executables) disconnect loop
+    bracket (connect botConfig executables pluginArguments) disconnect loop
 
 dataFiles :: IO [String]
 dataFiles = mapM getDataFileName
