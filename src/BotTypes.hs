@@ -1,3 +1,20 @@
+{- |
+ - Module      : BotTypes
+ - Description : Types and instances representing a bot.
+ - Copyright   : (c) Magnus Stavngaard, 2016
+ - License     : BSD-3
+ - Maintainer  : magnus@stavngaard.dk
+ - Stability   : experimental
+ - Portability : POSIX
+ -
+ - The main type is the Bot type. The bot represents a connection to a IRC
+ - server on a specific channel. The bot also contains a monitor that keeps
+ - track of plugin processes. The output and input of plugins can also be found
+ - in the monitor. The module also defines types for messages received by the
+ - server and messages that can be send to the server. The types are
+ - ServerMessage and ClientMessage respectively. Both types can be converted to
+ - and from JSON.
+ -}
 {-# LANGUAGE OverloadedStrings #-}
 module BotTypes
     ( Bot(..)
@@ -13,7 +30,7 @@ module BotTypes
     -- Bot configuration declaration.
     , BotConfig(..)
 
-    -- Type declarations.
+    -- Extra type declarations.
     , Nickname
     , Channel
     , Password
@@ -24,10 +41,7 @@ module BotTypes
     , Realname
     ) where
 
-import Data.Text (Text)
 import Control.Concurrent.MVar (MVar)
-import System.IO (Handle)
-import Monitoring (Monitor)
 import Data.Aeson
     ( ToJSON(..)
     , FromJSON(..)
@@ -37,24 +51,43 @@ import Data.Aeson
     , (.:?)
     , object
     )
+import Data.Text (Text)
+import Monitoring (Monitor)
+import System.IO (Handle)
 import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
 import Test.QuickCheck.Gen (oneof)
 
+{- | IRC nickname. -}
 type Nickname = String
+
+{- | IRC channel. -}
 type Channel = String
+
+{- | IRC password. -}
 type Password = String
+
+{- | IRC servername. -}
 type Servername = String
+
+{- | IRC username. -}
 type Username = String
+
+{- | IRC hostname. -}
 type Hostname = String
+
+{- | IRC mode. -}
 type Mode = Integer
+
+{- | IRC real name. -}
 type Realname = String
 
+{- | Configuration used to create an IRC bot. -}
 data BotConfig = BotConfig
-    { configServer     :: Servername
-    , configNickname   :: Nickname
-    , configPassword   :: Password
-    , configChannel    :: Channel
-    , configPort       :: Integer
+    { configServer   :: Servername -- ^ URL of server to connect to.
+    , configNickname :: Nickname -- ^ Nickname of the bot.
+    , configPassword :: Password -- ^ Password of the bot.
+    , configChannel  :: Channel -- ^ Channel to connect to.
+    , configPort     :: Integer -- ^ Port to use when connecting to server.
     } deriving (Show, Eq)
 
 {- | The IRC bot parameters. -}
@@ -92,9 +125,14 @@ data IRCPrefix = ServernamePrefix Servername
     | NicknamePrefix IRCUser
     deriving (Show, Read, Eq)
 
+{- | Represents an IRC user which consist of a nickname, an optional username
+ - and an optional hostname. In messages from IRC servers the message has a user
+ - iff it starts with a ':' character. The user is then parsed as
+ - "nickname [ [ "!" user ] "@" host ]". -}
 data IRCUser = IRCUser Nickname (Maybe Username) (Maybe Hostname)
     deriving (Show, Read, Eq)
 
+{- | Convert an IRCUser to JSON. -}
 instance ToJSON IRCUser where
     toJSON (IRCUser nick Nothing Nothing) = object
         [ "nickname" .= nick
@@ -116,10 +154,12 @@ instance ToJSON IRCUser where
         , "hostname" .= host
         ]
 
+{- | Read an IRCUser from JSON. -}
 instance FromJSON IRCUser where
     parseJSON = withObject "IRCUser" $ \o ->
         IRCUser <$> o .: "nickname" <*> o .:? "username" <*> o .:? "hostname"
 
+{- | Construct arbitrary IRC users for testing. -}
 instance Arbitrary IRCUser where
     arbitrary = do
         nick <- arbitrary
@@ -146,6 +186,9 @@ instance Arbitrary IRCUser where
         ] ++ [IRCUser nick' (Just user') (Just host') |
             (nick', user', host') <- shrink (nick, user, host)]
 
+{- | Messages that are received by the bot from the IRC server is parsed to this
+ - structure. The structure contains almost all messages that can be send from
+ - the server. -}
 data ServerMessage = ServerNick IRCUser Nickname
     | ServerJoin IRCUser Channel
     | ServerPart IRCUser Channel String
@@ -158,6 +201,7 @@ data ServerMessage = ServerNick IRCUser Nickname
     | ServerReply Servername Integer [String] (Maybe String)
     deriving (Eq, Show, Read)
 
+{- | Convert a ServerMessage to a JSON string. -}
 instance ToJSON ServerMessage where
     toJSON (ServerNick ircUser nick) = object
         [ "command" .= ("NICK" :: Text)
@@ -222,6 +266,7 @@ instance ToJSON ServerMessage where
         , "args" .= args
         ]
 
+{- | Read a ServerMessage from a JSON string. -}
 instance FromJSON ServerMessage where
     parseJSON = withObject "ServerMessage" $ \o -> do
         command <- o .: "command"
@@ -274,6 +319,7 @@ instance FromJSON ServerMessage where
                 return $ ServerReply servername numeric args trailing
             _ -> fail $ "Unknown command " ++ command
 
+{- | Construct an arbitrary ServerMessage for testing. -}
 instance Arbitrary ServerMessage where
     arbitrary = oneof
         [ arbitrary >>= \(u, n)       -> return $ ServerNick u n
@@ -288,6 +334,9 @@ instance Arbitrary ServerMessage where
         , arbitrary >>= \(s, c, a, t) -> return $ ServerReply s c a t
         ]
 
+{- | Represent messages that can be send to the server. The messages can be
+ - written as the string to be send to an IRC server with the function
+ - IRCWriter.IRCWriter.writeMessage. -}
 data ClientMessage = ClientPass Password
     | ClientNick Nickname
     | ClientUser Username Mode Realname
@@ -310,6 +359,7 @@ data ClientMessage = ClientPass Password
     | ClientPong Servername
     deriving (Eq, Show, Read)
 
+{- | Convert a ClientMessage to a JSON string. -}
 instance ToJSON ClientMessage where
     toJSON (ClientPass pass) = object
         [ "command" .= ("PASS" :: Text)
@@ -405,6 +455,7 @@ instance ToJSON ClientMessage where
         , "servername" .= servername
         ]
 
+{- Convert a JSON string to a ClientMessage. -}
 instance FromJSON ClientMessage where
     parseJSON = withObject "ClientMessage" $ \o -> do
         command <- o .: "command"
@@ -484,6 +535,7 @@ instance FromJSON ClientMessage where
                 return $ ClientPong servername
             _ -> fail $ "Unknown command " ++ command
 
+{- | Construct an arbitrary ClientMessage for testing. -}
 instance Arbitrary ClientMessage where
     arbitrary = oneof
         [ arbitrary >>= \p         -> return $ ClientPass p
@@ -539,21 +591,29 @@ nicknamePrefix nick Nothing host =
 nicknamePrefix nick user host =
     NicknamePrefix $ IRCUser nick user host
 
--- TODO: Write something (helper for json).
+{- | Helper data type to convert a list of tuples to JSON with named fields. -}
 data ChannelKey = ChannelKey Channel String
 
+{- | Convert ChannelKey to a JSON string. -}
 instance ToJSON ChannelKey where
     toJSON (ChannelKey chan key) = object
         [ "channel" .= chan
         , "key" .= key
         ]
 
+{- | Read a ChannelKey from a JSON string. -}
 instance FromJSON ChannelKey where
     parseJSON = withObject "ChannelKey" $ \o ->
         ChannelKey <$> o .: "channel" <*> o .: "key"
 
-toChannelKey :: (Channel, String) -> ChannelKey
+{- | Construct a channel key. -}
+toChannelKey :: (Channel, String)
+    -- ^ Tuple containing channel and key.
+    -> ChannelKey
 toChannelKey (chan, key) = ChannelKey chan key
 
-fromChannelKey :: ChannelKey -> (Channel, String)
+{- | Deconstruct a channel key. -}
+fromChannelKey :: ChannelKey
+    -- ^ ChannelKey to deconstruct.
+    -> (Channel, String)
 fromChannelKey (ChannelKey chan key) = (chan, key)
