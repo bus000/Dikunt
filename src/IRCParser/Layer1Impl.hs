@@ -18,6 +18,7 @@ module IRCParser.Layer1Impl where
 
 import qualified BotTypes as BT
 import Control.Applicative ((<$>))
+import qualified Data.Text.Lazy as T
 import Text.ParserCombinators.ReadP
     ( ReadP
     , readP_to_S
@@ -87,7 +88,7 @@ parseCommand = parseTextCommand +++ parseNumericCommand
 {- | Parse IRC parameters one of the two forms
  -     *14( SPACE middle ) [ SPACE ":" trailing ],
  -     14( SPACE middle ) [ SPACE [ ":" ] trailing ]. -}
-parseParams :: ReadP ([String], Maybe String)
+parseParams :: ReadP ([String], Maybe T.Text)
 parseParams = form1 +++ form2
   where
     form1 = do
@@ -95,7 +96,7 @@ parseParams = form1 +++ form2
         trailing <- option Nothing (fmap Just $ string " :" >> parseTrailing)
 
         if length params <= 14
-        then return (params, trailing)
+        then return (params, fmap T.pack trailing)
         else pfail
     form2 = do
         params <- many (char ' ' >> parseMiddle)
@@ -103,7 +104,7 @@ parseParams = form1 +++ form2
             >> parseTrailing)
 
         if length params == 14
-        then return (params, trailing)
+        then return (params, fmap T.pack trailing)
         else pfail
 
 {- | Parse single IRC parameter of the form

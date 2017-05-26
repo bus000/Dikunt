@@ -26,6 +26,8 @@ instance DB.FromRow Replacement where
 instance DB.ToRow Replacement where
     toRow (Replacement id_ word replacement) = DB.toRow (id_, word, replacement)
 
+data WordReplacer = Help | AddReplacement T.Text T.Text | Replace
+
 main :: IO ()
 main = do
     (nick:_) <- getArgs
@@ -73,12 +75,20 @@ handleMessage :: DB.Connection
     -> Maybe BT.ServerMessage
     -- ^ Message received from IRCServer.
     -> IO ()
-handleMessage conn nick (Just (BT.ServerPrivMsg _ _ str))
+handleMessage conn nick (Just (BT.ServerPrivMsg _ _ text))
     | str =~ helpPattern = help nick
     | [[_, word, replacement]] <- str =~ addPattern =
         addReplacement conn nick word replacement
     | otherwise = replaceWords conn str
   where
+    parseMessage :: Either ParseError WordReplacer
+    parseMessage = parse messageText "(unknown)" text
+
+    messageText = helpText <|> addReplaceText <|> replaceWords
+
+    helpText =
+
+    str = T.unpack text
     sp = "[ \\t]*"
     ps = "[ \\t]+"
     helpPattern = concat ["^", sp, nick, ":", ps, "wordreplacer", ps, "help",

@@ -51,7 +51,7 @@ import Data.Aeson
     , (.:?)
     , object
     )
-import Data.Text (Text)
+import qualified Data.Text.Lazy as T
 import Monitoring (Monitor)
 import System.IO (Handle)
 import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
@@ -116,7 +116,7 @@ data IRCMessage = IRCMessage
     { _ircPrefix  :: Maybe IRCPrefix -- ^ The prefix of an IRC message.
     , _ircCommand :: IRCCommand -- ^ The command of the message.
     , _ircParams  :: [String] -- ^ List of parameters.
-    , _trail      :: Maybe String -- ^ Actual message.
+    , _trail      :: Maybe T.Text -- ^ Actual message.
     } deriving (Show, Eq)
 
 {- | An IRC prefix consist either of a server name or a user nick with an
@@ -191,76 +191,76 @@ instance Arbitrary IRCUser where
  - the server. -}
 data ServerMessage = ServerNick IRCUser Nickname
     | ServerJoin IRCUser Channel
-    | ServerPart IRCUser Channel String
-    | ServerQuit IRCUser String
-    | ServerTopic IRCUser Channel String
+    | ServerPart IRCUser Channel T.Text
+    | ServerQuit IRCUser T.Text
+    | ServerTopic IRCUser Channel T.Text
     | ServerInvite IRCUser Nickname Channel
-    | ServerPrivMsg IRCUser Nickname String
-    | ServerNotice IRCUser Nickname String
+    | ServerPrivMsg IRCUser Nickname T.Text
+    | ServerNotice IRCUser Nickname T.Text
     | ServerPing Servername
-    | ServerReply Servername Integer [String] (Maybe String)
+    | ServerReply Servername Integer [String] (Maybe T.Text)
     deriving (Eq, Show, Read)
 
 {- | Convert a ServerMessage to a JSON string. -}
 instance ToJSON ServerMessage where
     toJSON (ServerNick ircUser nick) = object
-        [ "command" .= ("NICK" :: Text)
+        [ "command" .= ("NICK" :: T.Text)
         , "ircUser" .= ircUser
         , "nickname" .= nick
         ]
     toJSON (ServerJoin ircUser chan) = object
-        [ "command" .= ("JOIN" :: Text)
+        [ "command" .= ("JOIN" :: T.Text)
         , "ircUser" .= ircUser
         , "channel" .= chan
         ]
     toJSON (ServerPart ircUser chan reason) = object
-        [ "command" .= ("PART" :: Text)
+        [ "command" .= ("PART" :: T.Text)
         , "ircUser" .= ircUser
         , "channel" .= chan
         , "reason" .= reason
         ]
     toJSON (ServerQuit ircUser reason) = object
-        [ "command" .= ("QUIT" :: Text)
+        [ "command" .= ("QUIT" :: T.Text)
         , "ircUser" .= ircUser
         , "reason" .= reason
         ]
     toJSON (ServerTopic ircUser chan topic) = object
-        [ "command" .= ("TOPIC" :: Text)
+        [ "command" .= ("TOPIC" :: T.Text)
         , "ircUser" .= ircUser
         , "channel" .= chan
         , "topic" .= topic
         ]
     toJSON (ServerInvite ircUser nick chan) = object
-        [ "command" .= ("INVITE" :: Text)
+        [ "command" .= ("INVITE" :: T.Text)
         , "ircUser" .= ircUser
         , "nickname" .= nick
         , "channel" .= chan
         ]
     toJSON (ServerPrivMsg ircUser nick message) = object
-        [ "command" .= ("PRIVMSG" :: Text)
+        [ "command" .= ("PRIVMSG" :: T.Text)
         , "ircUser" .= ircUser
         , "nickname" .= nick
         , "message" .= message
         ]
     toJSON (ServerNotice ircUser nick message) = object
-        [ "command" .= ("NOTICE" :: Text)
+        [ "command" .= ("NOTICE" :: T.Text)
         , "ircUser" .= ircUser
         , "nickname" .= nick
         , "message" .= message
         ]
     toJSON (ServerPing servername) = object
-        [ "command" .= ("PING" :: Text)
+        [ "command" .= ("PING" :: T.Text)
         , "servername" .= servername
         ]
     toJSON (ServerReply servername numeric args (Just trailing)) = object
-        [ "command" .= ("REPLY" :: Text)
+        [ "command" .= ("REPLY" :: T.Text)
         , "servername" .= servername
         , "numeric" .= numeric
         , "args" .= args
         , "trailing" .= trailing
         ]
     toJSON (ServerReply servername numeric args Nothing) = object
-        [ "command" .= ("REPLY" :: Text)
+        [ "command" .= ("REPLY" :: T.Text)
         , "servername" .= servername
         , "numeric" .= numeric
         , "args" .= args
@@ -324,14 +324,14 @@ instance Arbitrary ServerMessage where
     arbitrary = oneof
         [ arbitrary >>= \(u, n)       -> return $ ServerNick u n
         , arbitrary >>= \(u, c)       -> return $ ServerJoin u c
-        , arbitrary >>= \(u, c, r)    -> return $ ServerPart u c r
-        , arbitrary >>= \(u, r)       -> return $ ServerQuit u r
-        , arbitrary >>= \(u, c, t)    -> return $ ServerTopic u c t
+        , arbitrary >>= \(u, c, r)    -> return $ ServerPart u c (fromMyText r)
+        , arbitrary >>= \(u, r)       -> return $ ServerQuit u (fromMyText r)
+        , arbitrary >>= \(u, c, t)    -> return $ ServerTopic u c (fromMyText t)
         , arbitrary >>= \(u, n, c)    -> return $ ServerInvite u n c
-        , arbitrary >>= \(u, n, m)    -> return $ ServerPrivMsg u n m
-        , arbitrary >>= \(u, n, m)    -> return $ ServerNotice u n m
+        , arbitrary >>= \(u, n, m)    -> return $ ServerPrivMsg u n (fromMyText m)
+        , arbitrary >>= \(u, n, m)    -> return $ ServerNotice u n (fromMyText m)
         , arbitrary >>= \s            -> return $ ServerPing s
-        , arbitrary >>= \(s, c, a, t) -> return $ ServerReply s c a t
+        , arbitrary >>= \(s, c, a, t) -> return $ ServerReply s c a (fmap fromMyText t)
         ]
 
 {- | Represent messages that can be send to the server. The messages can be
@@ -342,16 +342,16 @@ data ClientMessage = ClientPass Password
     | ClientUser Username Mode Realname
     | ClientOper Username Password
     | ClientMode Nickname String
-    | ClientQuit String -- Reason for leaving.
+    | ClientQuit T.Text -- Reason for leaving.
     | ClientJoin [(Channel, String)]
-    | ClientPart [Channel] (Maybe String)
-    | ClientTopic Channel (Maybe String)
+    | ClientPart [Channel] (Maybe T.Text)
+    | ClientTopic Channel (Maybe T.Text)
     | ClientNames [Channel]
     | ClientList [Channel]
     | ClientInvite Nickname Channel
-    | ClientPrivMsg IRCUser String
-    | ClientPrivMsgChan Channel String
-    | ClientNotice IRCUser String
+    | ClientPrivMsg IRCUser T.Text
+    | ClientPrivMsgChan Channel T.Text
+    | ClientNotice IRCUser T.Text
     | ClientWho String
     | ClientWhoIs (Maybe Servername) Username
     | ClientWhoWas Username (Maybe Integer) (Maybe Servername)
@@ -362,96 +362,96 @@ data ClientMessage = ClientPass Password
 {- | Convert a ClientMessage to a JSON string. -}
 instance ToJSON ClientMessage where
     toJSON (ClientPass pass) = object
-        [ "command" .= ("PASS" :: Text)
+        [ "command" .= ("PASS" :: T.Text)
         , "password" .= pass
         ]
     toJSON (ClientNick nick) = object
-        [ "command" .= ("NICK" :: Text)
+        [ "command" .= ("NICK" :: T.Text)
         , "nickname" .= nick
         ]
     toJSON (ClientUser user mode realname) = object
-        [ "command" .= ("USER" :: Text)
+        [ "command" .= ("USER" :: T.Text)
         , "username" .= user
         , "mode" .= mode
         , "realname" .= realname
         ]
     toJSON (ClientOper user pass) = object
-        [ "command" .= ("OPER" :: Text)
+        [ "command" .= ("OPER" :: T.Text)
         , "username" .= user
         , "password" .= pass
         ]
     toJSON (ClientMode nick mode) = object
-        [ "command" .= ("MODE" :: Text)
+        [ "command" .= ("MODE" :: T.Text)
         , "nickname" .= nick
         , "mode" .= mode
         ]
     toJSON (ClientQuit reason) = object
-        [ "command" .= ("QUIT" :: Text)
+        [ "command" .= ("QUIT" :: T.Text)
         , "reason" .= reason
         ]
     toJSON (ClientJoin channelKeys) = object
-        [ "command" .= ("JOIN" :: Text)
+        [ "command" .= ("JOIN" :: T.Text)
         , "channelkeys" .= map toChannelKey channelKeys
         ]
     toJSON (ClientPart chans reason) = object
-        [ "command" .= ("PART" :: Text)
+        [ "command" .= ("PART" :: T.Text)
         , "channels" .= chans
         , "reason" .= reason
         ]
     toJSON (ClientTopic chan topic) = object
-        [ "command" .= ("TOPIC" :: Text)
+        [ "command" .= ("TOPIC" :: T.Text)
         , "channel" .= chan
         , "topic" .= topic
         ]
     toJSON (ClientNames chans) = object
-        [ "command" .= ("NAMES" :: Text)
+        [ "command" .= ("NAMES" :: T.Text)
         , "channels" .= chans
         ]
     toJSON (ClientList chans) = object
-        [ "command" .= ("LIST" :: Text)
+        [ "command" .= ("LIST" :: T.Text)
         , "channels" .= chans
         ]
     toJSON (ClientInvite nick chan) = object
-        [ "command" .= ("INVITE" :: Text)
+        [ "command" .= ("INVITE" :: T.Text)
         , "nickname" .= nick
         , "channel" .= chan
         ]
     toJSON (ClientPrivMsg ircUser message) = object
-        [ "command" .= ("PRIVMSG" :: Text)
+        [ "command" .= ("PRIVMSG" :: T.Text)
         , "ircUser" .= ircUser
         , "message" .= message
         ]
     toJSON (ClientPrivMsgChan chan message) = object
-        [ "command" .= ("PRIVMSG" :: Text)
+        [ "command" .= ("PRIVMSG" :: T.Text)
         , "channel" .= chan
         , "message" .= message
         ]
     toJSON (ClientNotice ircUser message) = object
-        [ "command" .= ("NOTICE" :: Text)
+        [ "command" .= ("NOTICE" :: T.Text)
         , "ircUser" .= ircUser
         , "message" .= message
         ]
     toJSON (ClientWho mask) = object
-        [ "command" .= ("WHO" :: Text)
+        [ "command" .= ("WHO" :: T.Text)
         , "mask" .= mask
         ]
     toJSON (ClientWhoIs servername username) = object
-        [ "command" .= ("WHOIS" :: Text)
+        [ "command" .= ("WHOIS" :: T.Text)
         , "servername" .= servername
         , "username" .= username
         ]
     toJSON (ClientWhoWas username count servername) = object
-        [ "command" .= ("WHOWAS" :: Text)
+        [ "command" .= ("WHOWAS" :: T.Text)
         , "username" .= username
         , "count" .= count
         , "servername" .= servername
         ]
     toJSON (ClientPing servername) = object
-        [ "command" .= ("PING" :: Text)
+        [ "command" .= ("PING" :: T.Text)
         , "servername" .= servername
         ]
     toJSON (ClientPong servername) = object
-        [ "command" .= ("PONG" :: Text)
+        [ "command" .= ("PONG" :: T.Text)
         , "servername" .= servername
         ]
 
@@ -543,16 +543,16 @@ instance Arbitrary ClientMessage where
         , arbitrary >>= \(u, m, r) -> return $ ClientUser u m r
         , arbitrary >>= \(u, p)    -> return $ ClientOper u p
         , arbitrary >>= \(n, m)    -> return $ ClientMode n m
-        , arbitrary >>= \r         -> return $ ClientQuit r
+        , arbitrary >>= \r         -> return $ ClientQuit (fromMyText r)
         , arbitrary >>= \c         -> return $ ClientJoin c
-        , arbitrary >>= \(c, r)    -> return $ ClientPart c r
-        , arbitrary >>= \(c, t)    -> return $ ClientTopic c t
+        , arbitrary >>= \(c, r)    -> return $ ClientPart c (fmap fromMyText r)
+        , arbitrary >>= \(c, t)    -> return $ ClientTopic c (fmap fromMyText t)
         , arbitrary >>= \c         -> return $ ClientNames c
         , arbitrary >>= \c         -> return $ ClientList c
         , arbitrary >>= \(n, c)    -> return $ ClientInvite n c
-        , arbitrary >>= \(u, m)    -> return $ ClientPrivMsg u m
-        , arbitrary >>= \(c, m)    -> return $ ClientPrivMsgChan c m
-        , arbitrary >>= \(u, m)    -> return $ ClientNotice u m
+        , arbitrary >>= \(u, m)    -> return $ ClientPrivMsg u (fromMyText m)
+        , arbitrary >>= \(c, m)    -> return $ ClientPrivMsgChan c (fromMyText m)
+        , arbitrary >>= \(u, m)    -> return $ ClientNotice u (fromMyText m)
         , arbitrary >>= \w         -> return $ ClientWho w
         , arbitrary >>= \(s, u)    -> return $ ClientWhoIs s u
         , arbitrary >>= \(u, n, s) -> return $ ClientWhoWas u n s
@@ -617,3 +617,11 @@ fromChannelKey :: ChannelKey
     -- ^ ChannelKey to deconstruct.
     -> (Channel, String)
 fromChannelKey (ChannelKey chan key) = (chan, key)
+
+newtype MyText = MyText T.Text
+
+instance Arbitrary MyText where
+    arbitrary = arbitrary >>= \str -> return $ MyText (T.pack str)
+
+fromMyText :: MyText -> T.Text
+fromMyText (MyText t) = t

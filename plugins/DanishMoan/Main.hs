@@ -1,14 +1,16 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import qualified BotTypes as BT
+import Control.Monad (forever)
+import Data.Aeson (decode)
+import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy.Encoding as T
+import qualified Data.Text.Lazy.IO as T
 import Safe (readMay)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import Text.Regex.PCRE ((=~))
-import Control.Monad (forever)
-import Data.Aeson (decode)
-import qualified Data.Text.Lazy.IO as T
-import qualified Data.Text.Lazy.Encoding as T
 
 main :: IO ()
 main = do
@@ -22,10 +24,11 @@ main = do
         handleInput nick $ (decode . T.encodeUtf8) line
 
 handleInput :: String -> Maybe (BT.ServerMessage) -> IO ()
-handleInput nick (Just (BT.ServerPrivMsg _ _ str))
+handleInput nick (Just (BT.ServerPrivMsg _ _ text))
     | str =~ helpPattern = putStrLn $ help nick
     | [[_, n]] <- str =~ runPattern = putStr $ getMoan (readMay n)
   where
+    str = T.unpack text
     helpPattern = concat ["^", sp, nick, ":", ps, "danishmoan", ps, "help", sp,
         "$"]
     runPattern = concat ["^", sp, nick, ":", ps, "danishmoan", ps, "([0-9]+)",

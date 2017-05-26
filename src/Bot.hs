@@ -13,6 +13,7 @@
  - messages from the IRC server and pass them on to plugins handling the
  - messages. The function disconnect drops the connection to the IRC server.
  -}
+{-# LANGUAGE OverloadedStrings #-}
 module Bot
     ( connect
     , loop
@@ -40,7 +41,6 @@ import Data.Aeson (encode, decode, FromJSON, ToJSON)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
-import Text.Printf (hPrintf)
 
 {- | Connect the bot to an IRC server with the channel, nick, pass and port
  - given. Starts a monitor for the list of plugins given which will maintain a
@@ -77,7 +77,7 @@ loop bot@(BT.Bot h nick chan pass _) = do
     write h $ BT.ClientNick nick
     write h $ BT.ClientUser nick 0 "DikuntBot"
     write h $ BT.ClientPrivMsg (BT.IRCUser "NickServ" Nothing Nothing)
-        ("IDENTIFY " ++ nick ++ " " ++ pass)
+        (T.concat ["IDENTIFY ", T.pack nick, " ", T.pack pass])
     write h $ BT.ClientJoin [(chan, "")]
 
     listen bot
@@ -119,7 +119,7 @@ respond (BT.Bot h _ chan _ monitor) = forever $ do
     line <- T.hGetLine output
     case jsonDecode line of
         Just message -> write h message
-        Nothing -> write h $ BT.ClientPrivMsgChan chan (T.unpack line)
+        Nothing -> write h $ BT.ClientPrivMsgChan chan line
 
     threadDelay 1000000
 
@@ -129,7 +129,7 @@ write :: Handle
     -> BT.ClientMessage
     -- ^ Message to write.
     -> IO ()
-write h mes = hPrintf h $ writeMessage mes
+write h mes = T.hPutStr h $ writeMessage mes
 
 {- | Encode a value as JSON in a Lazy UTF8 text format. -}
 jsonEncode :: ToJSON a => a

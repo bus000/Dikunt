@@ -1,4 +1,5 @@
 {- TODO: Add module header. -}
+{-# LANGUAGE OverloadedStrings #-}
 module IRCWriter.Impl where
 
 import BotTypes
@@ -6,100 +7,107 @@ import BotTypes
     , IRCUser(..)
     )
 import Data.List (intercalate)
+import qualified Data.Text.Lazy as T
 
-writeMessage :: ClientMessage -> String
-writeMessage msg = writeMessage' msg ++ "\r\n"
+writeMessage :: ClientMessage -> T.Text
+writeMessage msg = T.concat [writeMessage' msg, "\r\n"]
   where
+    writeMessage' :: ClientMessage -> T.Text
     writeMessage' (ClientPass pass) =
-        "PASS " ++ pass
+        T.concat ["PASS ", T.pack pass]
 
     writeMessage' (ClientNick nick) =
-        "NICK " ++ nick
+        T.concat ["NICK ", T.pack nick]
 
     writeMessage' (ClientUser user mode realname) =
-        "USER " ++ user ++ " " ++ show mode ++ " * :" ++ realname
+        T.concat ["USER ", T.pack user, " ", T.pack . show $ mode, " * :",
+            T.pack realname]
 
     writeMessage' (ClientOper user pass) =
-        "OPER " ++ user ++ " " ++ pass
+        T.concat ["OPER ", T.pack user, " ", T.pack pass]
 
     writeMessage' (ClientMode nick mode) =
-        "MODE " ++ nick ++ " " ++ mode
+        T.concat ["MODE ", T.pack nick, " ", T.pack mode]
 
     writeMessage' (ClientQuit reason) =
-        "QUIT :" ++ reason
+        T.concat ["QUIT :", reason]
 
     writeMessage' (ClientJoin channelsAndKeys) =
         let (channels, keys) = unzip channelsAndKeys
-        in "JOIN " ++ intercalate "," channels ++ " " ++ intercalate "," keys
+        in T.concat ["JOIN ", T.pack $ intercalate "," channels, " ",
+            T.pack $ intercalate "," keys]
 
     writeMessage' (ClientPart channels (Just message)) =
-        "PART " ++ intercalate "," channels ++ " " ++ message
+        T.concat ["PART ", T.pack $ intercalate "," channels, " ", message]
 
     writeMessage' (ClientPart channels Nothing) =
-        "PART " ++ intercalate "," channels ++ " "
+        T.concat ["PART ", T.pack $ intercalate "," channels]
 
     writeMessage' (ClientTopic chan (Just topic)) =
-        "TOPIC " ++ chan ++ " :" ++ topic
+        T.concat ["TOPIC ", T.pack chan, " :", topic]
 
     writeMessage' (ClientTopic chan Nothing) =
-        "TOPIC " ++ chan
+        T.concat ["TOPIC ", T.pack chan]
 
     writeMessage' (ClientNames channels) =
-        "NAMES " ++ intercalate "," channels
+        T.concat ["NAMES ", T.pack $ intercalate "," channels]
 
     writeMessage' (ClientList channels) =
-        "LIST " ++ intercalate "," channels
+        T.concat ["LIST ", T.pack $ intercalate "," channels]
 
     writeMessage' (ClientInvite chan nick) =
-        "INVITE " ++ nick ++ " " ++ chan
+        T.concat ["INVITE ", T.pack nick, " ", T.pack chan]
 
     writeMessage' (ClientPrivMsg (IRCUser nick Nothing Nothing) message) =
-        "PRIVMSG " ++ nick ++ " :" ++ message
+        T.concat ["PRIVMSG ", T.pack nick, " :", message]
 
     writeMessage' (ClientPrivMsg (IRCUser nick (Just user) Nothing) message) =
-        "PRIVMSG " ++ nick ++ "!" ++ user ++ " :" ++ message
+        T.concat ["PRIVMSG ", T.pack nick, "!", T.pack user, " :", message]
 
     writeMessage' (ClientPrivMsg (IRCUser nick Nothing (Just host)) message) =
-        "PRIVMSG " ++ nick ++ "@" ++ host ++ " :" ++ message
+        T.concat ["PRIVMSG ", T.pack nick, "@", T.pack host, " :", message]
 
     writeMessage' (ClientPrivMsg (IRCUser nick (Just user) (Just host)) message) =
-        "PRIVMSG " ++ nick ++ "!" ++ user ++ "@" ++ host ++ " :" ++ message
+        T.concat ["PRIVMSG ", T.pack nick, "!", T.pack user, "@", T.pack host,
+            " :", message]
 
     writeMessage' (ClientNotice (IRCUser nick Nothing Nothing) message) =
-        "NOTICE " ++ nick ++ " :" ++ message
+        T.concat ["NOTICE ", T.pack nick, " :", message]
 
     writeMessage' (ClientNotice (IRCUser nick (Just user) Nothing) message) =
-        "NOTICE " ++ nick ++ "!" ++ user ++ " :" ++ message
+        T.concat ["NOTICE ", T.pack nick, "!", T.pack user, " :", message]
 
     writeMessage' (ClientNotice (IRCUser nick Nothing (Just host)) message) =
-        "NOTICE " ++ nick ++ "@" ++ host ++ " :" ++ message
+        T.concat ["NOTICE ", T.pack nick, "@", T.pack host, " :", message]
 
     writeMessage' (ClientNotice (IRCUser nick (Just user) (Just host)) message) =
-        "NOTICE " ++ nick ++ "!" ++ user ++ "@" ++ host ++ " :" ++ message
+        T.concat ["NOTICE ", T.pack nick, "!", T.pack user, "@", T.pack host,
+            " :", message]
 
     writeMessage' (ClientWho mask) =
-        "WHO " ++ mask
+        T.concat ["WHO ", T.pack mask]
 
     writeMessage' (ClientWhoIs (Just server) user) =
-        "WHOIS " ++ server ++ " " ++ user
+        T.concat ["WHOIS ", T.pack server, " ", T.pack user]
 
     writeMessage' (ClientWhoIs Nothing user) =
-        "WHOIS " ++ user
+        T.concat ["WHOIS ", T.pack user]
 
     writeMessage' (ClientWhoWas user Nothing Nothing) =
-        "WHOWAS " ++ user
+        T.concat ["WHOWAS ", T.pack user]
 
     writeMessage' (ClientWhoWas user (Just size) Nothing) =
-        "WHOWAS " ++ user ++ " " ++ show size
+        T.concat ["WHOWAS ", T.pack user, " ", T.pack $ show size]
 
     writeMessage' (ClientWhoWas user (Just size) (Just server)) =
-        "WHOWAS " ++ user ++ " " ++ show size ++ " " ++ server
+        T.concat ["WHOWAS ", T.pack user, " ", T.pack $ show size, " ",
+            T.pack server]
 
     writeMessage' (ClientPing servername) =
-        "PING " ++ servername
+        T.concat ["PING ", T.pack servername]
 
     writeMessage' (ClientPong servername) =
-        "PONG " ++ servername
+        T.concat ["PONG ", T.pack servername]
 
     writeMessage' (ClientPrivMsgChan chan message) =
-        "PRIVMSG " ++ chan ++ " :" ++ message
+        T.concat ["PRIVMSG ", T.pack chan, " :", message]

@@ -12,6 +12,7 @@
  -}
 module IRCParser.Layer2Impl where
 
+import qualified Data.Text.Lazy as T
 import BotTypes
     ( IRCMessage(..)
     , ServerMessage(..)
@@ -49,7 +50,7 @@ parseServerMessage
         Just $ ServerNotice usr nick msg
 
 parseServerMessage (IRCMessage Nothing PING [] (Just servername)) =
-    Just $ ServerPing servername
+    Just $ ServerPing (T.unpack servername)
 
 parseServerMessage (IRCMessage (Just (NicknamePrefix usr)) QUIT [] (Just msg)) =
     Just $ ServerQuit usr msg
