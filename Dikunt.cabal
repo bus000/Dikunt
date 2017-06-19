@@ -11,7 +11,9 @@ cabal-version:       >=1.10
 data-files:          data/dikunt.config,
                      data/WordReplacerData.db,
                      data/InsultData.db,
-                     data/trump.txt
+                     data/trump.txt,
+                     data/msgLog.db,
+                     data/privmsgLog.db
 
 library
   build-depends:       base >=4.8 && <4.10,

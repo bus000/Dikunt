@@ -77,13 +77,15 @@ setup conf plugins args dfiles = do
     Log.updateGlobalLogger Log.rootLoggerName (Log.addHandler handleErr)
 
     -- Setup file log for received messages.
-    handleMsg <- Log.fileHandler "messages.log" Log.INFO >>= \lh ->
+    messageLog <- getDataFileName "data/msgLog.db"
+    handleMsg <- Log.fileHandler messageLog Log.INFO >>= \lh ->
         return $ Log.setFormatter lh logFormatter
     Log.updateGlobalLogger "messages" (Log.addHandler handleMsg)
     Log.updateGlobalLogger "messages" (System.Log.Logger.setLevel Log.INFO)
 
     -- Setup file log for received privmsgs.
-    handlePrivMsg <- Log.fileHandler "privmessages.log" Log.INFO >>= \lh ->
+    privMsgLog <- getDataFileName "data/privmsgLog.db"
+    handlePrivMsg <- Log.fileHandler privMsgLog Log.INFO >>= \lh ->
         return $ Log.setFormatter lh logFormatter
     Log.updateGlobalLogger "messages.PRIVMSG" (Log.addHandler handlePrivMsg)
 
@@ -140,4 +142,6 @@ dataFiles = mapM getDataFileName
     [ "data/InsultData.db"
     , "data/trump.txt"
     , "data/WordReplacerData.db"
+    , "data/privmsgLog.db"
+    , "data/msgLog.db"
     ]
