@@ -2,6 +2,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
+import qualified System.Log.Logger
+import System.IO (stderr)
+import qualified System.Log.Logger as Log
+import qualified System.Log.Handler as Log
+import qualified System.Log.Handler.Simple as Log
+import qualified System.Log.Formatter as Log
 import Bot (connect, disconnect, loop)
 import qualified BotTypes as BT
 import Control.Exception (bracket)
@@ -50,6 +56,70 @@ getBotConfig :: Dikunt -> BT.BotConfig
 getBotConfig (Dikunt serv nick pass chan p _) =
     BT.BotConfig serv nick pass chan p
 
+{- | Allocate resources used by the bot. Setup logging and connection to IRC
+ - server. -}
+setup :: BT.BotConfig
+    -- ^ Configuration of bot.
+    -> [FilePath]
+    -- ^ List of plugins to startup.
+    -> [String]
+    -- ^ List of arguments to plugins.
+    -> [FilePath]
+    -- ^ List of data files the program uses.
+    -> IO BT.Bot
+setup conf plugins args dfiles = do
+    -- Remove default stderr logging.
+    Log.updateGlobalLogger Log.rootLoggerName Log.removeHandler
+
+    -- Setup stderr log for errors.
+    handleErr <- Log.streamHandler stderr Log.ERROR >>= \lh ->
+        return $ Log.setFormatter lh logFormatter
+    Log.updateGlobalLogger Log.rootLoggerName (Log.addHandler handleErr)
+
+    -- Setup file log for received messages.
+    handleMsg <- Log.fileHandler "messages.log" Log.INFO >>= \lh ->
+        return $ Log.setFormatter lh logFormatter
+    Log.updateGlobalLogger "messages" (Log.addHandler handleMsg)
+    Log.updateGlobalLogger "messages" (System.Log.Logger.setLevel Log.INFO)
+
+    -- Setup file log for received privmsgs.
+    handlePrivMsg <- Log.fileHandler "privmessages.log" Log.INFO >>= \lh ->
+        return $ Log.setFormatter lh logFormatter
+    Log.updateGlobalLogger "messages.PRIVMSG" (Log.addHandler handlePrivMsg)
+
+    -- Setup stderr logger for main.
+    handleMain <- Log.streamHandler stderr Log.INFO >>= \lh ->
+        return $ Log.setFormatter lh logFormatter
+    Log.updateGlobalLogger "main" (Log.addHandler handleMain)
+    Log.updateGlobalLogger "main" (System.Log.Logger.setLevel Log.INFO)
+
+    -- Startup Bot.
+    Log.infoM "main" $ unwords
+        [ "Starting bot with configuration"
+        , show conf
+        , "and plugins"
+        , show plugins
+        , "and plugin arguments"
+        , show args
+        , "and data file locations"
+        , show dfiles
+        ]
+
+    connect conf plugins args
+  where
+    logFormatter = Log.simpleLogFormatter "[$time : $loggername : $prio] $msg"
+
+{- | Free resources used by the bot. Close files and connection to IRC
+ - server. -}
+tearDown :: BT.Bot
+    -- ^ Bot to disconnect.
+    -> IO ()
+tearDown bot = do
+    Log.infoM "main" "Going down"
+
+    disconnect bot
+    Log.removeAllHandlers
+
 main :: IO ()
 main = do
     arguments <- cmdArgs $ dikunt (showVersion version)
@@ -58,14 +128,12 @@ main = do
     executables <- require config "pathPlugins" :: IO [String]
     dataFileLocations <- dataFiles
 
-    -- Print data file locations so they can be found.
-    print dataFileLocations
-
     let botConfig = getBotConfig arguments
         pluginArguments = pluginArgs arguments
 
     -- Start, loop and stop bot.
-    bracket (connect botConfig executables pluginArguments) disconnect loop
+    bracket (setup botConfig executables pluginArguments dataFileLocations)
+        tearDown loop
 
 dataFiles :: IO [String]
 dataFiles = mapM getDataFileName

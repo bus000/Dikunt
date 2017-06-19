@@ -32,14 +32,13 @@ import System.IO
     , hSetBuffering
     , hGetLine
     , BufferMode(..)
-    , hPutStrLn
     , Handle
-    , stderr
     )
 import Data.Aeson (encode, decode, FromJSON, ToJSON)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
+import qualified System.Log.Logger as Log
 import Text.Printf (hPrintf)
 
 {- | Connect the bot to an IRC server with the channel, nick, pass and port
@@ -99,13 +98,17 @@ listen (BT.Bot h _ _ _ pluginHandles) = forever $ do
     let ins = map inputHandle processes
 
     case parseMessage (s ++ "\n") of
-        Just (BT.ServerPing from) -> write h $ BT.ClientPong from
-        Just message -> mapM_ (safePrint $ jsonEncode message) ins
-        Nothing -> hPutStrLn stderr $
+        Just (BT.ServerPing from) ->
+            hPrintf h $ writeMessage (BT.ClientPong from)
+        Just message -> do
+            Log.infoM ("messages." ++ (show . BT.getServerCommand) message ++
+                ".received") $ show message
+            mapM_ (safePrint $ jsonEncode message) ins
+        Nothing -> Log.errorM "bot.listen" $
             "Could not parse message \"" ++ init s ++ "\""
   where
     safePrint msg processHandle = T.hPutStrLn processHandle msg `catch` (\e ->
-        hPutStrLn stderr $ show (e :: IOException))
+        Log.errorM "bot.listen" $ show (e :: IOException))
 
 {- | Read from the output part of the pipe in the monitor and write messages
  - produced to the IRC channel. The function sleeps for 1 second after each
@@ -129,7 +132,11 @@ write :: Handle
     -> BT.ClientMessage
     -- ^ Message to write.
     -> IO ()
-write h mes = hPrintf h $ writeMessage mes
+write h msg = do
+    Log.infoM ("messages." ++ show command ++ ".send") $ show msg
+    hPrintf h $ writeMessage msg
+  where
+    command = BT.getClientCommand msg
 
 {- | Encode a value as JSON in a Lazy UTF8 text format. -}
 jsonEncode :: ToJSON a => a

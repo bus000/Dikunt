@@ -21,6 +21,7 @@ library
                        QuickCheck >=2.9.1,
                        aeson >=1.2.0.0,
                        bytestring >=0.10.8.1,
+                       hslogger >=1.2.10,
                        safe >=0.3.9
   GHC-Options:         -Wall
   exposed-modules:     Bot,
@@ -58,6 +59,7 @@ executable dikunt
   build-depends:       base >=4.8 && <4.10,
                        cmdargs >=0.10.14,
                        configurator >=0.3.0.0,
+                       hslogger >=1.2.10,
                        Dikunt
   GHC-Options:         -Wall
   hs-source-dirs:      main

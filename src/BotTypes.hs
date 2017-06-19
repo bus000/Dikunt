@@ -26,6 +26,8 @@ module BotTypes
     , ServerMessage(..)
     , ClientMessage(..)
     , nicknamePrefix
+    , getServerCommand
+    , getClientCommand
 
     -- Bot configuration declaration.
     , BotConfig(..)
@@ -590,6 +592,46 @@ nicknamePrefix nick Nothing host =
     NicknamePrefix $ IRCUser nick Nothing host
 nicknamePrefix nick user host =
     NicknamePrefix $ IRCUser nick user host
+
+{- | Get the IRC command of a server message. -}
+getServerCommand :: ServerMessage
+    -- ^ Message to get command from.
+    -> IRCCommand
+getServerCommand (ServerNick _ _) = NICK
+getServerCommand (ServerJoin _ _) = JOIN
+getServerCommand (ServerPart _ _ _) = PART
+getServerCommand (ServerQuit _ _) = QUIT
+getServerCommand (ServerTopic _ _ _) = TOPIC
+getServerCommand (ServerInvite _ _ _) = INVITE
+getServerCommand (ServerPrivMsg _ _ _) = PRIVMSG
+getServerCommand (ServerNotice _ _ _) = NOTICE
+getServerCommand (ServerPing _) = PING
+getServerCommand (ServerReply _ n _ _) = NUMCOM n
+
+{- | Get the IRC command of a client message. -}
+getClientCommand :: ClientMessage
+    -- ^ Message to get command from.
+    -> IRCCommand
+getClientCommand (ClientPass _) = PASS
+getClientCommand (ClientNick _) = NICK
+getClientCommand (ClientUser _ _ _) = USER
+getClientCommand (ClientOper _ _) = OPER
+getClientCommand (ClientMode _ _) = MODE
+getClientCommand (ClientQuit _) = QUIT
+getClientCommand (ClientJoin _) = JOIN
+getClientCommand (ClientPart _ _) = PART
+getClientCommand (ClientTopic _ _) = TOPIC
+getClientCommand (ClientNames _) = NAMES
+getClientCommand (ClientList _) = LIST
+getClientCommand (ClientInvite _ _) = INVITE
+getClientCommand (ClientPrivMsg _ _) = PRIVMSG
+getClientCommand (ClientPrivMsgChan _ _) = PRIVMSG
+getClientCommand (ClientNotice _ _) = NOTICE
+getClientCommand (ClientWho _) = WHO
+getClientCommand (ClientWhoIs _ _) = WHOIS
+getClientCommand (ClientWhoWas _ _ _) = WHOWAS
+getClientCommand (ClientPing _) = PING
+getClientCommand (ClientPong _) = PONG
 
 {- | Helper data type to convert a list of tuples to JSON with named fields. -}
 data ChannelKey = ChannelKey Channel String
