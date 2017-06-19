@@ -45,8 +45,9 @@ help nick = unlines
 
 responses :: [String]
 responses =
-    [ "Watch your mouth boy"
+    [ "Watch your mouth boy!"
     , "Do you kiss your mother with that mouth?"
+    , "Go and wash your mouth with soap!"
     ]
 
 curseWords :: [String]
@@ -66,6 +67,7 @@ curseWords =
     , "gay"
     , "fanden"
     , "helvede"
+    , "fag"
     ]
 
 wordsSpecial :: String -> [String]
