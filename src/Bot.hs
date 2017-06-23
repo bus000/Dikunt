@@ -13,6 +13,7 @@
  - messages from the IRC server and pass them on to plugins handling the
  - messages. The function disconnect drops the connection to the IRC server.
  -}
+{-# LANGUAGE OverloadedStrings #-}
 module Bot
     ( connect
     , loop
@@ -22,7 +23,7 @@ module Bot
 import qualified BotTypes as BT
 import Control.Concurrent (forkIO, readMVar, threadDelay)
 import Control.Exception (catch, IOException)
-import Control.Monad (forever)
+import Control.Monad (forever, mapM_)
 import Data.Aeson (encode, decode, FromJSON, ToJSON)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
@@ -31,9 +32,9 @@ import IRCParser.IRCMessageParser (parseMessage)
 import IRCWriter.IRCWriter (writeMessage)
 import Monitoring (Monitor(..), startMonitoring, inputHandle)
 import Network (connectTo, PortID(..))
-import System.IO (hClose , hSetBuffering , hGetLine , BufferMode(..) , Handle)
+import System.IO (hClose , hSetBuffering , BufferMode(..) , Handle, hPutStr)
 import qualified System.Log.Logger as Log
-import Text.Printf (hPrintf)
+import qualified Data.ByteString.Lazy as B
 
 {- | Connect the bot to an IRC server with the channel, nick, pass and port
  - given. Starts a monitor for the list of plugins given which will maintain a
@@ -86,20 +87,32 @@ disconnect = hClose . BT.socket
 listen :: BT.Bot
     -- ^ Bot to listen for messages for.
     -> IO ()
-listen (BT.Bot h _ _ _ pluginHandles) = forever $ do
-    s <- hGetLine h
+listen bot@(BT.Bot h _ _ _ _) = do
+    s <- B.hGetContents h
+    mapM_ (handleMessage bot) $ messages s
+  where
+    messages str = map (\x -> x ++ "\n") $ lines (T.unpack . T.decodeUtf8 $ str)
+
+{- | Handle a message from the IRC channel. If the message is a ping a pong
+ - response is sent otherwise the message is sent to all plugins. The message is
+ - also logged. -}
+handleMessage :: BT.Bot
+    -- ^ Bot that received the message.
+    -> String
+    -- ^ The message.
+    -> IO ()
+handleMessage (BT.Bot h _ _ _ pluginHandles) str = do
     Monitor processes _ <- readMVar pluginHandles
     let ins = map inputHandle processes
-
-    case parseMessage (s ++ "\n") of
+    case parseMessage str of
         Just (BT.ServerPing from) ->
-            hPrintf h $ writeMessage (BT.ClientPong from)
+            hPutStr h $ writeMessage (BT.ClientPong from)
         Just message -> do
             Log.infoM ("messages." ++ (show . BT.getServerCommand) message ++
                 ".received") $ show message
             mapM_ (safePrint $ jsonEncode message) ins
         Nothing -> Log.errorM "bot.listen" $
-            "Could not parse message \"" ++ init s ++ "\""
+            "Could not parse message \"" ++ init str ++ "\""
   where
     safePrint msg processHandle = T.hPutStrLn processHandle msg `catch` (\e ->
         Log.errorM "bot.listen" $ show (e :: IOException))
@@ -128,7 +141,7 @@ write :: Handle
     -> IO ()
 write h msg = do
     Log.infoM ("messages." ++ show command ++ ".send") $ show msg
-    hPrintf h $ writeMessage msg
+    hPutStr h $ writeMessage msg
   where
     command = BT.getClientCommand msg
 
