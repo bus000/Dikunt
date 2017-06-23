@@ -2,12 +2,12 @@ module Main where
 
 import qualified BotTypes as BT
 import Control.Monad (forever)
-import Data.ByteString.Char8 (unpack)
-import Network.Download (openURI)
 import System.Environment (getArgs)
+import Network.HTTP.Conduit (simpleHttp)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import Text.Regex.PCRE ((=~))
 import Data.Aeson (decode)
+import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
 import qualified Data.Text.Lazy.Encoding as T
 
@@ -36,16 +36,15 @@ handleInput _ _ = return ()
 
 getGem :: IO ()
 getGem = do
-    res <- openURI randomQuote
-    case res of
-        Left _ -> return ()
-        Right passage -> putStrLn (format (unpack passage))
+    passage <- simpleHttp randomQuote
+    putStrLn . format $ T.unpack (T.decodeUtf8 passage)
 
 format :: String -> String
 format passage = case passage =~ runPattern :: [[String]] of
     [[_, verse, content]] -> verse ++ ": " ++ content
     _ -> passage
   where
+    runPattern :: String
     runPattern = "^<b>(.*)<\\/b> (.*)$"
 
 help :: String -> String

@@ -84,7 +84,7 @@ executable biblegem
   build-depends:       base >=4.8 && <4.10,
                        regex-pcre >=0.94.4,
                        bytestring >=0.10.8.1,
-                       download >=0.3.2.4,
+                       http-conduit >=2.2.3.1,
                        aeson >=1.2.0.0,
                        text >=1.2.2.1,
                        Dikunt
