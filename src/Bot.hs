@@ -23,21 +23,15 @@ import qualified BotTypes as BT
 import Control.Concurrent (forkIO, readMVar, threadDelay)
 import Control.Exception (catch, IOException)
 import Control.Monad (forever)
-import IRCParser.IRCMessageParser (parseMessage)
-import IRCWriter.IRCWriter (writeMessage)
-import Monitoring (Monitor(..), startMonitoring, inputHandle)
-import Network (connectTo, PortID(..))
-import System.IO
-    ( hClose
-    , hSetBuffering
-    , hGetLine
-    , BufferMode(..)
-    , Handle
-    )
 import Data.Aeson (encode, decode, FromJSON, ToJSON)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
+import IRCParser.IRCMessageParser (parseMessage)
+import IRCWriter.IRCWriter (writeMessage)
+import Monitoring (Monitor(..), startMonitoring, inputHandle)
+import Network (connectTo, PortID(..))
+import System.IO (hClose , hSetBuffering , hGetLine , BufferMode(..) , Handle)
 import qualified System.Log.Logger as Log
 import Text.Printf (hPrintf)
 
