@@ -9,7 +9,7 @@ import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
 import Prelude hiding (lines)
 import System.Environment (getArgs)
-import System.IO (stdout, stdin, hSetBuffering, BufferMode(..), hPutStrLn, stderr)
+import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import System.Random (randomRs, newStdGen)
 import Text.Regex.PCRE ((=~))
 
@@ -38,11 +38,9 @@ handleMessage nick (r:rs, threshold) str
         putStrLn "Updated probability"
         return (rs, read d)
     | r <= threshold = do
-        hPutStrLn stderr $ (show r) ++ " " ++ (show threshold)
         putStrLn "Spurgt!"
         return (rs, threshold)
     | otherwise = do
-        hPutStrLn stderr $ (show r) ++ " HERE " ++ (show threshold)
         return (rs, threshold)
   where
     helpPattern = concat ["^", sp, nick, ":", ps, "asked", ps, "help", sp]
