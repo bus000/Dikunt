@@ -81,3 +81,6 @@ Policeman:
 
 TicTacToe:
     Play a game of TicTacToe with the bot.
+
+Asked:
+    Writes "Spurgt!" to messages with a probability that can be changed.
