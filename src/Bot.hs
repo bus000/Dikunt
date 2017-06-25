@@ -32,7 +32,7 @@ import IRCParser.IRCMessageParser (parseMessage)
 import IRCWriter.IRCWriter (writeMessage)
 import Monitoring (Monitor(..), startMonitoring, inputHandle)
 import Network (connectTo, PortID(..))
-import System.IO (hClose , hSetBuffering , BufferMode(..) , Handle, hPutStr)
+import System.IO (hClose, hSetBuffering, BufferMode(..), Handle, hPutStr, stdin, hFlush, stdout)
 import qualified System.Log.Logger as Log
 import qualified Data.ByteString.Lazy as B
 
@@ -58,6 +58,9 @@ connect (BT.BotConfig serv nick pass chan port) execs args = do
 
     -- Start thread reading from plugins and propagating messages to channel.
     _ <- forkIO $ respond bot
+
+    -- Start thread reading from stdin and propagating messages to channel.
+    _ <- forkIO $ respondAdmin bot
 
     return bot
 
@@ -111,11 +114,11 @@ handleMessage (BT.Bot h _ _ _ pluginHandles) str = do
             Log.infoM ("messages." ++ (show . BT.getServerCommand) message ++
                 ".received") $ show message
             mapM_ (safePrint $ jsonEncode message) ins
-        Nothing -> Log.errorM "bot.listen" $
+        Nothing -> Log.errorM "bot.handleMessage" $
             "Could not parse message \"" ++ init str ++ "\""
   where
     safePrint msg processHandle = T.hPutStrLn processHandle msg `catch` (\e ->
-        Log.errorM "bot.listen" $ show (e :: IOException))
+        Log.errorM "bot.handleMessage" $ show (e :: IOException))
 
 {- | Read from the output part of the pipe in the monitor and write messages
  - produced to the IRC channel. The function sleeps for 1 second after each
@@ -132,6 +135,16 @@ respond (BT.Bot h _ chan _ monitor) = forever $ do
         Nothing -> write h $ BT.ClientPrivMsgChan chan (T.unpack line)
 
     threadDelay 1000000
+
+{- | Read from stdin and replicate the strings to the IRC channel. Can be used
+ - by an administrator to write messages for Dikunt. -}
+respondAdmin :: BT.Bot -> IO ()
+respondAdmin (BT.Bot h _ chan _ _) = forever $ do
+    putStr " > " >> hFlush stdout
+    line <- T.hGetLine stdin
+    case jsonDecode line of
+        Just message -> write h message
+        Nothing -> write h $ BT.ClientPrivMsgChan chan (T.unpack line)
 
 {- | Write a clientmessage to a server handle. -}
 write :: Handle
