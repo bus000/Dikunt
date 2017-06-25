@@ -24,10 +24,11 @@ module Monitoring
     , Monitor(..)
     ) where
 
-import System.Environment (getEnvironment)
-import System.IO (hSetBuffering, BufferMode(..), Handle, hPutStrLn, stderr)
-import Control.Monad (forever)
 import Control.Concurrent (forkIO, threadDelay)
+import Control.Monad (forever)
+import System.Environment (getEnvironment)
+import System.IO (hSetBuffering, BufferMode(..), Handle)
+import qualified System.Log.Logger as Log
 import System.Process
     ( createProcess
     , std_out
@@ -70,7 +71,7 @@ startMonitoring execs args = do
     return monitor
 
 {- | Monitor all processes in monitor restarting them whenever they stop. The
- - monitor reports the error code of the process to stderr before it is
+ - monitor reports the error code of the process to the log before it is
  - restarted. The processes are restarted every 30 seconds (TODO: configure
  - sleep time). -}
 monitorProcesses :: MVar Monitor
@@ -88,7 +89,8 @@ monitorProcesses monitorMVar args = forever $ do
         exitCodeMay <- getProcessExitCode pH
         case exitCodeMay of
             Just code -> do
-                hPutStrLn stderr $ loc ++ " exited with exit code " ++ show code
+                Log.errorM "monitoring.monitorProcesses" $ loc ++
+                    " execited with exit code " ++ show code
                 start pipe args loc
             Nothing -> return process
 
