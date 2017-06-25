@@ -21,15 +21,16 @@ main = do
     hSetBuffering stdin LineBuffering
 
     randoms <- randomRs (0.0, 1.0) <$> newStdGen
-
-    lines <- map (decode . T.encodeUtf8) . T.lines <$> T.hGetContents stdin
-    let messages = catMaybes . map getMessage $ catMaybes lines
+    messages <- parseMessages <$> T.hGetContents stdin
 
     foldM_ (handleMessage nick) (randoms, 0.01) messages
 
-getMessage :: BT.ServerMessage -> Maybe String
-getMessage (BT.ServerPrivMsg _ _ str) = Just str
-getMessage _ = Nothing
+parseMessages :: T.Text -> [String]
+parseMessages = catMaybes . map getMessage . catMaybes .
+    map (decode . T.encodeUtf8) . T.lines
+  where
+    getMessage (BT.ServerPrivMsg _ _ str) = Just str
+    getMessage _ = Nothing
 
 handleMessage :: BT.Nickname -> ([Double], Double) -> String -> IO ([Double], Double)
 handleMessage nick (r:rs, threshold) str
