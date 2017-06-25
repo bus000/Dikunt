@@ -3,7 +3,7 @@ module Main (main) where
 import qualified BotTypes as BT
 import Control.Monad (foldM_)
 import Data.Aeson (decode)
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
@@ -26,8 +26,7 @@ main = do
     foldM_ (handleMessage nick) (randoms, 0.01) messages
 
 parseMessages :: T.Text -> [String]
-parseMessages = catMaybes . map getMessage . catMaybes .
-    map (decode . T.encodeUtf8) . T.lines
+parseMessages = mapMaybe getMessage . mapMaybe (decode . T.encodeUtf8) . T.lines
   where
     getMessage (BT.ServerPrivMsg _ _ str) = Just str
     getMessage _ = Nothing
