@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
+import qualified Data.Map.Strict as Map
 import qualified System.Log.Logger
 import System.IO (stderr)
 import qualified System.Log.Logger as Log
@@ -27,6 +28,8 @@ import System.Console.CmdArgs
     , summary
     , cmdArgs
     )
+
+type DataFiles = Map.Map String String
 
 data Dikunt = Dikunt
     { server     :: String
@@ -64,8 +67,8 @@ setup :: BT.BotConfig
     -- ^ List of plugins to startup.
     -> [String]
     -- ^ List of arguments to plugins.
-    -> [FilePath]
-    -- ^ List of data files the program uses.
+    -> DataFiles
+    -- ^ Data files the program uses.
     -> IO BT.Bot
 setup conf plugins args dfiles = do
     -- Remove default stderr logging.
@@ -131,17 +134,25 @@ main = do
     dataFileLocations <- dataFiles
 
     let botConfig = getBotConfig arguments
-        pluginArguments = pluginArgs arguments
+        pluginArguments = getArguments dataFileLocations ++ pluginArgs arguments
 
     -- Start, loop and stop bot.
     bracket (setup botConfig executables pluginArguments dataFileLocations)
         tearDown loop
 
-dataFiles :: IO [String]
-dataFiles = mapM getDataFileName
-    [ "data/InsultData.db"
-    , "data/trump.txt"
-    , "data/WordReplacerData.db"
-    , "data/privmsgLog.db"
-    , "data/msgLog.db"
-    ]
+dataFiles :: IO DataFiles
+dataFiles = do
+    datafileNames <- mapM getDataFileName paths
+    return $ Map.fromList (zip paths datafileNames)
+  where
+    paths = [ "data/InsultData.db"
+        , "data/trump.txt"
+        , "data/WordReplacerData.db"
+        , "data/privmsgLog.db"
+        , "data/msgLog.db"
+        ]
+
+getArguments :: DataFiles -> [String]
+getArguments = map getArgument . Map.toList
+  where
+    getArgument (key, value) = "--" ++ key ++ "=" ++ value
