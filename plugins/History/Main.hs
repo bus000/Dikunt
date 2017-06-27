@@ -1,7 +1,7 @@
 module Main (main) where
 
 import qualified BotTypes as BT
-import Control.Monad (foldM_)
+import Control.Monad (foldM_, void)
 import Data.Aeson (decode)
 import Data.Maybe (mapMaybe)
 import qualified Data.Text.Lazy as T
@@ -21,7 +21,7 @@ import Text.ParserCombinators.ReadP
     , munch
     )
 
-type State = Int
+type State = ()
 
 data Request = HelpRequest | GetRequest Position Position
 
@@ -42,51 +42,42 @@ main = do
     messages <- parseMessages nick <$> T.hGetContents stdin
 
     -- TODO: should not be 0.
-    foldM_ (handleMessage nick) 0 messages
+    foldM_ (handleMessage nick) () $ zip [0..] messages
 
-handleMessage :: BT.Nickname -> State -> Maybe Request -> IO State
-handleMessage _ messageNumber Nothing = return $ messageNumber + 1
-handleMessage nick messageNumber (Just HelpRequest) = do
-    putStrLn $ helpString nick
-    return $ messageNumber + 1
-handleMessage _ messageNumber (Just (GetRequest startPos endPos))
-    | start > messageNumber || end > messageNumber = do
-        putStrLn "Error: Start or end position is greater than the number of lines"
-        return $ messageNumber + 1
-    | abs (start - end) > 10 = do
-        putStrLn "Error: To large interval"
-        return $ messageNumber + 1
-    | start == end = do
-        putStrLn "Error: To small interval"
-        return $ messageNumber + 1
-    | start < end = do
-        ls <- getLines start end
-        putStrLn $ unlines ls
-        return $ messageNumber + 1
-    | start > end = do
-        ls <- getLines end start
-        putStrLn $ unlines (reverse ls)
-        return $ messageNumber + 1
-    | otherwise = return $ messageNumber + 1
+handleMessage :: BT.Nickname -> State -> (Int, Maybe Request) -> IO State
+handleMessage _ _ (_, Nothing) = return ()
+handleMessage nick _ (_, Just HelpRequest) = putStrLn $ helpString nick
+handleMessage _ _ (messageNumber, Just (GetRequest startPos endPos)) =
+    case evaluatePositions messageNumber startPos endPos of
+        Right (start, end) -> putStrLn $ "start " ++ show start ++ " end " ++ show end
+        Left err -> putStrLn err
+
+evaluatePositions :: Int -> Position -> Position -> Either String (Int, Int)
+evaluatePositions lastline pos1 pos2
+    | start > lastline || end > lastline =
+        Left "Error: Start or end position is greater than the number of lines"
+    | end - start > 10 = Left "Error: To large interval"
+    | start == end = Left "Error: To small interval"
+    | otherwise = return (start, end)
+
   where
-    start = evaluate messageNumber startPos
-    end = evaluate messageNumber endPos
+    pos1' = evaluate pos1
+    pos2' = evaluate pos2
 
-evaluate :: Int -> Position -> Int
-evaluate _ First = 0
-evaluate lastline Last = lastline
-evaluate _ (Constant n) = n
-evaluate lastline (Sub e1 e2) =
-    let v1 = evaluate lastline e1
-        v2 = evaluate lastline e2
-    in v1 - v2
-evaluate lastline (Add e1 e2) =
-    let v1 = evaluate lastline e1
-        v2 = evaluate lastline e2
-    in v1 + v2
+    start = min pos1' pos2'
+    end = max pos1' pos2'
 
-getLines :: Int -> Int -> IO [String]
-getLines _ _ = return ["hej", "med", "dig"]
+    evaluate First = 0
+    evaluate Last = lastline
+    evaluate (Constant n) = n
+    evaluate (Sub e1 e2) =
+        let v1 = evaluate e1
+            v2 = evaluate e2
+        in v1 - v2
+    evaluate (Add e1 e2) =
+        let v1 = evaluate e1
+            v2 = evaluate e2
+        in v1 + v2
 
 helpString :: String -> String
 helpString nick = unlines
@@ -115,11 +106,11 @@ parseRequest nick str = case readP_to_S parseRequest' str of
 parseHelpRequest :: BT.Nickname -> ReadP Request
 parseHelpRequest nick = do
     skipSpaces
-    _ <- string $ nick ++ ":"
+    void $ string (nick ++ ":")
     skipSpaces
-    _ <- string "history"
+    void $ string "history"
     skipSpaces
-    _ <- string "help"
+    void $ string "help"
     skipSpaces
     eof
 
@@ -128,15 +119,15 @@ parseHelpRequest nick = do
 parseGetRequest :: BT.Nickname -> ReadP Request
 parseGetRequest nick = do
     skipSpaces
-    _ <- string $ nick ++ ":"
+    void $ string (nick ++ ":")
     skipSpaces
-    _ <- string "history"
+    void $ string "history"
     skipSpaces
-    _ <- string "get"
+    void $ string "get"
     skipSpaces
     startPos <- parsePosition
     skipSpaces
-    _ <- char ':'
+    void $ char ':'
     skipSpaces
     endPos <- parsePosition
     skipSpaces
@@ -150,7 +141,7 @@ parsePosition = parseFinal +++ parseSub +++ parseAdd
 parseSub :: ReadP Position
 parseSub = do
     a <- parseFinal
-    _ <- char '~'
+    void $ char '~'
     b <- parsePosition
 
     return $ Sub a b
@@ -158,7 +149,7 @@ parseSub = do
 parseAdd :: ReadP Position
 parseAdd = do
     a <- parseFinal
-    _ <- char '+'
+    void $ char '+'
     b <- parsePosition
 
     return $ Add a b
@@ -173,10 +164,10 @@ parseConstant = do
 
 parseFirst :: ReadP Position
 parseFirst = do
-    _ <- string "FIRST"
+    void $ string "FIRST"
     return First
 
 parseLast :: ReadP Position
 parseLast = do
-    _ <- string "LAST"
+    void $ string "LAST"
     return Last
