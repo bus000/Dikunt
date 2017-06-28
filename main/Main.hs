@@ -2,12 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
-import qualified System.Log.Logger
-import System.IO (stderr)
-import qualified System.Log.Logger as Log
-import qualified System.Log.Handler as Log
-import qualified System.Log.Handler.Simple as Log
-import qualified System.Log.Formatter as Log
 import Bot (connect, disconnect, loop)
 import qualified BotTypes as BT
 import Control.Exception (bracket)
@@ -27,6 +21,12 @@ import System.Console.CmdArgs
     , summary
     , cmdArgs
     )
+import System.IO (stderr)
+import qualified System.Log.Formatter as Log
+import qualified System.Log.Handler as Log
+import qualified System.Log.Handler.Simple as Log
+import qualified System.Log.Logger
+import qualified System.Log.Logger as Log
 
 data Dikunt = Dikunt
     { server     :: String

@@ -197,8 +197,8 @@ data ServerMessage = ServerNick IRCUser Nickname
     | ServerQuit IRCUser String
     | ServerTopic IRCUser Channel String
     | ServerInvite IRCUser Nickname Channel
-    | ServerPrivMsg IRCUser Nickname String
-    | ServerNotice IRCUser Nickname String
+    | ServerPrivMsg IRCUser Channel String
+    | ServerNotice IRCUser Channel String
     | ServerPing Servername
     | ServerReply Servername Integer [String] (Maybe String)
     deriving (Eq, Show, Read)
