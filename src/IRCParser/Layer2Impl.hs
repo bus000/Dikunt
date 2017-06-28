@@ -48,6 +48,10 @@ parseServerMessage
     (IRCMessage (Just (NicknamePrefix usr)) NOTICE [nick] (Just msg)) =
         Just $ ServerNotice usr nick msg
 
+parseServerMessage
+    (IRCMessage (Just (ServernamePrefix servername)) NOTICE [nick] (Just msg)) =
+        Just $ ServerNoticeServer servername nick msg
+
 parseServerMessage (IRCMessage Nothing PING [] (Just servername)) =
     Just $ ServerPing servername
 

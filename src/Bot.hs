@@ -115,7 +115,7 @@ handleMessage (BT.Bot h _ _ _ pluginHandles) str = do
                 ".received") $ show message
             mapM_ (safePrint $ jsonEncode message) ins
         Nothing -> Log.errorM "bot.handleMessage" $
-            "Could not parse message \"" ++ init str ++ "\""
+            "Could not parse message \"" ++ (init . init) str ++ "\""
   where
     safePrint msg processHandle = T.hPutStrLn processHandle msg `catch` (\e ->
         Log.errorM "bot.handleMessage" $ show (e :: IOException))

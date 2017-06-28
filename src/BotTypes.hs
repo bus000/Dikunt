@@ -199,6 +199,7 @@ data ServerMessage = ServerNick IRCUser Nickname
     | ServerInvite IRCUser Nickname Channel
     | ServerPrivMsg IRCUser Channel String
     | ServerNotice IRCUser Channel String
+    | ServerNoticeServer Servername Channel String
     | ServerPing Servername
     | ServerReply Servername Integer [String] (Maybe String)
     deriving (Eq, Show, Read)
@@ -248,6 +249,12 @@ instance ToJSON ServerMessage where
         [ "command" .= ("NOTICE" :: Text)
         , "ircUser" .= ircUser
         , "nickname" .= nick
+        , "message" .= message
+        ]
+    toJSON (ServerNoticeServer servername chan message) = object
+        [ "command" .= ("NOTICE" :: Text)
+        , "servername" .= servername
+        , "channel" .= chan
         , "message" .= message
         ]
     toJSON (ServerPing servername) = object
@@ -306,10 +313,17 @@ instance FromJSON ServerMessage where
                 message <- o .: "message"
                 return $ ServerPrivMsg ircUser nick message
             "NOTICE" -> do
-                ircUser <- o .: "ircUser"
-                nick <- o .: "nickname"
+                ircUser <- o .:? "ircUser"
+                servername <- o .:? "servername"
                 message <- o .: "message"
-                return $ ServerNotice ircUser nick message
+                case (ircUser, servername) of
+                    (Just u, Nothing) -> do
+                        nick <-  o .: "nickname"
+                        return $ ServerNotice u nick message
+                    (Nothing, Just s) -> do
+                        chan <- o .: "channel"
+                        return $ ServerNoticeServer s chan message
+                    _ -> fail "Either user or servername"
             "PING" -> do
                 servername <- o .: "servername"
                 return $ ServerPing servername
@@ -332,6 +346,7 @@ instance Arbitrary ServerMessage where
         , arbitrary >>= \(u, n, c)    -> return $ ServerInvite u n c
         , arbitrary >>= \(u, n, m)    -> return $ ServerPrivMsg u n m
         , arbitrary >>= \(u, n, m)    -> return $ ServerNotice u n m
+        , arbitrary >>= \(s, n, m)    -> return $ ServerNoticeServer s n m
         , arbitrary >>= \s            -> return $ ServerPing s
         , arbitrary >>= \(s, c, a, t) -> return $ ServerReply s c a t
         ]
@@ -605,6 +620,7 @@ getServerCommand (ServerTopic _ _ _) = TOPIC
 getServerCommand (ServerInvite _ _ _) = INVITE
 getServerCommand (ServerPrivMsg _ _ _) = PRIVMSG
 getServerCommand (ServerNotice _ _ _) = NOTICE
+getServerCommand (ServerNoticeServer _ _ _) = NOTICE
 getServerCommand (ServerPing _) = PING
 getServerCommand (ServerReply _ n _ _) = NUMCOM n
 

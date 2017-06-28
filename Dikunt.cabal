@@ -50,6 +50,7 @@ test-suite Tasty
                        tasty,
                        tasty-hunit,
                        tasty-quickcheck,
+                       hslogger >=1.2.10,
                        QuickCheck >=2.9.1
   hs-source-dirs:      test, src
   main-is:             Tasty.hs

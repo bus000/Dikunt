@@ -107,11 +107,12 @@ layer1UnitTests = testGroup "Layer 1 Tests"
     , testCase "parseMessage4" parseMessage4
     , testCase "parseMessage5" parseMessage5
     , testCase "parseMessage6" parseMessage6
+    , testCase "parseMessage7" parseMessage7
     ]
 
 layer2UnitTests :: TestTree
 layer2UnitTests = testGroup "Layer 2 Tests"
-    [
+    [ testCase "parseLayer2_1" parseLayer2_1
     ]
 
 qcTests :: TestTree
@@ -419,4 +420,24 @@ parseMessage6 = [(expected, "")] @=? nub output
     trailing = Just "Hm"
     output = readP_to_S parseMessage str
 
-{-":NickServ!NickServ@services. NOTICE dikunttest123 :dikunttest123 is nota registered nickname."-}
+parseMessage7 :: Assertion
+parseMessage7 = [(expected, "")] @=? nub output
+  where
+    str = ":wilhelm.freenode.net NOTICE * :*** Looking up your hostname...\r\n"
+    expected = BT.IRCMessage prefix command params trailing
+    prefix = Just $ BT.ServernamePrefix "wilhelm.freenode.net"
+    command = BT.NOTICE
+    params = ["*"]
+    trailing = Just "*** Looking up your hostname..."
+    output = readP_to_S parseMessage str
+
+parseLayer2_1 :: Assertion
+parseLayer2_1 = Just result @=? parseServerMessage ircMessage
+  where
+    result = BT.ServerNoticeServer "wilhelm.freenode.net" "*"
+        "*** Looking up your hostname..."
+    ircMessage = BT.IRCMessage prefix command params trailing
+    prefix = Just $ BT.ServernamePrefix "wilhelm.freenode.net"
+    command = BT.NOTICE
+    params = ["*"]
+    trailing = Just "*** Looking up your hostname..."
