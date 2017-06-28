@@ -238,6 +238,7 @@ executable history
   build-depends:       base >=4.8 && <4.10,
                        aeson >=1.2.0.0,
                        text >=1.2.2.1,
+                       safe >=0.3.9,
                        Dikunt
   GHC-Options:         -Wall
   hs-source-dirs:      plugins/History/
