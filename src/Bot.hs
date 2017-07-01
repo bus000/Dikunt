@@ -25,6 +25,7 @@ import Control.Concurrent (forkIO, readMVar, threadDelay)
 import Control.Exception (catch, IOException)
 import Control.Monad (forever, mapM_)
 import Data.Aeson (encode, decode, FromJSON, ToJSON)
+import qualified Data.ByteString.Lazy as B
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
@@ -34,7 +35,6 @@ import Monitoring (Monitor(..), startMonitoring, inputHandle)
 import Network (connectTo, PortID(..))
 import System.IO (hClose, hSetBuffering, BufferMode(..), Handle, hPutStr, stdin, hFlush, stdout)
 import qualified System.Log.Logger as Log
-import qualified Data.ByteString.Lazy as B
 
 {- | Connect the bot to an IRC server with the channel, nick, pass and port
  - given. Starts a monitor for the list of plugins given which will maintain a
@@ -84,7 +84,9 @@ loop bot@(BT.Bot h nick chan pass _) = do
 disconnect :: BT.Bot
     -- ^ Bot to disconnect.
     -> IO ()
-disconnect = hClose . BT.socket
+disconnect bot@(BT.Bot h _ _ _ monitor) = do
+    write h $ BT.ClientQuit "Higher powers"
+    hClose h
 
 {- | Listen and handle messages from the IRC server. -}
 listen :: BT.Bot
