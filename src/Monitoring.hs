@@ -10,21 +10,23 @@
  - Responsible for opening and maintaining a running copy of each executable
  - given.
  -}
+{-# LANGUAGE OverloadedStrings #-}
 module Monitoring
-    ( startMonitoring
-
-    -- DikuntProcess type and getters and setters.
-    , DikuntProcess
-    , location
-    , outputHandle
-    , inputHandle
-    , processHandle
+    (
+    -- | Functions for creating handling and stopping monitors.
+      startMonitoring
+    , writeAll
+    , readContent
+    , stopMonitoring
 
     -- Monitor type.
-    , Monitor(..)
+    , DikuntMonitor
     ) where
 
-import Control.Concurrent (forkIO, threadDelay)
+import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy.IO as T
+import Control.Concurrent (forkIO, threadDelay, ThreadId)
+import Control.Exception (catch, IOException)
 import Control.Monad (forever)
 import System.Environment (getEnvironment)
 import System.IO (hSetBuffering, BufferMode(..), Handle)
@@ -40,18 +42,22 @@ import System.Process
     , ProcessHandle
     , getProcessExitCode
     )
-import Control.Concurrent.MVar (MVar, newMVar, takeMVar, putMVar)
+import Control.Concurrent.MVar (MVar, newMVar, takeMVar, putMVar, modifyMVar_, withMVar)
 import GHC.IO.Handle (hDuplicate)
 
 data DikuntProcess = DikuntProcess
-    { location      :: FilePath
+    { _location      :: FilePath
     , outputHandle  :: Handle
     , inputHandle   :: Handle
-    , processHandle :: ProcessHandle
+    , _processHandle :: ProcessHandle
     }
 
+type DikuntMonitor = MVar Monitor
+
 type Pipe = (Handle, Handle)
-data Monitor = Monitor [DikuntProcess] Pipe
+
+data Monitor = SetupMonitor [DikuntProcess] Pipe
+    | Monitor [DikuntProcess] Pipe ThreadId
 
 {- | Start a process for each file in the list of executable files given. Each
  - file is given a new stdin but all shares the same stdout. Whenever a program
@@ -62,13 +68,31 @@ startMonitoring :: [FilePath]
     -- ^ List of executable files.
     -> [String]
     -- ^ Arguments.
-    -> IO (MVar Monitor)
+    -> IO DikuntMonitor
 startMonitoring execs args = do
     monitor <- startAll execs args >>= \m -> newMVar m
 
-    _ <- forkIO $ monitorProcesses monitor args
+    monitorId <- forkIO $ monitorProcesses monitor args
+    modifyMVar_ monitor $ \m -> return $ setThreadId m monitorId
 
     return monitor
+
+stopMonitoring :: DikuntMonitor -> IO ()
+stopMonitoring = undefined
+
+writeAll :: DikuntMonitor -> T.Text -> IO ()
+writeAll monitor message = withMVar monitor $ \m -> do
+    mapM_ (safePrint message) $ (map inputHandle . getProcesses) m
+  where
+    safePrint msg h = T.hPutStrLn h msg `catch` (\e ->
+        Log.errorM "bot.handleMessage" $ show (e :: IOException))
+
+readContent :: DikuntMonitor -> IO T.Text
+readContent monitor = do
+    handles <- withMVar monitor $ \m -> return (map outputHandle $ getProcesses m)
+    case handles of
+        [] -> return ""
+        (h:_) -> T.hGetContents h
 
 {- | Monitor all processes in monitor restarting them whenever they stop. The
  - monitor reports the error code of the process to the log before it is
@@ -81,9 +105,10 @@ monitorProcesses :: MVar Monitor
     -> IO ()
 monitorProcesses monitorMVar args = forever $ do
     threadDelay 30000000 -- Delay 30 seconds.
-    Monitor processes pipe <- takeMVar monitorMVar
+    monitor <- takeMVar monitorMVar
+    let (processes, pipe) = (getProcesses monitor, getPipe monitor)
     processes' <- mapM (restartStopped pipe) processes
-    putMVar monitorMVar $ Monitor processes' pipe
+    putMVar monitorMVar $ setProcesses monitor processes'
   where
     restartStopped pipe process@(DikuntProcess loc _ _ pH) = do
         exitCodeMay <- getProcessExitCode pH
@@ -104,7 +129,7 @@ startAll files args = do
     pipe <- createPipe -- Pipe to use as stdout.
     processes <- mapM (start pipe args) files
 
-    return $ Monitor processes pipe
+    return $ SetupMonitor processes pipe
 
 {- | Starts a process. start (hRead, hWrite) args file - Starts the executable
  - file 'file' with the arguments 'args' and use (hRead, hWrite) as the output
@@ -130,3 +155,19 @@ start (houtRead, houtWrite) args file = do
     hSetBuffering hin LineBuffering
 
     return $ DikuntProcess file houtRead hin procHandle
+
+getProcesses :: Monitor -> [DikuntProcess]
+getProcesses (SetupMonitor processes _) = processes
+getProcesses (Monitor processes _ _) = processes
+
+setProcesses :: Monitor -> [DikuntProcess] -> Monitor
+setProcesses (SetupMonitor _ pipe) procs = SetupMonitor procs pipe
+setProcesses (Monitor _ pipe monitorId) procs = Monitor procs pipe monitorId
+
+getPipe :: Monitor -> Pipe
+getPipe (SetupMonitor _ pipe) = pipe
+getPipe (Monitor _ pipe _) = pipe
+
+setThreadId :: Monitor -> ThreadId -> Monitor
+setThreadId (SetupMonitor procs pipe) = Monitor procs pipe
+setThreadId (Monitor procs pipe _) = Monitor procs pipe

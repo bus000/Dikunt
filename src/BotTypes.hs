@@ -43,7 +43,6 @@ module BotTypes
     , Realname
     ) where
 
-import Control.Concurrent.MVar (MVar)
 import Data.Aeson
     ( ToJSON(..)
     , FromJSON(..)
@@ -54,7 +53,7 @@ import Data.Aeson
     , object
     )
 import Data.Text (Text)
-import Monitoring (Monitor)
+import Monitoring (DikuntMonitor)
 import System.IO (Handle)
 import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
 import Test.QuickCheck.Gen (oneof)
@@ -98,7 +97,7 @@ data Bot = Bot
     , nickname      :: !Nickname -- ^ The nickname used on the server.
     , channel       :: !Channel -- ^ The channel connected to.
     , password      :: !Password -- ^ The password to connect with.
-    , pluginMonitor :: MVar Monitor -- ^ Plugin in- and out- put.
+    , pluginMonitor :: !DikuntMonitor -- ^ Handler of Dikunt plugins.
     }
 
 {- | Represents an IRC command. -}
@@ -586,7 +585,7 @@ bot :: Handle
     -- ^ Channel to connect to, should start with a #.
     -> String
     -- ^ Password to use.
-    -> MVar Monitor
+    -> DikuntMonitor
     -- ^ Input and output file handles for plugins.
     -> Bot
 bot = Bot

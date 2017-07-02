@@ -21,8 +21,7 @@ module Bot
     ) where
 
 import qualified BotTypes as BT
-import Control.Concurrent (forkIO, readMVar, threadDelay)
-import Control.Exception (catch, IOException)
+import Control.Concurrent (forkIO, threadDelay)
 import Control.Monad (forever, mapM_)
 import Data.Aeson (encode, decode, FromJSON, ToJSON)
 import qualified Data.ByteString.Lazy as B
@@ -31,7 +30,7 @@ import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
 import IRCParser.IRCMessageParser (parseMessage)
 import IRCWriter.IRCWriter (writeMessage)
-import Monitoring (Monitor(..), startMonitoring, inputHandle)
+import Monitoring (startMonitoring, writeAll, readContent)
 import Network (connectTo, PortID(..))
 import System.IO (hClose, hSetBuffering, BufferMode(..), Handle, hPutStr, stdin, hFlush, stdout)
 import qualified System.Log.Logger as Log
@@ -84,7 +83,7 @@ loop bot@(BT.Bot h nick chan pass _) = do
 disconnect :: BT.Bot
     -- ^ Bot to disconnect.
     -> IO ()
-disconnect bot@(BT.Bot h _ _ _ monitor) = do
+disconnect (BT.Bot h _ _ _ _) = do
     write h $ BT.ClientQuit "Higher powers"
     hClose h
 
@@ -96,7 +95,7 @@ listen bot@(BT.Bot h _ _ _ _) = do
     s <- B.hGetContents h
     mapM_ (handleMessage bot) $ messages s
   where
-    messages str = map (\x -> x ++ "\n") $ lines (T.unpack . T.decodeUtf8 $ str)
+    messages = map (\x -> x ++ "\n") . lines . T.unpack . T.decodeUtf8
 
 {- | Handle a message from the IRC channel. If the message is a ping a pong
  - response is sent otherwise the message is sent to all plugins. The message is
@@ -106,21 +105,14 @@ handleMessage :: BT.Bot
     -> String
     -- ^ The message.
     -> IO ()
-handleMessage (BT.Bot h _ _ _ pluginHandles) str = do
-    Monitor processes _ <- readMVar pluginHandles
-    let ins = map inputHandle processes
-    case parseMessage str of
-        Just (BT.ServerPing from) ->
-            hPutStr h $ writeMessage (BT.ClientPong from)
-        Just message -> do
-            Log.infoM ("messages." ++ (show . BT.getServerCommand) message ++
-                ".received") $ show message
-            mapM_ (safePrint $ jsonEncode message) ins
-        Nothing -> Log.errorM "bot.handleMessage" $
-            "Could not parse message \"" ++ (init . init) str ++ "\""
-  where
-    safePrint msg processHandle = T.hPutStrLn processHandle msg `catch` (\e ->
-        Log.errorM "bot.handleMessage" $ show (e :: IOException))
+handleMessage (BT.Bot h _ _ _ monitor) str = case parseMessage str of
+    Just (BT.ServerPing from) -> hPutStr h $ writeMessage (BT.ClientPong from)
+    Just message -> do
+        Log.infoM ("messages." ++ (show . BT.getServerCommand) message ++
+            ".received") $ show message
+        writeAll monitor $ jsonEncode message
+    Nothing -> Log.errorM "bot.handleMessage" $
+        "Could not parse message \"" ++ (init . init) str ++ "\""
 
 {- | Read from the output part of the pipe in the monitor and write messages
  - produced to the IRC channel. The function sleeps for 1 second after each
@@ -128,15 +120,13 @@ handleMessage (BT.Bot h _ _ _ pluginHandles) str = do
 respond :: BT.Bot
     -- ^ Bot to respond for.
     -> IO ()
-respond (BT.Bot h _ chan _ monitor) = forever $ do
-    Monitor _ (output, _) <- readMVar monitor
-
-    line <- T.hGetLine output
-    case jsonDecode line of
-        Just message -> write h message
-        Nothing -> write h $ BT.ClientPrivMsgChan chan (T.unpack line)
-
-    threadDelay 1000000
+respond (BT.Bot h _ chan _ monitor) = do
+    messages <- map decodeOrPriv . T.lines <$> readContent monitor
+    mapM_ (\mes -> write h mes >> threadDelay 1000000) messages
+  where
+    decodeOrPriv str = case jsonDecode str of
+        Just mes -> mes
+        Nothing -> BT.ClientPrivMsgChan chan (T.unpack str)
 
 {- | Read from stdin and replicate the strings to the IRC channel. Can be used
  - by an administrator to write messages for Dikunt. -}
