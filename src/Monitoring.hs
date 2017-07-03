@@ -25,11 +25,11 @@ module Monitoring
 
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
-import Control.Concurrent (forkIO, threadDelay, ThreadId)
+import Control.Concurrent (forkIO, threadDelay, ThreadId, killThread)
 import Control.Exception (catch, IOException)
 import Control.Monad (forever)
 import System.Environment (getEnvironment)
-import System.IO (hSetBuffering, BufferMode(..), Handle)
+import System.IO (hSetBuffering, BufferMode(..), Handle, hClose)
 import qualified System.Log.Logger as Log
 import System.Process
     ( createProcess
@@ -41,15 +41,17 @@ import System.Process
     , env
     , ProcessHandle
     , getProcessExitCode
+    , waitForProcess
+    , terminateProcess
     )
 import Control.Concurrent.MVar (MVar, newMVar, takeMVar, putMVar, modifyMVar_, withMVar)
 import GHC.IO.Handle (hDuplicate)
 
 data DikuntProcess = DikuntProcess
-    { _location      :: FilePath
+    { location      :: FilePath
     , outputHandle  :: Handle
     , inputHandle   :: Handle
-    , _processHandle :: ProcessHandle
+    , processHandle :: ProcessHandle
     }
 
 type DikuntMonitor = MVar Monitor
@@ -78,14 +80,27 @@ startMonitoring execs args = do
     return monitor
 
 stopMonitoring :: DikuntMonitor -> IO ()
-stopMonitoring = undefined
+stopMonitoring monitor = withMVar monitor $ \m ->
+    stopMonitor m >> closeProcesses $ getProcesses m
+  where
+    stopMonitor (Monitor _ _ monitorId) = killThread monitorId
+    stopMonitor (SetupMonitor _ _) = return ()
+
+    closeProcesses procs =
+        mapM_ waitClose $ map (extractTwo processHandle location) procs
+
+    waitClose (h, loc) = do
+        Log.infoM "monitoring.stopMonitoring" $ "Waiting for plugin \"" ++
+            loc ++ "\" to close down..."
+        terminateProcess h
+        waitForProcess h
 
 writeAll :: DikuntMonitor -> T.Text -> IO ()
 writeAll monitor message = withMVar monitor $ \m -> do
     mapM_ (safePrint message) $ (map inputHandle . getProcesses) m
   where
     safePrint msg h = T.hPutStrLn h msg `catch` (\e ->
-        Log.errorM "bot.handleMessage" $ show (e :: IOException))
+        Log.errorM "monitoring.handleMessage" $ show (e :: IOException))
 
 readContent :: DikuntMonitor -> IO T.Text
 readContent monitor = do
@@ -171,3 +186,6 @@ getPipe (Monitor _ pipe _) = pipe
 setThreadId :: Monitor -> ThreadId -> Monitor
 setThreadId (SetupMonitor procs pipe) = Monitor procs pipe
 setThreadId (Monitor procs pipe _) = Monitor procs pipe
+
+extractTwo :: (a -> b) -> (a -> c) -> a -> (b, c)
+extractTwo f g x = (f x, g x)

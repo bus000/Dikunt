@@ -30,7 +30,7 @@ import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
 import IRCParser.IRCMessageParser (parseMessage)
 import IRCWriter.IRCWriter (writeMessage)
-import Monitoring (startMonitoring, writeAll, readContent)
+import Monitoring (startMonitoring, writeAll, readContent, stopMonitoring)
 import Network (connectTo, PortID(..))
 import System.IO (hClose, hSetBuffering, BufferMode(..), Handle, hPutStr, stdin, hFlush, stdout)
 import qualified System.Log.Logger as Log
@@ -83,8 +83,9 @@ loop bot@(BT.Bot h nick chan pass _) = do
 disconnect :: BT.Bot
     -- ^ Bot to disconnect.
     -> IO ()
-disconnect (BT.Bot h _ _ _ _) = do
+disconnect (BT.Bot h _ _ _ monitor) = do
     write h $ BT.ClientQuit "Higher powers"
+    stopMonitoring monitor
     hClose h
 
 {- | Listen and handle messages from the IRC server. -}

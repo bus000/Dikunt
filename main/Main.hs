@@ -95,6 +95,12 @@ setup conf plugins args dfiles = do
     Log.updateGlobalLogger "main" (Log.addHandler handleMain)
     Log.updateGlobalLogger "main" (System.Log.Logger.setLevel Log.INFO)
 
+    -- Setup stderr logger for monitoring.
+    handleMonitor <- Log.streamHandler stderr Log.INFO >>= \lh ->
+        return $ Log.setFormatter lh logFormatter
+    Log.updateGlobalLogger "monitoring" (Log.addHandler handleMonitor)
+    Log.updateGlobalLogger "monitoring" (System.Log.Logger.setLevel Log.INFO)
+
     -- Startup Bot.
     Log.infoM "main" $ unwords
         [ "Starting bot with configuration"
