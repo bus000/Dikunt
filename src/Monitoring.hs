@@ -29,7 +29,7 @@ import Control.Concurrent (forkIO, threadDelay, ThreadId, killThread)
 import Control.Exception (catch, IOException)
 import Control.Monad (forever)
 import System.Environment (getEnvironment)
-import System.IO (hSetBuffering, BufferMode(..), Handle, hClose)
+import System.IO (hSetBuffering, BufferMode(..), Handle)
 import qualified System.Log.Logger as Log
 import System.Process
     ( createProcess
@@ -47,18 +47,30 @@ import System.Process
 import Control.Concurrent.MVar (MVar, newMVar, takeMVar, putMVar, modifyMVar_, withMVar)
 import GHC.IO.Handle (hDuplicate)
 
+{- | Represent a Dikunt process. Each process contains a path to the executable
+ - a stdin, stdout and process handle. -}
 data DikuntProcess = DikuntProcess
-    { location      :: FilePath
-    , outputHandle  :: Handle
-    , inputHandle   :: Handle
-    , processHandle :: ProcessHandle
+    { location      :: FilePath -- ^ Location of executable.
+    , outputHandle  :: Handle -- ^ File handle for process output.
+    , inputHandle   :: Handle -- ^ File handle for process input.
+    , processHandle :: ProcessHandle -- ^ Handle for process.
     }
 
+{- | Main type of module. Handler for Dikunt plugins. When a monitor is
+ - constructed the plugins are started and a thread is started that keeps track
+ - of whether any plugin has stopped. If any plugin is stopped at any time it is
+ - restarted. When to monitor is stopped the thread monitoring the plugins are
+ - killed and the plugins are killed. -}
 type DikuntMonitor = MVar Monitor
 
+{- | Unix pipe (readend, writend). -}
 type Pipe = (Handle, Handle)
 
-data Monitor = SetupMonitor [DikuntProcess] Pipe
+{- | Internal representation of a Dikunt monitor. -}
+data Monitor
+    -- | Before monitoring thread is started the monitor is in this state.
+    = SetupMonitor [DikuntProcess] Pipe
+    -- | After monitoring thread is started the monitor is in this state.
     | Monitor [DikuntProcess] Pipe ThreadId
 
 {- | Start a process for each file in the list of executable files given. Each
@@ -79,30 +91,44 @@ startMonitoring execs args = do
 
     return monitor
 
-stopMonitoring :: DikuntMonitor -> IO ()
+{- | Stop thread monitoring Dikunt plugins and stop the plugins. The function
+ - blocks until all plugins are shut down. -}
+stopMonitoring :: DikuntMonitor
+    -- ^ The monitor to shut down.
+    -> IO ()
 stopMonitoring monitor = withMVar monitor $ \m ->
-    stopMonitor m >> closeProcesses $ getProcesses m
+    stopMonitor m >> closeProcesses (getProcesses m)
   where
     stopMonitor (Monitor _ _ monitorId) = killThread monitorId
     stopMonitor (SetupMonitor _ _) = return ()
 
-    closeProcesses procs =
-        mapM_ waitClose $ map (extractTwo processHandle location) procs
+    closeProcesses = mapM_ waitClose . map (extractTwo processHandle location)
 
     waitClose (h, loc) = do
-        Log.infoM "monitoring.stopMonitoring" $ "Waiting for plugin \"" ++
-            loc ++ "\" to close down..."
+        lInfo $ "Waiting for plugin \"" ++ loc ++ "\" to close down..."
         terminateProcess h
         waitForProcess h
 
-writeAll :: DikuntMonitor -> T.Text -> IO ()
+    lInfo = Log.infoM "monitoring.stopMonitoring"
+
+{- | Write a message to all dikunt plugings in the monitor. -}
+writeAll :: DikuntMonitor
+    -- The monitor specifying the plugins.
+    -> T.Text
+    -- The message to write.
+    -> IO ()
 writeAll monitor message = withMVar monitor $ \m -> do
     mapM_ (safePrint message) $ (map inputHandle . getProcesses) m
   where
     safePrint msg h = T.hPutStrLn h msg `catch` (\e ->
-        Log.errorM "monitoring.handleMessage" $ show (e :: IOException))
+        lError $ show (e :: IOException))
 
-readContent :: DikuntMonitor -> IO T.Text
+    lError = Log.errorM "monitoring.writeAll"
+
+{- | Read all output that comes from any plugin in the monitor. -}
+readContent :: DikuntMonitor
+    -- ^ The monitor to read from.
+    -> IO T.Text
 readContent monitor = do
     handles <- withMVar monitor $ \m -> return (map outputHandle $ getProcesses m)
     case handles of
@@ -134,7 +160,7 @@ monitorProcesses monitorMVar args = forever $ do
                 start pipe args loc
             Nothing -> return process
 
-{- | Start a process for each file given. -}
+{- | Start a process for each files given. -}
 startAll :: [FilePath]
     -- ^ Files to execute.
     -> [String]
@@ -171,21 +197,45 @@ start (houtRead, houtWrite) args file = do
 
     return $ DikuntProcess file houtRead hin procHandle
 
-getProcesses :: Monitor -> [DikuntProcess]
+{- | Get the processes managed by the monitor. -}
+getProcesses :: Monitor
+    -- ^ The monitor to get the processes from.
+    -> [DikuntProcess]
 getProcesses (SetupMonitor processes _) = processes
 getProcesses (Monitor processes _ _) = processes
 
-setProcesses :: Monitor -> [DikuntProcess] -> Monitor
+{- | Change the processes in a monitor. -}
+setProcesses :: Monitor
+    -- ^ Monitor to change processes in.
+    -> [DikuntProcess]
+    -- ^ The processes to change to.
+    -> Monitor
 setProcesses (SetupMonitor _ pipe) procs = SetupMonitor procs pipe
 setProcesses (Monitor _ pipe monitorId) procs = Monitor procs pipe monitorId
 
-getPipe :: Monitor -> Pipe
+{- | Get pipe from monitor. -}
+getPipe :: Monitor
+    -- ^ The monitor to get the pipe from.
+    -> Pipe
 getPipe (SetupMonitor _ pipe) = pipe
 getPipe (Monitor _ pipe _) = pipe
 
-setThreadId :: Monitor -> ThreadId -> Monitor
+{- | Set the ID of the monitoring thread in the monitor. -}
+setThreadId :: Monitor
+    -- ^ Monitor to change.
+    -> ThreadId
+    -- ^ ThreadId to change to.
+    -> Monitor
 setThreadId (SetupMonitor procs pipe) = Monitor procs pipe
 setThreadId (Monitor procs pipe _) = Monitor procs pipe
 
-extractTwo :: (a -> b) -> (a -> c) -> a -> (b, c)
+{- | Utility function to call two functions on an argument and return both
+ - results.-}
+extractTwo :: (a -> b)
+    -- ^ First function to call.
+    -> (a -> c)
+    -- ^ Second function to call.
+    -> a
+    -- ^ Value to call function on.
+    -> (b, c)
 extractTwo f g x = (f x, g x)
