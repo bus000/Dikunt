@@ -16,24 +16,36 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Bot
     ( connect
-    , loop
+    , runBot
     , disconnect
     ) where
 
 import qualified BotTypes as BT
-import Control.Concurrent (forkIO, threadDelay)
-import Control.Monad (forever, mapM_)
+import Control.Concurrent (threadDelay, forkFinally)
+import Control.Concurrent.MVar (newEmptyMVar, tryPutMVar, readMVar)
+import Control.Exception (Exception, throw)
+import Control.Monad (forever, mapM_, void)
 import Data.Aeson (encode, decode, FromJSON, ToJSON)
 import qualified Data.ByteString.Lazy as B
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
+import Data.Typeable (Typeable)
 import IRCParser.IRCMessageParser (parseMessage)
 import IRCWriter.IRCWriter (writeMessage)
 import Monitoring (startMonitoring, writeAll, readContent, stopMonitoring)
 import Network (connectTo, PortID(..))
 import System.IO (hClose, hSetBuffering, BufferMode(..), Handle, hPutStr, stdin, hFlush, stdout)
 import qualified System.Log.Logger as Log
+
+{- | Custom dikunt bot errors. -}
+data BotThreadStopped
+    -- | Exception thrown when any bot thread has stopped.
+    = BotThreadStopped
+  deriving (Show, Typeable)
+
+{- | Make bot exception an actual Haskell exception. -}
+instance Exception BotThreadStopped
 
 {- | Connect the bot to an IRC server with the channel, nick, pass and port
  - given. Starts a monitor for the list of plugins given which will maintain a
@@ -52,47 +64,57 @@ connect (BT.BotConfig serv nick pass chan port) execs args = do
     -- Start all plugins and a monitor for them.
     monitor <- startMonitoring execs (nick:chan:args)
 
+    -- Create MVar used to stop the bot when any bot thread terminates.
+    closedMVar <- newEmptyMVar
+
     -- Create the bot.
-    let bot = BT.bot h nick chan pass monitor
+    let bot = BT.bot h nick chan pass monitor closedMVar
+
+    -- Start thread reading from channel and propagating to plugins.
+    void $ forkFinally (listen bot) (reportStopped closedMVar)
 
     -- Start thread reading from plugins and propagating messages to channel.
-    _ <- forkIO $ respond bot
+    void $ forkFinally (respond bot) (reportStopped closedMVar)
 
     -- Start thread reading from stdin and propagating messages to channel.
-    _ <- forkIO $ respondAdmin bot
+    void $ forkFinally (respondAdmin bot) (reportStopped closedMVar)
 
     return bot
+  where
+    reportStopped mvar _ = void $ tryPutMVar mvar ()
 
-{- | Register on channel with nickname and listen for messages from the server
- - the bot is connected to. The messages are parsed and passed to the list of
- - plugins in the bot. -}
-loop :: BT.Bot
+{- | Keeps track of the running of the bot. Raises an exception if any thread
+ - connected to the bot dies. -}
+runBot :: BT.Bot
     -- ^ Bot to listen for messages from.
     -> IO ()
-loop bot@(BT.Bot h nick chan pass _) = do
-    write h $ BT.ClientNick nick
-    write h $ BT.ClientUser nick 0 "DikuntBot"
-    write h $ BT.ClientPrivMsg (BT.IRCUser "NickServ" Nothing Nothing)
-        ("IDENTIFY " ++ nick ++ " " ++ pass)
-    write h $ BT.ClientJoin [(chan, "")]
-
-    listen bot
+runBot (BT.Bot _ _ _ _ _ closedMVar) = do
+    void $ readMVar closedMVar
+    throw BotThreadStopped
 
 {- | Disconnect a bot from the server it is connected to. The functions should
  - be called when a bot is no longer used. -}
 disconnect :: BT.Bot
     -- ^ Bot to disconnect.
     -> IO ()
-disconnect (BT.Bot h _ _ _ monitor) = do
+disconnect (BT.Bot h _ _ _ monitor _) = do
     write h $ BT.ClientQuit "Higher powers"
     stopMonitoring monitor
     hClose h
 
-{- | Listen and handle messages from the IRC server. -}
+{- | Register on channel with nickname and listen for messages from the server
+ - the bot is connected to. Messages are passed to the list of plugins in the
+ - bot. -}
 listen :: BT.Bot
     -- ^ Bot to listen for messages for.
     -> IO ()
-listen bot@(BT.Bot h _ _ _ _) = do
+listen bot@(BT.Bot h nick chan pass _ _) = do
+    write h $ BT.ClientNick nick
+    write h $ BT.ClientUser nick 0 "DikuntBot"
+    write h $ BT.ClientPrivMsg (BT.IRCUser "NickServ" Nothing Nothing)
+        ("IDENTIFY " ++ nick ++ " " ++ pass)
+    write h $ BT.ClientJoin [(chan, "")]
+
     s <- B.hGetContents h
     mapM_ (handleMessage bot) $ messages s
   where
@@ -106,14 +128,15 @@ handleMessage :: BT.Bot
     -> String
     -- ^ The message.
     -> IO ()
-handleMessage (BT.Bot h _ _ _ monitor) str = case parseMessage str of
+handleMessage (BT.Bot h _ _ _ monitor _) str = case parseMessage str of
     Just (BT.ServerPing from) -> hPutStr h $ writeMessage (BT.ClientPong from)
     Just message -> do
-        Log.infoM ("messages." ++ (show . BT.getServerCommand) message ++
-            ".received") $ show message
+        iLog (BT.getServerCommand message) (show message)
         writeAll monitor $ jsonEncode message
-    Nothing -> Log.errorM "bot.handleMessage" $
-        "Could not parse message \"" ++ (init . init) str ++ "\""
+    Nothing -> eLog $ "Could not parse message \"" ++ (init . init) str ++ "\""
+  where
+    eLog = Log.errorM "bot.handleMessage"
+    iLog c = Log.infoM $ "messages." ++ show c ++ ".received"
 
 {- | Read from the output part of the pipe in the monitor and write messages
  - produced to the IRC channel. The function sleeps for 1 second after each
@@ -121,7 +144,7 @@ handleMessage (BT.Bot h _ _ _ monitor) str = case parseMessage str of
 respond :: BT.Bot
     -- ^ Bot to respond for.
     -> IO ()
-respond (BT.Bot h _ chan _ monitor) = do
+respond (BT.Bot h _ chan _ monitor _) = do
     messages <- map decodeOrPriv . T.lines <$> readContent monitor
     mapM_ (\mes -> write h mes >> threadDelay 1000000) messages
   where
@@ -132,7 +155,7 @@ respond (BT.Bot h _ chan _ monitor) = do
 {- | Read from stdin and replicate the strings to the IRC channel. Can be used
  - by an administrator to write messages for Dikunt. -}
 respondAdmin :: BT.Bot -> IO ()
-respondAdmin (BT.Bot h _ chan _ _) = forever $ do
+respondAdmin (BT.Bot h _ chan _ _ _) = forever $ do
     putStr " > " >> hFlush stdout
     line <- T.hGetLine stdin
     case jsonDecode line of

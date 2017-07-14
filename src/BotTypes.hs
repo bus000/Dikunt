@@ -57,6 +57,7 @@ import Monitoring (DikuntMonitor)
 import System.IO (Handle)
 import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
 import Test.QuickCheck.Gen (oneof)
+import Control.Concurrent.MVar (MVar)
 
 {- | IRC nickname. -}
 type Nickname = String
@@ -98,6 +99,7 @@ data Bot = Bot
     , channel       :: !Channel -- ^ The channel connected to.
     , password      :: !Password -- ^ The password to connect with.
     , pluginMonitor :: !DikuntMonitor -- ^ Handler of Dikunt plugins.
+    , closedMVar    :: MVar () -- ^ When not empty bot thread is stopped.
     }
 
 {- | Represents an IRC command. -}
@@ -587,6 +589,8 @@ bot :: Handle
     -- ^ Password to use.
     -> DikuntMonitor
     -- ^ Input and output file handles for plugins.
+    -> MVar ()
+    -- ^ Empty MVar used to communicate with bot threads.
     -> Bot
 bot = Bot
 

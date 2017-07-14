@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
-import Bot (connect, disconnect, loop)
+import Bot (connect, disconnect, runBot)
 import qualified BotTypes as BT
 import Control.Exception (bracket)
 import Data.Configurator (load, Worth(..), require)
@@ -141,7 +141,7 @@ main = do
 
     -- Start, loop and stop bot.
     bracket (setup botConfig executables pluginArguments dataFileLocations)
-        tearDown loop
+        tearDown runBot
 
 dataFiles :: IO [String]
 dataFiles = mapM getDataFileName
