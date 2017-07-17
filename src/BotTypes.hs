@@ -581,11 +581,11 @@ instance Arbitrary ClientMessage where
 {- | Construct a Bot to handle a IRC chat. -}
 bot :: Handle
     -- ^ Socket to an IRC server.
-    -> String
+    -> Nickname
     -- ^ Nickname to use on the server.
-    -> String
+    -> Channel
     -- ^ Channel to connect to, should start with a #.
-    -> String
+    -> Password
     -- ^ Password to use.
     -> DikuntMonitor
     -- ^ Input and output file handles for plugins.
