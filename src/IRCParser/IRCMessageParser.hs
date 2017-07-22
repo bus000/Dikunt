@@ -17,8 +17,8 @@
 module IRCParser.IRCMessageParser ( parseMessage ) where
 
 import IRCParser.Layer1Impl ( parseIRCMessage )
-import IRCParser.Layer2Impl ( parseServerMessage )
+import IRCParser.Layer2Impl ( parseSM )
 import BotTypes ( ServerMessage )
 
 parseMessage :: String -> Maybe ServerMessage
-parseMessage str = parseIRCMessage str >>= parseServerMessage
+parseMessage str = parseIRCMessage str >>= parseSM

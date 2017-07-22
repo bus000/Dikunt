@@ -31,7 +31,7 @@ parseMessages = mapMaybe getMessage . mapMaybe (decode . T.encodeUtf8) . T.lines
     getMessage (BT.ServerPrivMsg _ _ str) = Just str
     getMessage _ = Nothing
 
-handleMessage :: BT.Nickname -> Double -> (String, Double) -> IO Double
+handleMessage :: String -> Double -> (String, Double) -> IO Double
 handleMessage nick threshold (str, r)
     | str =~ helpPattern = help nick >> return threshold
     | [[_, d]] <- str =~ changePattern = do
@@ -48,7 +48,7 @@ handleMessage nick threshold (str, r)
     sp = "[ \\t]*"
     ps = "[ \\t]+"
 
-help :: BT.Nickname -> IO ()
+help :: String -> IO ()
 help nick = putStrLn $ unlines
     [ nick ++ ": asked help - Display this message"
     , nick ++ ": asked set probability <0-1> - Set probability to a number " ++

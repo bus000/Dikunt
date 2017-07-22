@@ -22,11 +22,11 @@ main = do
 
 handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
 handleMessage _ (Just (BT.ServerJoin (BT.IRCUser nick _ _) _)) =
-    putStrLn $ "Welcome " ++ nick
+    putStrLn $ "Welcome " ++ BT.getNickname nick
 handleMessage _ (Just (BT.ServerQuit (BT.IRCUser nick _ _) _)) =
-    putStrLn $ "Goodbye " ++ nick
+    putStrLn $ "Goodbye " ++ BT.getNickname nick
 handleMessage _ (Just (BT.ServerPart (BT.IRCUser nick _ _) _ _)) =
-    putStrLn $ "Goodbye " ++ nick
+    putStrLn $ "Goodbye " ++ BT.getNickname nick
 handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = putStrLn $ help nick
   where

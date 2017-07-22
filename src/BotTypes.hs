@@ -32,8 +32,13 @@ module BotTypes
     -- Bot configuration declaration.
     , BotConfig(..)
 
-    -- Extra type declarations.
+    -- Nickname type, smart constructor and getter.
     , Nickname
+    , nickname
+    , getNickname
+    -- Hardcoded nicknames.
+    , nickservNickname
+
     , Channel
     , Password
     , Servername
@@ -43,24 +48,54 @@ module BotTypes
     , Realname
     ) where
 
-import Data.Aeson
-    ( ToJSON(..)
-    , FromJSON(..)
-    , withObject
-    , (.=)
-    , (.:)
-    , (.:?)
-    , object
-    )
+import Data.Aeson (ToJSON(..), FromJSON(..), withObject, (.=), (.:), (.:?), object, withText)
+import qualified Data.Aeson.Types as Aeson
+import Text.Regex.PCRE ((=~))
 import Data.Text (Text)
 import Monitoring (DikuntMonitor)
 import System.IO (Handle)
 import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
-import Test.QuickCheck.Gen (oneof)
+import Test.QuickCheck.Gen (oneof, suchThat)
 import Control.Concurrent.MVar (MVar)
+import qualified Data.Text as T
 
-{- | IRC nickname. -}
-type Nickname = String
+{- | IRC nickname that starts with a letter and after that is followed by string
+ - of letters, numbers and any of the symbols [-, [, ], \, `, ^, {, }]. -}
+newtype Nickname = Nickname String deriving (Show, Eq, Read)
+
+{- | Smart constructor for Nicknames, only allow correct IRC nicknames to be
+ - constructed. -}
+nickname :: String -> Maybe Nickname
+nickname nick
+    | nick =~ nicknameRegex = Just . Nickname $ nick
+    | otherwise = Nothing
+  where
+    nicknameRegex = "^[A-z]([0-9A-z\\-\\[\\]\\\\\\`\\^\\{\\}])*$" :: String
+
+{- | Get the actual nickname from the nickname type. -}
+getNickname :: Nickname
+    -- ^ The Nickname to get nickname from.
+    -> String
+getNickname (Nickname nick) = nick
+
+{- | Hardcoded nickname for the authentication server on freenode. -}
+nickservNickname :: Nickname
+nickservNickname = Nickname "NickServ"
+
+{- | Construct arbitrary IRC nicknames. -}
+instance Arbitrary Nickname where
+    arbitrary = do
+        nick <- suchThat arbitrary (\s -> nickname s /= Nothing)
+        return . Nickname $ nick
+
+    shrink (Nickname nick) = [Nickname nick' | nick' <- shrink nick]
+
+instance ToJSON Nickname where
+    toJSON (Nickname nick) = Aeson.String . T.pack $ nick
+
+instance FromJSON Nickname where
+    parseJSON = withText "nickname" $ return . Nickname . T.unpack
+
 
 {- | IRC channel. -}
 type Channel = String
@@ -95,7 +130,7 @@ data BotConfig = BotConfig
 {- | The IRC bot parameters. -}
 data Bot = Bot
     { socket        :: !Handle -- ^ The handle to communicate with the server.
-    , nickname      :: !Nickname -- ^ The nickname used on the server.
+    , botNickname   :: !Nickname -- ^ The nickname used on the server.
     , channel       :: !Channel -- ^ The channel connected to.
     , password      :: !Password -- ^ The password to connect with.
     , pluginMonitor :: !DikuntMonitor -- ^ Handler of Dikunt plugins.

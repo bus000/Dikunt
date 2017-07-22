@@ -62,7 +62,7 @@ connect (BT.BotConfig serv nick pass chan port) execs args = do
     hSetBuffering h NoBuffering
 
     -- Start all plugins and a monitor for them.
-    monitor <- startMonitoring execs (nick:chan:args)
+    monitor <- startMonitoring execs (BT.getNickname nick:chan:args)
 
     -- Create MVar used to stop the bot when any bot thread terminates.
     closedMVar <- newEmptyMVar
@@ -110,9 +110,9 @@ listen :: BT.Bot
     -> IO ()
 listen bot@(BT.Bot h nick chan pass _ _) = do
     write h $ BT.ClientNick nick
-    write h $ BT.ClientUser nick 0 "DikuntBot"
-    write h $ BT.ClientPrivMsg (BT.IRCUser "NickServ" Nothing Nothing)
-        ("IDENTIFY " ++ nick ++ " " ++ pass)
+    write h $ BT.ClientUser (BT.getNickname nick) 0 "DikuntBot"
+    write h $ BT.ClientPrivMsg (BT.IRCUser BT.nickservNickname Nothing Nothing)
+        ("IDENTIFY " ++ BT.getNickname nick ++ " " ++ pass)
     write h $ BT.ClientJoin [(chan, "")]
 
     s <- B.hGetContents h

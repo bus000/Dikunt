@@ -135,7 +135,9 @@ parseNicknamePrefix = do
     user <- option Nothing (fmap Just $ char '!' >> parseUser)
     host <- option Nothing (fmap Just $ char '@' >> parseHost)
 
-    return $ BT.NicknamePrefix (BT.IRCUser nick user host)
+    case BT.nickname nick of
+        Just n -> return $ BT.NicknamePrefix (BT.IRCUser n user host)
+        Nothing -> pfail
 
 {- | Parse an IRC host of the form
  -     hostname / hostaddr. -}

@@ -6,6 +6,7 @@ import Bot (connect, disconnect, runBot)
 import qualified BotTypes as BT
 import Control.Exception (bracket)
 import Data.Configurator (load, Worth(..), require)
+import Data.Either.Utils (maybeToEither)
 import Data.Version (showVersion)
 import Paths_Dikunt (getDataFileName, version)
 import System.Console.CmdArgs
@@ -21,7 +22,7 @@ import System.Console.CmdArgs
     , summary
     , cmdArgs
     )
-import System.IO (stderr)
+import System.IO (stderr, hPutStrLn)
 import qualified System.Log.Formatter as Log
 import qualified System.Log.Handler as Log
 import qualified System.Log.Handler.Simple as Log
@@ -52,9 +53,10 @@ dikunt vers = Dikunt
         helpArg [explicit, name "help", name "h"] &=
         versionArg [explicit, name "version", name "v"]
 
-getBotConfig :: Dikunt -> BT.BotConfig
-getBotConfig (Dikunt serv nick pass chan p _) =
-    BT.BotConfig serv nick pass chan p
+getBotConfig :: Dikunt -> Either String BT.BotConfig
+getBotConfig (Dikunt serv nickString pass chan p _) = do
+    nick <- maybeToEither "Nickname incorrect" $ BT.nickname nickString
+    return $ BT.BotConfig serv nick pass chan p
 
 {- | Allocate resources used by the bot. Setup logging and connection to IRC
  - server. -}
@@ -136,12 +138,14 @@ main = do
     executables <- require config "pathPlugins" :: IO [String]
     dataFileLocations <- dataFiles
 
-    let botConfig = getBotConfig arguments
-        pluginArguments = pluginArgs arguments
+    let pluginArguments = pluginArgs arguments
 
     -- Start, loop and stop bot.
-    bracket (setup botConfig executables pluginArguments dataFileLocations)
-        tearDown runBot
+    case getBotConfig arguments of
+        Right botConfig -> bracket (setup botConfig executables pluginArguments
+            dataFileLocations) tearDown runBot
+        -- TODO: Consider how to log this with hslogger.
+        Left err -> hPutStrLn stderr err
 
 dataFiles :: IO [String]
 dataFiles = mapM getDataFileName
