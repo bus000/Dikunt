@@ -84,3 +84,6 @@ TicTacToe:
 
 Asked:
     Writes "Spurgt!" to messages with a probability that can be changed.
+
+Remind:
+    Print reminders to users from other users on time or on message.
