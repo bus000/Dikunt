@@ -177,7 +177,8 @@ parseNumber :: GenParser Char st Integer
 parseNumber = nat
 
 parseLetterAmount :: GenParser Char st Integer
-parseLetterAmount = (string "a" >> return 1) <|> (string "an" >> return 1)
+parseLetterAmount =
+    try (string "an" >> return 1) <|> try (string "a" >> return 1)
 
 parseUnit :: Integer -> GenParser Char st Time
 parseUnit amount = try (string "years" >> return (Years amount)) <|>
