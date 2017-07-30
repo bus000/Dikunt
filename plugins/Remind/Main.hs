@@ -89,10 +89,8 @@ handleMessage reminds (Message nick) = do
     printReminds userReminds
     return rest
   where
-    userReminds :: [Reminder]
-    rest :: [Reminder]
     (userReminds, rest) = partition ((nick ==) . getUser) reminds
-    printReminds = mapM_ (\r -> remind r 0)
+    printReminds = mapM_ (`remind` 0)
 
 remind :: Reminder -> Integer -> IO ()
 remind (Reminder user message) delayAmount = do
@@ -114,7 +112,7 @@ printHelp nick = putStrLn $ unlines
 
 parseMessages :: User -> T.Text -> [Request]
 parseMessages botnick =
-    concat . map getRequests . mapMaybe (decode . T.encodeUtf8) . T.lines
+    concatMap getRequests . mapMaybe (decode . T.encodeUtf8) . T.lines
   where
     getRequests (ServerPrivMsg (IRCUser nick _ _) _ str) =
         case parse (parseRequest botnick (getNickname nick)) "(unknown)" str of

@@ -26,7 +26,7 @@ main = do
 handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
 handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
     | str =~ helpPattern = putStrLn $ help nick
-    | containsCurse str = putStrLn =<< (sample $ choice responses)
+    | containsCurse str = putStrLn =<< sample (choice responses)
   where
     helpPattern = concat ["^", sp, nick, ":", ps, "policeman", ps, "help", sp,
         "$"]

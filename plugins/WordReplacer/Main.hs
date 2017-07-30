@@ -117,7 +117,7 @@ addReplacement conn nick word replacement
 
         putStrLn "Added replacement"
   where
-    word' = map toLower $ word
+    word' = map toLower word
 
 {- | Replace all words present in the database with their replacements. -}
 replaceWords :: DB.Connection
@@ -142,10 +142,10 @@ replaceStrings :: [Replacement]
     -> String
     -- ^ The string to replace in.
     -> String
-replaceStrings replacements = concat . map maybeReplace . wordsSpecial
+replaceStrings replacements = concatMap maybeReplace . wordsSpecial
   where
     replacements' = map getReplacement replacements
-    maybeReplace word = fromMaybe word (lookup (map toLower $ word) replacements')
+    maybeReplace word = fromMaybe word (lookup (map toLower word) replacements')
 
 {- | Utility function converting Replacement's to tuples of replacement. -}
 getReplacement :: Replacement
