@@ -19,13 +19,11 @@
 module BotTypes
     ( Bot(..)
     , bot
-    , IRCMessage(..)
     , IRCCommand(..)
-    , IRCPrefix(..)
     , IRCUser(..)
+    , UserServer(..)
     , ServerMessage(..)
     , ClientMessage(..)
-    , nicknamePrefix
     , getServerCommand
     , getClientCommand
 
@@ -147,28 +145,15 @@ data IRCCommand = ADMIN | AWAY | CNOTICE | CPRIVMSG | CONNECT | DIE | ENCAP
     | VERSION | WALLOPS | WATCH | WHO | WHOIS | WHOWAS | NUMCOM Integer
     deriving (Show, Read, Eq)
 
-{- | Represent an IRC message of any type which is generally structured as
- - ":<prefix> <command> <params> :<trailing>\r\n". The prefix and trail might
- - not exist and is therefore of a Maybe type. -}
-data IRCMessage = IRCMessage
-    { _ircPrefix  :: Maybe IRCPrefix -- ^ The prefix of an IRC message.
-    , _ircCommand :: IRCCommand -- ^ The command of the message.
-    , _ircParams  :: [String] -- ^ List of parameters.
-    , _trail      :: Maybe String -- ^ Actual message.
-    } deriving (Show, Eq)
-
-{- | An IRC prefix consist either of a server name or a user nick with an
- - optional user name and host name. This type represent the IRC prefix. -}
-data IRCPrefix = ServernamePrefix Servername
-    | NicknamePrefix IRCUser
-    deriving (Show, Read, Eq)
-
 {- | Represents an IRC user which consist of a nickname, an optional username
  - and an optional hostname. In messages from IRC servers the message has a user
  - iff it starts with a ':' character. The user is then parsed as
  - "nickname [ [ "!" user ] "@" host ]". -}
 data IRCUser = IRCUser Nickname (Maybe Username) (Maybe Hostname)
-    deriving (Show, Read, Eq)
+  deriving (Show, Read, Eq)
+
+data UserServer = UserServer Username (Maybe Hostname) (Maybe Servername)
+  deriving (Show, Read, Eq)
 
 {- | Convert an IRCUser to JSON. -}
 instance ToJSON IRCUser where
@@ -628,23 +613,6 @@ bot :: Handle
     -- ^ Empty MVar used to communicate with bot threads.
     -> Bot
 bot = Bot
-
-{- | Construct a IRCPrefix representing a NicknamePrefix of an IRCUser. -}
-nicknamePrefix :: Nickname
-    -- ^ Nick of the prefix.
-    -> Maybe Username
-    -- ^ Maybe username of the user.
-    -> Maybe String
-    -- ^ Maybe hostname of the user.
-    -> IRCPrefix
-nicknamePrefix nick Nothing Nothing =
-    NicknamePrefix $ IRCUser nick Nothing Nothing
-nicknamePrefix nick user Nothing =
-    NicknamePrefix $ IRCUser nick user Nothing
-nicknamePrefix nick Nothing host =
-    NicknamePrefix $ IRCUser nick Nothing host
-nicknamePrefix nick user host =
-    NicknamePrefix $ IRCUser nick user host
 
 {- | Get the IRC command of a server message. -}
 getServerCommand :: ServerMessage
