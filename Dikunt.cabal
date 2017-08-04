@@ -33,10 +33,7 @@ library
                        BotTypes,
                        IRCParser.IRCMessageParser,
                        IRCWriter.IRCWriter
-  other-modules:       IRCParser.Layer1Impl,
-                       IRCParser.Layer2Impl,
-                       IRCParser.TestParser,
-                       IRCWriter.Impl,
+  other-modules:       IRCWriter.Impl,
                        Monitoring
   hs-source-dirs:      src
   default-language:    Haskell2010

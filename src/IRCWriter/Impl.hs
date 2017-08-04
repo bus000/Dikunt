@@ -87,20 +87,11 @@ writeServerMessage (ServerTopic user chan newtopic) =
     ":" ++ writeUser user ++ " TOPIC " ++ chan ++ " :" ++ newtopic ++ "\r\n"
 writeServerMessage (ServerInvite user nick chan) =
     ":" ++ writeUser user ++ " INVITE " ++ getNickname nick ++ " " ++ chan ++ "\r\n"
-writeServerMessage (ServerPrivMsg user chan message) =
-    ":" ++ writeUser user ++ " PRIVMSG " ++ chan ++ " :" ++ message ++ "\r\n"
-writeServerMessage (ServerNotice user chan message) =
-    ":" ++ writeUser user ++ " NOTICE " ++ chan ++ " :" ++ message ++ "\r\n"
-writeServerMessage (ServerNoticeServer servername chan message) =
-    ":" ++ servername ++ " NOTICE " ++ chan ++ " :" ++ message ++ "\r\n"
+writeServerMessage (ServerPrivMsg user targets message) = undefined
+writeServerMessage (ServerNotice user chan message) = undefined
 writeServerMessage (ServerPing servername) =
     ":" ++ servername ++ " PING\r\n"
-writeServerMessage (ServerReply servername numcom args (Just trailing)) =
-    ":" ++ servername ++ " " ++ show numcom ++ " " ++ intercalate " " args
-        ++ " :" ++ trailing ++ "\r\n"
-writeServerMessage (ServerReply servername numcom args Nothing) =
-    ":" ++ servername ++ " " ++ show numcom ++ " " ++ intercalate " " args
-        ++ "\r\n"
+writeServerMessage (ServerReply servername numcom args) = undefined
 
 writeUser :: IRCUser -> String
 writeUser (IRCUser nick Nothing Nothing) =

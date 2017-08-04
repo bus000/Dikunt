@@ -118,22 +118,25 @@ listen bot@(BT.Bot h nick chan pass _ _) = do
     s <- B.hGetContents h
     mapM_ (handleMessage bot) $ messages s
   where
-    messages = map (\x -> x ++ "\n") . lines . T.unpack . T.decodeUtf8
+    messages :: B.ByteString -> [T.Text]
+    messages = map (\x -> T.append x "\n") . T.lines . T.decodeUtf8
 
 {- | Handle a message from the IRC channel. If the message is a ping a pong
  - response is sent otherwise the message is sent to all plugins. The message is
  - also logged. -}
 handleMessage :: BT.Bot
     -- ^ Bot that received the message.
-    -> String
+    -> T.Text
     -- ^ The message.
     -> IO ()
 handleMessage (BT.Bot h _ _ _ monitor _) str = case parseMessage str of
-    Just (BT.ServerPing from) -> hPutStr h $ writeMessage (BT.ClientPong from)
-    Just message -> do
+    Right (BT.ServerPing from) -> hPutStr h $ writeMessage (BT.ClientPong from)
+    Right message -> do
         iLog (BT.getServerCommand message) (show message)
         writeAll monitor $ jsonEncode message
-    Nothing -> eLog $ "Could not parse message \"" ++ (init . init) str ++ "\""
+    Left err -> eLog $ "Could not parse message \"" ++
+        (init . init) (T.unpack str) ++ "\" with error message \"" ++
+        show err ++ "\""
   where
     eLog = Log.errorM "bot.handleMessage"
     iLog c = Log.infoM $ "messages." ++ show c ++ ".received"
