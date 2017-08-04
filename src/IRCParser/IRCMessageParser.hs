@@ -14,7 +14,7 @@
  -
  - See https://tools.ietf.org/html/rfc2812 for details.
  -}
-module IRCParser.IRCMessageParser ( parseMessage, ipV6 ) where
+module IRCParser.IRCMessageParser ( parseMessage ) where
 
 import qualified BotTypes as BT
 import qualified Data.Char as Char
@@ -43,6 +43,7 @@ servermessage = P.choice messages <* P.crlf <* P.eof
         , noticeMessage
         , pingMessage
         , replyMessage
+        , modeMessage
         ]
 
 nickMessage :: P.Parsec T.Text () BT.ServerMessage
@@ -83,6 +84,10 @@ noticeMessage = BT.ServerNotice <$> prefix servername <* P.string "NOTICE " <*>
 
 pingMessage :: P.Parsec T.Text () BT.ServerMessage
 pingMessage = BT.ServerPing <$> (P.string "PING :" *> servername)
+
+modeMessage :: P.Parsec T.Text () BT.ServerMessage
+modeMessage = BT.ServerMode <$> prefix nickUserHost <* P.string "MODE " <*>
+    nickname <* P.char ' ' <*> trailing
 
 replyMessage :: P.Parsec T.Text () BT.ServerMessage
 replyMessage = BT.ServerReply <$> prefix servername <*> P.decimal <* P.char ' '

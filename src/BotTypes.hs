@@ -264,6 +264,8 @@ data ServerMessage
     | ServerNotice Servername [Target] String
     -- | ServerPing <server> - Ping coming from <server>.
     | ServerPing Servername
+    -- | ServerMode <user> <nick> <mode> - User change mode <mode> for <nick>.
+    | ServerMode IRCUser Nickname String
     -- | ServerReply <server> <num> <args> - Numeric reply <num> from
     -- <server> with arguments <args>.
     | ServerReply Servername Integer [String]
@@ -326,6 +328,12 @@ instance ToJSON ServerMessage where
         [ "command" .= ("PING" :: Text)
         , "servername" .= servername
         ]
+    toJSON (ServerMode ircUser nick mode) = object
+        [ "command" .= ("MODE" :: Text)
+        , "ircUser" .= ircUser
+        , "nickname" .= nick
+        , "mode" .= mode
+        ]
     toJSON (ServerReply servername numeric args) = object
         [ "command" .= ("REPLY" :: Text)
         , "servername" .= servername
@@ -383,6 +391,11 @@ instance FromJSON ServerMessage where
             "PING" -> do
                 servername <- o .: "servername"
                 return $ ServerPing servername
+            "MODE" -> do
+                ircUser <- o .: "ircUser"
+                nick <- o .: "nickname"
+                mode <- o .: "mode"
+                return $ ServerMode ircUser nick mode
             "REPLY" -> do
                 servername <- o .: "servername"
                 numeric <- o .: "numeric"
@@ -403,6 +416,7 @@ instance Arbitrary ServerMessage where
         , arbitrary >>= \(u, t, m) -> return $ ServerPrivMsg u t m
         , arbitrary >>= \(u, t, m) -> return $ ServerNotice u t m
         , arbitrary >>= \s         -> return $ ServerPing s
+        , ServerMode <$> arbitrary <*> arbitrary <*> arbitrary
         , arbitrary >>= \(s, c, a) -> return $ ServerReply s c a
         ]
 
@@ -692,13 +706,15 @@ getServerCommand :: ServerMessage
     -> IRCCommand
 getServerCommand (ServerNick _ _) = NICK
 getServerCommand (ServerJoin _ _) = JOIN
-getServerCommand (ServerPart _ _ _) = PART
 getServerCommand (ServerQuit _ _) = QUIT
+getServerCommand (ServerKick _ _ _) = KICK
+getServerCommand (ServerPart _ _ _) = PART
 getServerCommand (ServerTopic _ _ _) = TOPIC
 getServerCommand (ServerInvite _ _ _) = INVITE
 getServerCommand (ServerPrivMsg _ _ _) = PRIVMSG
 getServerCommand (ServerNotice _ _ _) = NOTICE
 getServerCommand (ServerPing _) = PING
+getServerCommand (ServerMode _ _ _) = MODE
 getServerCommand (ServerReply _ n _) = NUMCOM n
 
 {- | Get the IRC command of a client message. -}
