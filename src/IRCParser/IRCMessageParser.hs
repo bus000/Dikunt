@@ -24,6 +24,7 @@ import Numeric (showHex)
 import Text.Parsec ((<|>))
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Number as P
+import Data.Maybe (fromMaybe)
 
 parseMessage :: T.Text -> Either P.ParseError BT.ServerMessage
 parseMessage = P.parse servermessage "(IRC message)"
@@ -100,12 +101,11 @@ nickname :: P.Parsec T.Text () BT.Nickname
 nickname =
     consNick <$> P.alphaNum <*> P.many (P.choice [P.alphaNum, P.char '-', special])
   where
-    consNick c1 str = case BT.nickname (c1:str) of
-        Just nick -> nick
-        Nothing -> error "The parsed nickname should be correct."
+    consNick c1 str = fromMaybe (error "The parsed nickname should be correct.")
+        (BT.nickname (c1:str))
 
 servername :: P.Parsec T.Text () BT.Servername
-servername = (P.try nickservHost) <|> (P.try hostname)
+servername = P.try nickservHost <|> P.try hostname
 
 channel :: P.Parsec T.Text () BT.Channel
 channel = (:) <$> P.choice [P.char '#', P.char '+', P.char '&'] <*>
@@ -170,7 +170,7 @@ username :: P.Parsec T.Text () BT.Username
 username = P.many1 (P.noneOf "\0\r\n @%")
 
 hostname :: P.Parsec T.Text () BT.Hostname
-hostname =  (P.try hostAddress) <|> (P.try hostname')
+hostname =  P.try hostAddress <|> P.try hostname'
 
 hostname' :: P.Parsec T.Text () BT.Hostname
 hostname' = intercalate "." <$> P.sepBy1 shortname (P.char '.')
@@ -189,7 +189,7 @@ ipV4 = IPV4 <$> (P.decimal <* period) <*> (P.decimal <* period)
 
 ipV6 :: P.Parsec T.Text () IPV6
 ipV6 = do
-    cons <- (P.try withBridge) <|> (P.try noBridge)
+    cons <- P.try withBridge <|> P.try noBridge
     case ipV6Cons cons of
         Just a -> return a
         Nothing -> P.parserFail "Could not parse IPV6."
@@ -214,7 +214,7 @@ ipV6Cons cons
     | bridges == 1 = fromList $ foldr expand [] cons
     | otherwise = Nothing
   where
-    bridges = length . filter (\x -> x == Zeros) $ cons
+    bridges = length . filter (== Zeros) $ cons
     bridgeLen = 8 - length cons + 1
 
     fromList [a, b, c, d, e, f, g, h] = Just $ IPV6 a b c d e f g h

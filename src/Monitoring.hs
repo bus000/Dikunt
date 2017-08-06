@@ -23,11 +23,11 @@ module Monitoring
     , DikuntMonitor
     ) where
 
-import qualified Data.Text.Lazy as T
-import qualified Data.Text.Lazy.IO as T
 import Control.Concurrent (forkIO, threadDelay, ThreadId, killThread)
 import Control.Exception (catch, IOException)
 import Control.Monad (forever)
+import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy.IO as T
 import System.Environment (getEnvironment)
 import System.IO (hSetBuffering, BufferMode(..), Handle)
 import qualified System.Log.Logger as Log
@@ -102,7 +102,7 @@ stopMonitoring monitor = withMVar monitor $ \m ->
     stopMonitor (Monitor _ _ monitorId) = killThread monitorId
     stopMonitor (SetupMonitor _ _) = return ()
 
-    closeProcesses = mapM_ waitClose . map (extractTwo processHandle location)
+    closeProcesses = mapM_ $ waitClose . extractTwo processHandle location
 
     waitClose (h, loc) = do
         lInfo $ "Waiting for plugin \"" ++ loc ++ "\" to close down..."
@@ -117,8 +117,8 @@ writeAll :: DikuntMonitor
     -> T.Text
     -- The message to write.
     -> IO ()
-writeAll monitor message = withMVar monitor $ \m -> do
-    mapM_ (safePrint message) $ (map inputHandle . getProcesses) m
+writeAll monitor message = withMVar monitor $ \m ->
+    mapM_ (safePrint message . inputHandle) (getProcesses m)
   where
     safePrint msg h = T.hPutStrLn h msg `catch` (\e ->
         lError $ show (e :: IOException))

@@ -47,16 +47,17 @@ module BotTypes
     , Realname
     ) where
 
+import Control.Concurrent.MVar (MVar)
 import Data.Aeson (ToJSON(..), FromJSON(..), withObject, (.=), (.:), (.:?), object, withText)
 import qualified Data.Aeson.Types as Aeson
-import Text.Regex.PCRE ((=~))
 import Data.Text (Text)
+import qualified Data.Text as T
 import Monitoring (DikuntMonitor)
 import System.IO (Handle)
 import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
 import Test.QuickCheck.Gen (oneof, suchThat)
-import Control.Concurrent.MVar (MVar)
-import qualified Data.Text as T
+import Text.Regex.PCRE ((=~))
+import Utils (shrink1, shrink2, shrink3)
 
 {- | IRC nickname that starts with a letter and after that is followed by string
  - of letters, numbers and any of the symbols [-, [, ], \, `, ^, {, }]. -}
@@ -83,9 +84,7 @@ nickservNickname = Nickname "NickServ"
 
 {- | Construct arbitrary IRC nicknames. -}
 instance Arbitrary Nickname where
-    arbitrary = do
-        nick <- suchThat arbitrary (\s -> nickname s /= Nothing)
-        return . Nickname $ nick
+    arbitrary = Nickname <$> suchThat arbitrary (\s -> nickname s /= Nothing)
 
     shrink (Nickname nick) = [Nickname nick' | nick' <- shrink nick]
 
@@ -182,12 +181,7 @@ instance FromJSON IRCUser where
 
 {- | Construct arbitrary IRC users for testing. -}
 instance Arbitrary IRCUser where
-    arbitrary = do
-        nick <- arbitrary
-        maybeUser <- arbitrary
-        maybeHost <- arbitrary
-
-        return $ IRCUser nick maybeUser maybeHost
+    arbitrary = IRCUser <$> arbitrary <*> arbitrary <*> arbitrary
 
     shrink (IRCUser nick Nothing Nothing) =
         [IRCUser nick' Nothing Nothing | (nick') <- shrink nick]
@@ -406,19 +400,32 @@ instance FromJSON ServerMessage where
 {- | Construct an arbitrary ServerMessage for testing. -}
 instance Arbitrary ServerMessage where
     arbitrary = oneof
-        [ arbitrary >>= \(u, n)    -> return $ ServerNick u n
-        , arbitrary >>= \(u, r)    -> return $ ServerQuit u r
-        , arbitrary >>= \(u, c)    -> return $ ServerJoin u c
-        , arbitrary >>= \(u, c, r) -> return $ ServerPart u c r
-        , arbitrary >>= \(u, c, t) -> return $ ServerTopic u c t
-        , arbitrary >>= \(u, n, c) -> return $ ServerInvite u n c
-        , arbitrary >>= \(u, c, n) -> return $ ServerKick u c n
-        , arbitrary >>= \(u, t, m) -> return $ ServerPrivMsg u t m
-        , arbitrary >>= \(u, t, m) -> return $ ServerNotice u t m
-        , arbitrary >>= \s         -> return $ ServerPing s
+        [ ServerNick <$> arbitrary <*> arbitrary
+        , ServerQuit <$> arbitrary <*> arbitrary
+        , ServerJoin <$> arbitrary <*> arbitrary
+        , ServerPart <$> arbitrary <*> arbitrary <*> arbitrary
+        , ServerTopic <$> arbitrary <*> arbitrary <*> arbitrary
+        , ServerInvite <$> arbitrary <*> arbitrary <*> arbitrary
+        , ServerKick <$> arbitrary <*> arbitrary <*> arbitrary
+        , ServerPrivMsg <$> arbitrary <*> arbitrary <*> arbitrary
+        , ServerNotice <$> arbitrary <*> arbitrary <*> arbitrary
+        , ServerPing <$> arbitrary
         , ServerMode <$> arbitrary <*> arbitrary <*> arbitrary
-        , arbitrary >>= \(s, c, a) -> return $ ServerReply s c a
+        , ServerReply <$> arbitrary <*> arbitrary <*> arbitrary
         ]
+
+    shrink (ServerNick user nick) = shrink2 ServerNick user nick
+    shrink (ServerQuit user reason) = shrink2 ServerQuit user reason
+    shrink (ServerJoin user chan) = shrink2 ServerJoin user chan
+    shrink (ServerPart user chan reason) = shrink3 ServerPart user chan reason
+    shrink (ServerTopic user chan topic) = shrink3 ServerTopic user chan topic
+    shrink (ServerInvite user nick chan) = shrink3 ServerInvite user nick chan
+    shrink (ServerKick user chan nick) = shrink3 ServerKick user chan nick
+    shrink (ServerPrivMsg user ts msg) = shrink3 ServerPrivMsg user ts msg
+    shrink (ServerNotice server ts msg) = shrink3 ServerNotice server ts msg
+    shrink (ServerPing server) = shrink1 ServerPing server
+    shrink (ServerMode user nick mode) = shrink3 ServerMode user nick mode
+    shrink (ServerReply server num args) = shrink3 ServerReply server num args
 
 data Target = ChannelTarget Channel
     | UserTarget UserServer
@@ -662,27 +669,48 @@ instance FromJSON ClientMessage where
 {- | Construct an arbitrary ClientMessage for testing. -}
 instance Arbitrary ClientMessage where
     arbitrary = oneof
-        [ arbitrary >>= \p         -> return $ ClientPass p
-        , arbitrary >>= \n         -> return $ ClientNick n
-        , arbitrary >>= \(u, m, r) -> return $ ClientUser u m r
-        , arbitrary >>= \(u, p)    -> return $ ClientOper u p
-        , arbitrary >>= \(n, m)    -> return $ ClientMode n m
-        , arbitrary >>= \r         -> return $ ClientQuit r
-        , arbitrary >>= \c         -> return $ ClientJoin c
-        , arbitrary >>= \(c, r)    -> return $ ClientPart c r
-        , arbitrary >>= \(c, t)    -> return $ ClientTopic c t
-        , arbitrary >>= \c         -> return $ ClientNames c
-        , arbitrary >>= \c         -> return $ ClientList c
-        , arbitrary >>= \(n, c)    -> return $ ClientInvite n c
-        , arbitrary >>= \(u, m)    -> return $ ClientPrivMsg u m
-        , arbitrary >>= \(c, m)    -> return $ ClientPrivMsgChan c m
-        , arbitrary >>= \(u, m)    -> return $ ClientNotice u m
-        , arbitrary >>= \w         -> return $ ClientWho w
-        , arbitrary >>= \(s, u)    -> return $ ClientWhoIs s u
-        , arbitrary >>= \(u, n, s) -> return $ ClientWhoWas u n s
-        , arbitrary >>= \s         -> return $ ClientPing s
-        , arbitrary >>= \s         -> return $ ClientPong s
+        [ ClientPass <$> arbitrary
+        , ClientNick <$> arbitrary
+        , ClientUser <$> arbitrary <*> arbitrary <*> arbitrary
+        , ClientOper <$> arbitrary <*> arbitrary
+        , ClientMode <$> arbitrary <*> arbitrary
+        , ClientQuit <$> arbitrary
+        , ClientJoin <$> arbitrary
+        , ClientPart <$> arbitrary <*> arbitrary
+        , ClientTopic <$> arbitrary <*> arbitrary
+        , ClientNames <$> arbitrary
+        , ClientList <$> arbitrary
+        , ClientInvite <$> arbitrary <*> arbitrary
+        , ClientPrivMsg <$> arbitrary <*> arbitrary
+        , ClientPrivMsgChan <$> arbitrary <*> arbitrary
+        , ClientNotice <$> arbitrary <*> arbitrary
+        , ClientWho <$> arbitrary
+        , ClientWhoIs <$> arbitrary <*> arbitrary
+        , ClientWhoWas <$> arbitrary <*> arbitrary <*> arbitrary
+        , ClientPing <$> arbitrary
+        , ClientPong <$> arbitrary
         ]
+
+    shrink (ClientPass pass) = shrink1 ClientPass pass
+    shrink (ClientNick nick) = shrink1 ClientNick nick
+    shrink (ClientUser user mode real) = shrink3 ClientUser user mode real
+    shrink (ClientOper user pass) = shrink2 ClientOper user pass
+    shrink (ClientMode nick mode) = shrink2 ClientMode nick mode
+    shrink (ClientQuit reason) = shrink1 ClientQuit reason
+    shrink (ClientJoin channelKeys) = shrink1 ClientJoin channelKeys
+    shrink (ClientPart channels reason) = shrink2 ClientPart channels reason
+    shrink (ClientTopic chan topic) = shrink2 ClientTopic chan topic
+    shrink (ClientNames channels) = shrink1 ClientNames channels
+    shrink (ClientList channels) = shrink1 ClientList channels
+    shrink (ClientInvite nick chan) = shrink2 ClientInvite nick chan
+    shrink (ClientPrivMsg user message) = shrink2 ClientPrivMsg user message
+    shrink (ClientPrivMsgChan chan message) = shrink2 ClientPrivMsgChan chan message
+    shrink (ClientNotice user message) = shrink2 ClientNotice user message
+    shrink (ClientWho mask) = shrink1 ClientWho mask
+    shrink (ClientWhoIs server user) = shrink2 ClientWhoIs server user
+    shrink (ClientWhoWas user limit server) = shrink3 ClientWhoWas user limit server
+    shrink (ClientPing server) = shrink1 ClientPing server
+    shrink (ClientPong server) = shrink1 ClientPong server
 
 {- | Construct a Bot to handle a IRC chat. -}
 bot :: Handle
@@ -704,43 +732,43 @@ bot = Bot
 getServerCommand :: ServerMessage
     -- ^ Message to get command from.
     -> IRCCommand
-getServerCommand (ServerNick _ _) = NICK
-getServerCommand (ServerJoin _ _) = JOIN
-getServerCommand (ServerQuit _ _) = QUIT
-getServerCommand (ServerKick _ _ _) = KICK
-getServerCommand (ServerPart _ _ _) = PART
-getServerCommand (ServerTopic _ _ _) = TOPIC
-getServerCommand (ServerInvite _ _ _) = INVITE
-getServerCommand (ServerPrivMsg _ _ _) = PRIVMSG
-getServerCommand (ServerNotice _ _ _) = NOTICE
-getServerCommand (ServerPing _) = PING
-getServerCommand (ServerMode _ _ _) = MODE
-getServerCommand (ServerReply _ n _) = NUMCOM n
+getServerCommand ServerNick{} = NICK
+getServerCommand ServerJoin{} = JOIN
+getServerCommand ServerQuit{} = QUIT
+getServerCommand ServerKick{} = KICK
+getServerCommand ServerPart{} = PART
+getServerCommand ServerTopic{} = TOPIC
+getServerCommand ServerInvite{} = INVITE
+getServerCommand ServerPrivMsg{} = PRIVMSG
+getServerCommand ServerNotice{} = NOTICE
+getServerCommand ServerPing{} = PING
+getServerCommand ServerMode{} = MODE
+getServerCommand ServerReply{} = NUMCOM n
 
 {- | Get the IRC command of a client message. -}
 getClientCommand :: ClientMessage
     -- ^ Message to get command from.
     -> IRCCommand
-getClientCommand (ClientPass _) = PASS
-getClientCommand (ClientNick _) = NICK
-getClientCommand (ClientUser _ _ _) = USER
-getClientCommand (ClientOper _ _) = OPER
-getClientCommand (ClientMode _ _) = MODE
-getClientCommand (ClientQuit _) = QUIT
-getClientCommand (ClientJoin _) = JOIN
-getClientCommand (ClientPart _ _) = PART
-getClientCommand (ClientTopic _ _) = TOPIC
-getClientCommand (ClientNames _) = NAMES
-getClientCommand (ClientList _) = LIST
-getClientCommand (ClientInvite _ _) = INVITE
-getClientCommand (ClientPrivMsg _ _) = PRIVMSG
-getClientCommand (ClientPrivMsgChan _ _) = PRIVMSG
-getClientCommand (ClientNotice _ _) = NOTICE
-getClientCommand (ClientWho _) = WHO
-getClientCommand (ClientWhoIs _ _) = WHOIS
-getClientCommand (ClientWhoWas _ _ _) = WHOWAS
-getClientCommand (ClientPing _) = PING
-getClientCommand (ClientPong _) = PONG
+getClientCommand ClientPass{} = PASS
+getClientCommand ClientNick{} = NICK
+getClientCommand ClientUser{} = USER
+getClientCommand ClientOper{} = OPER
+getClientCommand ClientMode{} = MODE
+getClientCommand ClientQuit{} = QUIT
+getClientCommand ClientJoin{} = JOIN
+getClientCommand ClientPart{} = PART
+getClientCommand ClientTopic{} = TOPIC
+getClientCommand ClientNames{} = NAMES
+getClientCommand ClientList{} = LIST
+getClientCommand ClientInvite{} = INVITE
+getClientCommand ClientPrivMsg{} = PRIVMSG
+getClientCommand ClientPrivMsgChan{} = PRIVMSG
+getClientCommand ClientNotice{} = NOTICE
+getClientCommand ClientWho{} = WHO
+getClientCommand ClientWhoIs{} = WHOIS
+getClientCommand ClientWhoWas{} = WHOWAS
+getClientCommand ClientPing{} = PING
+getClientCommand ClientPong{} = PONG
 
 {- | Helper data type to convert a list of tuples to JSON with named fields. -}
 data ChannelKey = ChannelKey Channel String

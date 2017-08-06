@@ -31,6 +31,7 @@ library
   GHC-Options:         -Wall
   exposed-modules:     Bot,
                        BotTypes,
+                       Utils,
                        IRCParser.IRCMessageParser,
                        IRCWriter.IRCWriter
   other-modules:       IRCWriter.Impl,
