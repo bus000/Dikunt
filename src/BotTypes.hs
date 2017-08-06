@@ -50,6 +50,7 @@ module BotTypes
 import Control.Concurrent.MVar (MVar)
 import Data.Aeson (ToJSON(..), FromJSON(..), withObject, (.=), (.:), (.:?), object, withText)
 import qualified Data.Aeson.Types as Aeson
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Monitoring (DikuntMonitor)
@@ -84,7 +85,7 @@ nickservNickname = Nickname "NickServ"
 
 {- | Construct arbitrary IRC nicknames. -}
 instance Arbitrary Nickname where
-    arbitrary = Nickname <$> suchThat arbitrary (\s -> nickname s /= Nothing)
+    arbitrary = Nickname <$> suchThat arbitrary (isJust . nickname)
 
     shrink (Nickname nick) = [Nickname nick' | nick' <- shrink nick]
 
@@ -93,7 +94,6 @@ instance ToJSON Nickname where
 
 instance FromJSON Nickname where
     parseJSON = withText "nickname" $ return . Nickname . T.unpack
-
 
 {- | IRC channel. -}
 type Channel = String
@@ -183,23 +183,7 @@ instance FromJSON IRCUser where
 instance Arbitrary IRCUser where
     arbitrary = IRCUser <$> arbitrary <*> arbitrary <*> arbitrary
 
-    shrink (IRCUser nick Nothing Nothing) =
-        [IRCUser nick' Nothing Nothing | (nick') <- shrink nick]
-
-    shrink (IRCUser nick Nothing (Just host)) = [IRCUser nick Nothing Nothing]
-        ++ [IRCUser nick' Nothing (Just host') |
-            (nick', host') <- shrink (nick, host)]
-
-    shrink (IRCUser nick (Just user) Nothing) = [IRCUser nick Nothing Nothing]
-        ++ [IRCUser nick' (Just user') Nothing |
-            (nick', user') <- shrink (nick, user)]
-
-    shrink (IRCUser nick (Just user) (Just host)) =
-        [ IRCUser nick Nothing Nothing
-        , IRCUser nick Nothing (Just host)
-        , IRCUser nick (Just user) Nothing
-        ] ++ [IRCUser nick' (Just user') (Just host') |
-            (nick', user', host') <- shrink (nick, user, host)]
+    shrink (IRCUser nick user host) = shrink3 IRCUser nick user host
 
 data UserServer = UserServer Username (Maybe Hostname) (Maybe Servername)
   deriving (Show, Read, Eq)
@@ -743,7 +727,7 @@ getServerCommand ServerPrivMsg{} = PRIVMSG
 getServerCommand ServerNotice{} = NOTICE
 getServerCommand ServerPing{} = PING
 getServerCommand ServerMode{} = MODE
-getServerCommand ServerReply{} = NUMCOM n
+getServerCommand (ServerReply _ n _) = NUMCOM n
 
 {- | Get the IRC command of a client message. -}
 getClientCommand :: ClientMessage

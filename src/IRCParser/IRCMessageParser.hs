@@ -19,12 +19,12 @@ module IRCParser.IRCMessageParser ( parseMessage ) where
 import qualified BotTypes as BT
 import qualified Data.Char as Char
 import Data.List (intercalate)
+import Data.Maybe (fromMaybe)
 import qualified Data.Text.Lazy as T
 import Numeric (showHex)
 import Text.Parsec ((<|>))
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Number as P
-import Data.Maybe (fromMaybe)
 
 parseMessage :: T.Text -> Either P.ParseError BT.ServerMessage
 parseMessage = P.parse servermessage "(IRC message)"
@@ -117,8 +117,8 @@ targets = P.sepBy1 target (P.char ',')
 target :: P.Parsec T.Text () BT.Target
 target = P.choice
     [ BT.ChannelTarget <$> P.try channel
-    , BT.NickTarget <$> P.try forceNickUser_Host
-    , BT.UserTarget <$> P.try forceUserHost_Server
+    , BT.NickTarget <$> P.try forceNickUserNoHost
+    , BT.UserTarget <$> P.try forceUserHostNoServer
     , BT.NickTarget <$> P.try nickUserHost
     , BT.UserTarget <$> P.try userHostServer
     ]
@@ -129,8 +129,8 @@ nickUserHost = BT.IRCUser <$> nickname <*> user <*> host
     user = P.optionMaybe $ P.char '!' *> username
     host = P.optionMaybe $ P.char '@' *> hostname
 
-forceNickUser_Host :: P.Parsec T.Text () BT.IRCUser
-forceNickUser_Host = BT.IRCUser <$> nickname <*> user <*> host
+forceNickUserNoHost :: P.Parsec T.Text () BT.IRCUser
+forceNickUserNoHost = BT.IRCUser <$> nickname <*> user <*> host
   where
     user = Just <$> (P.char '!' *> username)
     host = P.optionMaybe $ P.char '@' *> hostname
@@ -141,8 +141,8 @@ userHostServer = BT.UserServer <$> username <*> host <*> server
     host = P.optionMaybe $ P.char '%' *> hostname
     server = P.optionMaybe $ P.char '@' *> servername
 
-forceUserHost_Server :: P.Parsec T.Text () BT.UserServer
-forceUserHost_Server = BT.UserServer <$> username <*> host <*> server
+forceUserHostNoServer :: P.Parsec T.Text () BT.UserServer
+forceUserHostNoServer = BT.UserServer <$> username <*> host <*> server
   where
     host = Just <$> (P.char '%' *> hostname)
     server = P.optionMaybe $ P.char '@' *> servername

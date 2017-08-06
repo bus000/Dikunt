@@ -27,6 +27,7 @@ import Control.Exception (Exception, throw)
 import Control.Monad (forever, mapM_, void)
 import Data.Aeson (encode, decode, FromJSON, ToJSON)
 import qualified Data.ByteString.Lazy as B
+import Data.Maybe (fromMaybe)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
@@ -119,7 +120,7 @@ listen bot@(BT.Bot h nick chan pass _ _) = do
     mapM_ (handleMessage bot) $ messages s
   where
     messages :: B.ByteString -> [T.Text]
-    messages = map (\x -> T.append x "\n") . T.lines . T.decodeUtf8
+    messages = map (`T.append` "\n") . T.lines . T.decodeUtf8
 
 {- | Handle a message from the IRC channel. If the message is a ping a pong
  - response is sent otherwise the message is sent to all plugins. The message is
@@ -151,9 +152,8 @@ respond (BT.Bot h _ chan _ monitor _) = do
     messages <- map decodeOrPriv . T.lines <$> readContent monitor
     mapM_ (\mes -> write h mes >> threadDelay 1000000) messages
   where
-    decodeOrPriv str = case jsonDecode str of
-        Just mes -> mes
-        Nothing -> BT.ClientPrivMsgChan chan (T.unpack str)
+    decodeOrPriv str = fromMaybe (BT.ClientPrivMsgChan chan (T.unpack str)) $
+        jsonDecode str
 
 {- | Read from stdin and replicate the strings to the IRC channel. Can be used
  - by an administrator to write messages for Dikunt. -}
