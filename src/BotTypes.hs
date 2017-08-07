@@ -96,9 +96,11 @@ instance Arbitrary Nickname where
         , (isJust . nickname) nick'
         ]
 
+{- | Convert Nickname's to JSON. -}
 instance ToJSON Nickname where
     toJSON (Nickname nick) = Aeson.String . T.pack $ nick
 
+{- | Parse Nickname's from JSON. -}
 instance FromJSON Nickname where
     parseJSON = withText "nickname" $ return . Nickname . T.unpack
 
@@ -131,9 +133,11 @@ instance Arbitrary Channel where
         , (isJust . channel) chan'
         ]
 
+{- | Convert Channel's to JSON. -}
 instance ToJSON Channel where
     toJSON (Channel chan) = Aeson.String . T.pack $ chan
 
+{- | Parse Channel's from JSON. -}
 instance FromJSON Channel where
     parseJSON = withText "channel" $ return . Channel . T.unpack
 
