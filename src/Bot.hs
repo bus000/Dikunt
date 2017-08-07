@@ -63,7 +63,8 @@ connect (BT.BotConfig serv nick pass chan port) execs args = do
     hSetBuffering h NoBuffering
 
     -- Start all plugins and a monitor for them.
-    monitor <- startMonitoring execs (BT.getNickname nick:chan:args)
+    monitor <- startMonitoring execs
+        (BT.getNickname nick:BT.getChannel chan:args)
 
     -- Create MVar used to stop the bot when any bot thread terminates.
     closedMVar <- newEmptyMVar

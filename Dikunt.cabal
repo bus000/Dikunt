@@ -53,6 +53,8 @@ test-suite Tasty
                        tasty-hunit,
                        tasty-quickcheck,
                        hslogger >=1.2.10,
+                       parsec >=3.1.11,
+                       parsec3-numbers >=0.1.0,
                        QuickCheck >=2.9.1
   hs-source-dirs:      test, src
   main-is:             Tasty.hs

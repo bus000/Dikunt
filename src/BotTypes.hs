@@ -38,7 +38,11 @@ module BotTypes
     -- Hardcoded nicknames.
     , nickservNickname
 
+    -- Channel type, smart constructor and getter.
     , Channel
+    , channel
+    , getChannel
+
     , Password
     , Servername
     , Username
@@ -73,7 +77,7 @@ nickname nick
   where
     nicknameRegex = "^[A-z]([0-9A-z\\-\\[\\]\\\\\\`\\^\\{\\}])*$" :: String
 
-{- | Get the actual nickname from the nickname type. -}
+{- | Get the actual nickname from the Nickname type. -}
 getNickname :: Nickname
     -- ^ The Nickname to get nickname from.
     -> String
@@ -87,7 +91,10 @@ nickservNickname = Nickname "NickServ"
 instance Arbitrary Nickname where
     arbitrary = Nickname <$> suchThat arbitrary (isJust . nickname)
 
-    shrink (Nickname nick) = [Nickname nick' | nick' <- shrink nick]
+    shrink (Nickname nick) =
+        [ Nickname nick' | nick' <- shrink nick
+        , (isJust . nickname) nick'
+        ]
 
 instance ToJSON Nickname where
     toJSON (Nickname nick) = Aeson.String . T.pack $ nick
@@ -96,7 +103,39 @@ instance FromJSON Nickname where
     parseJSON = withText "nickname" $ return . Nickname . T.unpack
 
 {- | IRC channel. -}
-type Channel = String
+newtype Channel = Channel String deriving (Show, Read, Eq)
+
+{- | Smart constructor for Channels, only allow correct IRC channels to be
+ - constructed. -}
+channel :: String
+    -- ^ Text to construct Channel from.
+    -> Maybe Channel
+channel chan
+    | chan =~ channelRegex = Just . Channel $ chan
+    | otherwise = Nothing
+  where
+    channelRegex = "^[#+&][^\\0\\a\\r\\n ,:]+$" :: String
+
+{- | Get the actual channel from the Channel type. -}
+getChannel :: Channel
+    -- ^ The Channel to get channel from.
+    -> String
+getChannel (Channel chan) = chan
+
+{- | Construct arbitrary IRC channels. -}
+instance Arbitrary Channel where
+    arbitrary = Channel <$> suchThat arbitrary (isJust . channel)
+
+    shrink (Channel chan) =
+        [Channel chan' | chan' <- shrink chan
+        , (isJust . channel) chan'
+        ]
+
+instance ToJSON Channel where
+    toJSON (Channel chan) = Aeson.String . T.pack $ chan
+
+instance FromJSON Channel where
+    parseJSON = withText "channel" $ return . Channel . T.unpack
 
 {- | IRC password. -}
 type Password = String
@@ -129,7 +168,7 @@ data BotConfig = BotConfig
 data Bot = Bot
     { socket        :: !Handle -- ^ The handle to communicate with the server.
     , botNickname   :: !Nickname -- ^ The nickname used on the server.
-    , channel       :: !Channel -- ^ The channel connected to.
+    , botChannel    :: !Channel -- ^ The channel connected to.
     , password      :: !Password -- ^ The password to connect with.
     , pluginMonitor :: !DikuntMonitor -- ^ Handler of Dikunt plugins.
     , closedMVar    :: MVar () -- ^ When not empty bot thread is stopped.

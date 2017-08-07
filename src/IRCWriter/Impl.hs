@@ -13,92 +13,128 @@
  -}
 module IRCWriter.Impl where
 
-import BotTypes (ClientMessage(..), IRCUser(..), ServerMessage(..), getNickname)
+import qualified BotTypes as BT
+import BotTypes (getNickname, getChannel)
 import Data.List (intercalate)
 
 {- | Convert client messages to strings that can be send to the IRC server. -}
-writeMessage :: ClientMessage
+writeMessage :: BT.ClientMessage
     -- ^ The message to convert to a string.
     -> String
 writeMessage msg = writeMessage' msg ++ "\r\n"
   where
-    writeMessage' (ClientPass pass) =
+    writeMessage' (BT.ClientPass pass) =
         "PASS " ++ pass
-    writeMessage' (ClientNick nick) =
+    writeMessage' (BT.ClientNick nick) =
         "NICK " ++ getNickname nick
-    writeMessage' (ClientUser user mode realname) =
+    writeMessage' (BT.ClientUser user mode realname) =
         "USER " ++ user ++ " " ++ show mode ++ " * :" ++ realname
-    writeMessage' (ClientOper user pass) =
+    writeMessage' (BT.ClientOper user pass) =
         "OPER " ++ user ++ " " ++ pass
-    writeMessage' (ClientMode nick mode) =
+    writeMessage' (BT.ClientMode nick mode) =
         "MODE " ++ getNickname nick ++ " " ++ mode
-    writeMessage' (ClientQuit reason) =
+    writeMessage' (BT.ClientQuit reason) =
         "QUIT :" ++ reason
-    writeMessage' (ClientJoin channelsAndKeys) =
+    writeMessage' (BT.ClientJoin channelsAndKeys) =
         let (channels, keys) = unzip channelsAndKeys
-        in "JOIN " ++ intercalate "," channels ++ " " ++ intercalate "," keys
-    writeMessage' (ClientPart channels (Just message)) =
-        "PART " ++ intercalate "," channels ++ " " ++ message
-    writeMessage' (ClientPart channels Nothing) =
-        "PART " ++ intercalate "," channels ++ " "
-    writeMessage' (ClientTopic chan (Just topic)) =
-        "TOPIC " ++ chan ++ " :" ++ topic
-    writeMessage' (ClientTopic chan Nothing) =
-        "TOPIC " ++ chan
-    writeMessage' (ClientNames channels) =
-        "NAMES " ++ intercalate "," channels
-    writeMessage' (ClientList channels) =
-        "LIST " ++ intercalate "," channels
-    writeMessage' (ClientInvite nick chan) =
-        "INVITE " ++ getNickname nick ++ " " ++ chan
-    writeMessage' (ClientPrivMsg user message) =
+        in "JOIN " ++ intercalate "," (map getChannel channels) ++ " "
+            ++ intercalate "," keys
+    writeMessage' (BT.ClientPart channels (Just message)) =
+        "PART " ++ intercalate "," (map getChannel channels) ++ " " ++ message
+    writeMessage' (BT.ClientPart channels Nothing) =
+        "PART " ++ intercalate "," (map getChannel channels) ++ " "
+    writeMessage' (BT.ClientTopic chan (Just topic)) =
+        "TOPIC " ++ getChannel chan ++ " :" ++ topic
+    writeMessage' (BT.ClientTopic chan Nothing) =
+        "TOPIC " ++ getChannel chan
+    writeMessage' (BT.ClientNames channels) =
+        "NAMES " ++ intercalate "," (map getChannel channels)
+    writeMessage' (BT.ClientList channels) =
+        "LIST " ++ intercalate "," (map getChannel channels)
+    writeMessage' (BT.ClientInvite nick chan) =
+        "INVITE " ++ getNickname nick ++ " " ++ getChannel chan
+    writeMessage' (BT.ClientPrivMsg user message) =
         "PRIVMSG " ++ writeUser user ++ " :" ++ message
-    writeMessage' (ClientNotice user message) =
+    writeMessage' (BT.ClientNotice user message) =
         "NOTICE " ++ writeUser user ++ " :" ++ message
-    writeMessage' (ClientWho mask) =
+    writeMessage' (BT.ClientWho mask) =
         "WHO " ++ mask
-    writeMessage' (ClientWhoIs (Just server) user) =
+    writeMessage' (BT.ClientWhoIs (Just server) user) =
         "WHOIS " ++ server ++ " " ++ user
-    writeMessage' (ClientWhoIs Nothing user) =
+    writeMessage' (BT.ClientWhoIs Nothing user) =
         "WHOIS " ++ user
-    writeMessage' (ClientWhoWas user Nothing Nothing) =
+    writeMessage' (BT.ClientWhoWas user Nothing Nothing) =
         "WHOWAS " ++ user
-    writeMessage' (ClientWhoWas user (Just size) Nothing) =
+    writeMessage' (BT.ClientWhoWas user (Just size) Nothing) =
         "WHOWAS " ++ user ++ " " ++ show size
-    writeMessage' (ClientWhoWas user (Just size) (Just server)) =
+    writeMessage' (BT.ClientWhoWas user (Just size) (Just server)) =
         "WHOWAS " ++ user ++ " " ++ show size ++ " " ++ server
-    writeMessage' (ClientPing servername) =
+    writeMessage' (BT.ClientPing servername) =
         "PING " ++ servername
-    writeMessage' (ClientPong servername) =
+    writeMessage' (BT.ClientPong servername) =
         "PONG " ++ servername
-    writeMessage' (ClientPrivMsgChan chan message) =
-        "PRIVMSG " ++ chan ++ " :" ++ message
+    writeMessage' (BT.ClientPrivMsgChan chan message) =
+        "PRIVMSG " ++ getChannel chan ++ " :" ++ message
 
-writeServerMessage :: ServerMessage -> String
-writeServerMessage (ServerNick user newnick) =
+writeServerMessage :: BT.ServerMessage -> String
+writeServerMessage (BT.ServerNick user newnick) =
     ":" ++ writeUser user ++ " NICK " ++ getNickname newnick ++ "\r\n"
-writeServerMessage (ServerJoin user chan) =
-    ":" ++ writeUser user ++ " JOIN " ++ chan ++ "\r\n"
-writeServerMessage (ServerPart user chan message) =
-    ":" ++ writeUser user ++ " PRIVMSG " ++ chan ++ " :" ++ message ++ "\r\n"
-writeServerMessage (ServerQuit user reason) =
+writeServerMessage (BT.ServerJoin user chan) =
+    ":" ++ writeUser user ++ " JOIN " ++ getChannel chan ++ "\r\n"
+writeServerMessage (BT.ServerPart user chan message) =
+    ":" ++ writeUser user ++ " PRIVMSG " ++ getChannel chan ++ " :" ++ message
+        ++ "\r\n"
+writeServerMessage (BT.ServerQuit user reason) =
     ":" ++ writeUser user ++ " QUIT :" ++ reason ++ "\r\n"
-writeServerMessage (ServerTopic user chan newtopic) =
-    ":" ++ writeUser user ++ " TOPIC " ++ chan ++ " :" ++ newtopic ++ "\r\n"
-writeServerMessage (ServerInvite user nick chan) =
-    ":" ++ writeUser user ++ " INVITE " ++ getNickname nick ++ " " ++ chan ++ "\r\n"
-writeServerMessage (ServerPrivMsg user targets message) = undefined
-writeServerMessage (ServerNotice user chan message) = undefined
-writeServerMessage (ServerPing servername) =
+writeServerMessage (BT.ServerTopic user chan newtopic) =
+    ":" ++ writeUser user ++ " TOPIC " ++ getChannel chan ++ " :" ++ newtopic
+        ++ "\r\n"
+writeServerMessage (BT.ServerInvite user nick chan) =
+    ":" ++ writeUser user ++ " INVITE " ++ getNickname nick ++ " "
+        ++ getChannel chan ++ "\r\n"
+writeServerMessage (BT.ServerPrivMsg user targets message) =
+    ":" ++ writeUser user ++ " PRIVMSG " ++ writeTargets targets ++ " :"
+        ++ message ++ "\r\n"
+writeServerMessage (BT.ServerNotice server targets message) =
+    ":" ++ server ++ " NOTICE " ++ writeTargets targets ++ " :" ++ message
+        ++ "\r\n"
+writeServerMessage (BT.ServerPing servername) =
     ":" ++ servername ++ " PING\r\n"
-writeServerMessage (ServerReply servername numcom args) = undefined
+writeServerMessage (BT.ServerKick user chan nick) =
+    ":" ++ writeUser user ++ " KICK " ++ getChannel chan ++ " "
+        ++ getNickname nick ++ "\r\n"
+writeServerMessage (BT.ServerMode user nick mode) =
+    ":" ++ writeUser user ++ " MODE " ++ getNickname nick ++ " :" ++ mode
+        ++ "\r\n"
+writeServerMessage (BT.ServerReply servername numcom []) =
+    ":" ++ servername ++ " " ++ show numcom ++ "\r\n"
+writeServerMessage (BT.ServerReply servername numcom [arg]) =
+    ":" ++ servername ++ " " ++ show numcom ++ " :" ++ arg ++ "\r\n"
+writeServerMessage (BT.ServerReply servername numcom args) =
+    ":" ++ servername ++ " " ++ show numcom ++ " "
+        ++ intercalate " " (init args) ++ " :" ++ last args ++ "\r\n"
 
-writeUser :: IRCUser -> String
-writeUser (IRCUser nick Nothing Nothing) =
+writeUser :: BT.IRCUser -> String
+writeUser (BT.IRCUser nick Nothing Nothing) =
     getNickname nick
-writeUser (IRCUser nick Nothing (Just host)) =
+writeUser (BT.IRCUser nick Nothing (Just host)) =
     getNickname nick ++ "@" ++ host
-writeUser (IRCUser nick (Just user) Nothing) =
+writeUser (BT.IRCUser nick (Just user) Nothing) =
     getNickname nick ++ "!" ++ user
-writeUser (IRCUser nick (Just user) (Just host)) =
+writeUser (BT.IRCUser nick (Just user) (Just host)) =
     getNickname nick ++ "!" ++ user ++ "@" ++ host
+
+writeTargets :: [BT.Target] -> String
+writeTargets targets = intercalate "," (map writeTarget targets)
+
+writeTarget :: BT.Target -> String
+writeTarget (BT.ChannelTarget chan) = getChannel chan
+writeTarget (BT.UserTarget server) = writeUserServer server
+writeTarget (BT.NickTarget user) = writeUser user
+
+writeUserServer :: BT.UserServer -> String
+writeUserServer (BT.UserServer user Nothing Nothing) = user
+writeUserServer (BT.UserServer user Nothing (Just server)) = user ++ "@" ++ server
+writeUserServer (BT.UserServer user (Just host) Nothing) = user ++ "%" ++ host
+writeUserServer (BT.UserServer user (Just host) (Just server)) =
+    user ++ "%" ++ host ++ "@" ++ server
