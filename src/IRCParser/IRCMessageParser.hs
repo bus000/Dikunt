@@ -105,7 +105,7 @@ nickname =
         (BT.nickname (c1:str))
 
 servername :: P.Parsec T.Text () BT.Servername
-servername = P.try nickservHost <|> P.try hostname
+servername = BT.Servername <$> (P.try nickservHost <|> P.try hostname)
 
 channel :: P.Parsec T.Text () BT.Channel
 channel = consChan <$> P.choice [P.char '#', P.char '+', P.char '&'] <*>

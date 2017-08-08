@@ -43,8 +43,10 @@ module BotTypes
     , channel
     , getChannel
 
+    -- Servername type, smart constructor and getter.
+    , Servername(..)
+
     , Password
-    , Servername
     , Username
     , Hostname
     , Mode
@@ -54,13 +56,14 @@ module BotTypes
 import Control.Concurrent.MVar (MVar)
 import Data.Aeson (ToJSON(..), FromJSON(..), withObject, (.=), (.:), (.:?), object, withText)
 import qualified Data.Aeson.Types as Aeson
+import Data.List (intercalate)
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Monitoring (DikuntMonitor)
 import System.IO (Handle)
 import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
-import Test.QuickCheck.Gen (oneof, suchThat)
+import Test.QuickCheck.Gen (oneof, suchThat, listOf1, elements)
 import Text.Regex.PCRE ((=~))
 import Utils (shrink1, shrink2, shrink3)
 
@@ -145,7 +148,35 @@ instance FromJSON Channel where
 type Password = String
 
 {- | IRC servername. -}
-type Servername = String
+newtype Servername = Servername String deriving (Show, Read, Eq)
+
+ipV6Servername :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Servername
+ipV6Servername a b c d e f g h = Servername $
+    intercalate ":" (map show [a, b, c, d, e, f, g, h])
+
+ipV4Servername :: Int -> Int -> Int -> Int -> Servername
+ipV4Servername a b c d = Servername $ intercalate "." (map show [a, b, c, d])
+
+{- | Construct arbitrary IRC servernames. -}
+instance Arbitrary Servername where
+    arbitrary = oneof
+        [ ipV6Servername <$> pos <*> pos <*> pos <*> pos <*> pos <*> pos <*> pos
+            <*> pos
+        , ipV4Servername <$> pos <*> pos <*> pos <*> pos
+        , Servername . intercalate "." <$> shortnames
+        ]
+      where
+        pos = abs <$> arbitrary
+        shortnames = listOf1 (listOf1 $ elements
+            (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']))
+
+{- | Convert Servername's to JSON. -}
+instance ToJSON Servername where
+    toJSON (Servername server) = Aeson.String . T.pack $ server
+
+{- | Parse Servername's from JSON. -}
+instance FromJSON Servername where
+    parseJSON = withText "server" $ return . Servername . T.unpack
 
 {- | IRC username. -}
 type Username = String
@@ -345,9 +376,9 @@ instance ToJSON ServerMessage where
         , "targets" .= targets
         , "message" .= message
         ]
-    toJSON (ServerPing servername) = object
+    toJSON (ServerPing server) = object
         [ "command" .= ("PING" :: Text)
-        , "servername" .= servername
+        , "servername" .= server
         ]
     toJSON (ServerMode ircUser nick mode) = object
         [ "command" .= ("MODE" :: Text)
@@ -355,9 +386,9 @@ instance ToJSON ServerMessage where
         , "nickname" .= nick
         , "mode" .= mode
         ]
-    toJSON (ServerReply servername numeric args) = object
+    toJSON (ServerReply server numeric args) = object
         [ "command" .= ("REPLY" :: Text)
-        , "servername" .= servername
+        , "servername" .= server
         , "numeric" .= numeric
         , "args" .= args
         ]
@@ -405,23 +436,23 @@ instance FromJSON ServerMessage where
                 message <- o .: "message"
                 return $ ServerPrivMsg ircUser targets message
             "NOTICE" -> do
-                servername <- o .: "servername"
+                server <- o .: "servername"
                 message <- o .: "message"
                 targets <- o .: "targets"
-                return $ ServerNotice servername targets message
+                return $ ServerNotice server targets message
             "PING" -> do
-                servername <- o .: "servername"
-                return $ ServerPing servername
+                server <- o .: "servername"
+                return $ ServerPing server
             "MODE" -> do
                 ircUser <- o .: "ircUser"
                 nick <- o .: "nickname"
                 mode <- o .: "mode"
                 return $ ServerMode ircUser nick mode
             "REPLY" -> do
-                servername <- o .: "servername"
+                server <- o .: "servername"
                 numeric <- o .: "numeric"
                 args <- o .: "args"
-                return $ ServerReply servername numeric args
+                return $ ServerReply server numeric args
             _ -> fail $ "Unknown command " ++ command
 
 {- | Construct an arbitrary ServerMessage for testing. -}
@@ -593,24 +624,24 @@ instance ToJSON ClientMessage where
         [ "command" .= ("WHO" :: Text)
         , "mask" .= mask
         ]
-    toJSON (ClientWhoIs servername username) = object
+    toJSON (ClientWhoIs server username) = object
         [ "command" .= ("WHOIS" :: Text)
-        , "servername" .= servername
+        , "servername" .= server
         , "username" .= username
         ]
-    toJSON (ClientWhoWas username count servername) = object
+    toJSON (ClientWhoWas username count server) = object
         [ "command" .= ("WHOWAS" :: Text)
         , "username" .= username
         , "count" .= count
-        , "servername" .= servername
+        , "servername" .= server
         ]
-    toJSON (ClientPing servername) = object
+    toJSON (ClientPing server) = object
         [ "command" .= ("PING" :: Text)
-        , "servername" .= servername
+        , "servername" .= server
         ]
-    toJSON (ClientPong servername) = object
+    toJSON (ClientPong server) = object
         [ "command" .= ("PONG" :: Text)
-        , "servername" .= servername
+        , "servername" .= server
         ]
 
 {- Convert a JSON string to a ClientMessage. -}
@@ -677,20 +708,20 @@ instance FromJSON ClientMessage where
                 mask <- o .: "mask"
                 return $ ClientWho mask
             "WHOIS" -> do
-                servername <- o .: "servername"
+                server <- o .: "servername"
                 user <- o .: "username"
-                return $ ClientWhoIs servername user
+                return $ ClientWhoIs server user
             "WHOWAS" -> do
                 user <- o .: "username"
                 count <- o .:? "count"
-                servername <- o .:? "servername"
-                return $ ClientWhoWas user count servername
+                server <- o .:? "servername"
+                return $ ClientWhoWas user count server
             "PING" -> do
-                servername <- o .: "servername"
-                return $ ClientPing servername
+                server <- o .: "servername"
+                return $ ClientPing server
             "PONG" -> do
-                servername <- o .: "servername"
-                return $ ClientPong servername
+                server <- o .: "servername"
+                return $ ClientPong server
             _ -> fail $ "Unknown command " ++ command
 
 {- | Construct an arbitrary ClientMessage for testing. -}

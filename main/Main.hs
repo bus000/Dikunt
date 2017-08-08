@@ -57,7 +57,7 @@ getBotConfig :: Dikunt -> Either String BT.BotConfig
 getBotConfig (Dikunt serv nickString pass chanString p _) = do
     nick <- maybeToEither "Nickname incorrect" $ BT.nickname nickString
     chan <-  maybeToEither "Channel incorrect" $ BT.channel chanString
-    return $ BT.BotConfig serv nick pass chan p
+    return $ BT.BotConfig (BT.Servername serv) nick pass chan p
 
 {- | Allocate resources used by the bot. Setup logging and connection to IRC
  - server. -}

@@ -59,7 +59,7 @@ writeMessage msg = writeMessage' msg ++ "\r\n"
         "NOTICE " ++ writeUser user ++ " :" ++ message
     writeMessage' (BT.ClientWho mask) =
         "WHO " ++ mask
-    writeMessage' (BT.ClientWhoIs (Just server) user) =
+    writeMessage' (BT.ClientWhoIs (Just (BT.Servername server)) user) =
         "WHOIS " ++ server ++ " " ++ user
     writeMessage' (BT.ClientWhoIs Nothing user) =
         "WHOIS " ++ user
@@ -67,11 +67,11 @@ writeMessage msg = writeMessage' msg ++ "\r\n"
         "WHOWAS " ++ user
     writeMessage' (BT.ClientWhoWas user (Just size) Nothing) =
         "WHOWAS " ++ user ++ " " ++ show size
-    writeMessage' (BT.ClientWhoWas user (Just size) (Just server)) =
+    writeMessage' (BT.ClientWhoWas user (Just size) (Just (BT.Servername server))) =
         "WHOWAS " ++ user ++ " " ++ show size ++ " " ++ server
-    writeMessage' (BT.ClientPing servername) =
+    writeMessage' (BT.ClientPing (BT.Servername servername)) =
         "PING " ++ servername
-    writeMessage' (BT.ClientPong servername) =
+    writeMessage' (BT.ClientPong (BT.Servername servername)) =
         "PONG " ++ servername
     writeMessage' (BT.ClientPrivMsgChan chan message) =
         "PRIVMSG " ++ getChannel chan ++ " :" ++ message
@@ -95,10 +95,10 @@ writeServerMessage (BT.ServerInvite user nick chan) =
 writeServerMessage (BT.ServerPrivMsg user targets message) =
     ":" ++ writeUser user ++ " PRIVMSG " ++ writeTargets targets ++ " :"
         ++ message ++ "\r\n"
-writeServerMessage (BT.ServerNotice server targets message) =
+writeServerMessage (BT.ServerNotice (BT.Servername server) targets message) =
     ":" ++ server ++ " NOTICE " ++ writeTargets targets ++ " :" ++ message
         ++ "\r\n"
-writeServerMessage (BT.ServerPing servername) =
+writeServerMessage (BT.ServerPing (BT.Servername servername)) =
     ":" ++ servername ++ " PING\r\n"
 writeServerMessage (BT.ServerKick user chan nick) =
     ":" ++ writeUser user ++ " KICK " ++ getChannel chan ++ " "
@@ -106,11 +106,11 @@ writeServerMessage (BT.ServerKick user chan nick) =
 writeServerMessage (BT.ServerMode user nick mode) =
     ":" ++ writeUser user ++ " MODE " ++ getNickname nick ++ " :" ++ mode
         ++ "\r\n"
-writeServerMessage (BT.ServerReply servername numcom []) =
+writeServerMessage (BT.ServerReply (BT.Servername servername) numcom []) =
     ":" ++ servername ++ " " ++ show numcom ++ "\r\n"
-writeServerMessage (BT.ServerReply servername numcom [arg]) =
+writeServerMessage (BT.ServerReply (BT.Servername servername) numcom [arg]) =
     ":" ++ servername ++ " " ++ show numcom ++ " :" ++ arg ++ "\r\n"
-writeServerMessage (BT.ServerReply servername numcom args) =
+writeServerMessage (BT.ServerReply (BT.Servername servername) numcom args) =
     ":" ++ servername ++ " " ++ show numcom ++ " "
         ++ intercalate " " (init args) ++ " :" ++ last args ++ "\r\n"
 
@@ -134,7 +134,8 @@ writeTarget (BT.NickTarget user) = writeUser user
 
 writeUserServer :: BT.UserServer -> String
 writeUserServer (BT.UserServer user Nothing Nothing) = user
-writeUserServer (BT.UserServer user Nothing (Just server)) = user ++ "@" ++ server
+writeUserServer (BT.UserServer user Nothing (Just (BT.Servername server))) =
+    user ++ "@" ++ server
 writeUserServer (BT.UserServer user (Just host) Nothing) = user ++ "%" ++ host
-writeUserServer (BT.UserServer user (Just host) (Just server)) =
+writeUserServer (BT.UserServer user (Just host) (Just (BT.Servername server))) =
     user ++ "%" ++ host ++ "@" ++ server

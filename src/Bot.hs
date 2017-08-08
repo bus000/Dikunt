@@ -58,7 +58,7 @@ connect :: BT.BotConfig
     -> [String]
     -- ^ Extra plugin args.
     -> IO BT.Bot
-connect (BT.BotConfig serv nick pass chan port) execs args = do
+connect (BT.BotConfig (BT.Servername serv) nick pass chan port) execs args = do
     h <- connectTo serv (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
 
