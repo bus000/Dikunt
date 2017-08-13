@@ -1,6 +1,6 @@
 module Main where
 
-import qualified BotTypes as BT
+import qualified Types.BotTypes as BT
 import Control.Monad (forever)
 import System.Environment (getArgs)
 import Network.HTTP.Conduit (simpleHttp)

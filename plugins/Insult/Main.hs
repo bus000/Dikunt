@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main ( main ) where
 
-import qualified BotTypes as BT
+import qualified Types.BotTypes as BT
 import Control.Monad (forever, unless)
 import Data.Aeson (decode)
 import qualified Data.Text as T

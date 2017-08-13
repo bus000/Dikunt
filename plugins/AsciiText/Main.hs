@@ -1,6 +1,6 @@
 module Main ( main ) where
 
-import qualified BotTypes as BT
+import qualified Types.BotTypes as BT
 import Control.Monad (forever)
 import System.Environment (getArgs)
 import System.Exit (ExitCode(ExitSuccess, ExitFailure))

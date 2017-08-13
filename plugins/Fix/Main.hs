@@ -1,6 +1,6 @@
 module Main (main) where
 
-import qualified BotTypes as BT
+import qualified Types.BotTypes as BT
 import Control.Monad (forever)
 import Control.Monad.State.Strict (runStateT, StateT, get, lift, put)
 import Data.Aeson (decode)

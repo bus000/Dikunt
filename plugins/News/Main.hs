@@ -1,6 +1,6 @@
 module Main (main) where
 
-import qualified BotTypes as BT
+import qualified Types.BotTypes as BT
 import Control.Error.Util (note)
 import Control.Monad (forever)
 import Network.Download (openAsFeed)

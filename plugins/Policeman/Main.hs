@@ -1,6 +1,6 @@
 module Main (main) where
 
-import qualified BotTypes as BT
+import qualified Types.BotTypes as BT
 import Control.Monad (forever)
 import Data.Char (toLower)
 import Data.Random (sample)

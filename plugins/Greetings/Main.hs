@@ -1,6 +1,6 @@
 module Main (main) where
 
-import qualified BotTypes as BT
+import qualified Types.BotTypes as BT
 import System.Environment (getArgs)
 import Control.Monad (forever)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))

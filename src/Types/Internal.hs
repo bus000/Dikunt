@@ -1,69 +1,30 @@
 {- |
- - Module      : BotTypes
- - Description : Types and instances representing a bot.
+ - Module      : Types.Internal
+ - Description : Internal implementation of types from Types.BotTypes.
  - Copyright   : (c) Magnus Stavngaard, 2016
  - License     : BSD-3
  - Maintainer  : magnus@stavngaard.dk
  - Stability   : experimental
  - Portability : POSIX
- -
- - The main type is the Bot type. The bot represents a connection to a IRC
- - server on a specific channel. The bot also contains a monitor that keeps
- - track of plugin processes. The output and input of plugins can also be found
- - in the monitor. The module also defines types for messages received by the
- - server and messages that can be send to the server. The types are
- - ServerMessage and ClientMessage respectively. Both types can be converted to
- - and from JSON.
  -}
 {-# LANGUAGE OverloadedStrings #-}
-module BotTypes
-    ( Bot(..)
-    , bot
-    , IRCCommand(..)
-    , IRCUser(..)
-    , UserServer(..)
-    , ServerMessage(..)
-    , ClientMessage(..)
-    , Target(..)
-    , getServerCommand
-    , getClientCommand
-
-    -- Bot configuration declaration.
-    , BotConfig(..)
-
-    -- Nickname type, smart constructor and getter.
-    , Nickname
-    , nickname
-    , getNickname
-    -- Hardcoded nicknames.
-    , nickservNickname
-
-    -- Channel type, smart constructor and getter.
-    , Channel
-    , channel
-    , getChannel
-
-    -- Servername type, smart constructor and getter.
-    , Servername(..)
-
-    , Password
-    , Username
-    , Hostname
-    , Mode
-    , Realname
-    ) where
+module Types.Internal where
 
 import Control.Concurrent.MVar (MVar)
+import Control.Monad (replicateM)
 import Data.Aeson (ToJSON(..), FromJSON(..), withObject, (.=), (.:), (.:?), object, withText)
 import qualified Data.Aeson.Types as Aeson
+import Data.Either (rights)
 import Data.List (intercalate)
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Monitoring (DikuntMonitor)
+import Parsers.Utils (ipV4, ipV6, hostname)
 import System.IO (Handle)
 import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
 import Test.QuickCheck.Gen (oneof, suchThat, listOf1, elements)
+import qualified Text.Parsec as P
 import Text.Regex.PCRE ((=~))
 import Utils (shrink1, shrink2, shrink3)
 
@@ -150,25 +111,30 @@ type Password = String
 {- | IRC servername. -}
 newtype Servername = Servername String deriving (Show, Read, Eq)
 
-ipV6Servername :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Servername
-ipV6Servername a b c d e f g h = Servername $
-    intercalate ":" (map show [a, b, c, d, e, f, g, h])
+{- | Smart constructor for Servername's. -}
+servername :: String
+    -- ^ Source of servername.
+    -> Maybe Servername
+servername serv = case rights [ipV4Servername, ipV6Servername, hostServername] of
+    (x:_) -> return $ Servername x
+    _ -> Nothing
+  where
+    ipV4Servername = P.parse ipV4 "(ipv4 source)" serv
+    ipV6Servername = P.parse ipV6 "(ipv6 source)" serv
+    hostServername = P.parse hostname "(hostname source)" serv
 
-ipV4Servername :: Int -> Int -> Int -> Int -> Servername
-ipV4Servername a b c d = Servername $ intercalate "." (map show [a, b, c, d])
+{- | Get the actual server name. -}
+getServerName :: Servername -> String
+getServerName (Servername server) = server
 
 {- | Construct arbitrary IRC servernames. -}
 instance Arbitrary Servername where
-    arbitrary = oneof
-        [ ipV6Servername <$> pos <*> pos <*> pos <*> pos <*> pos <*> pos <*> pos
-            <*> pos
-        , ipV4Servername <$> pos <*> pos <*> pos <*> pos
-        , Servername . intercalate "." <$> shortnames
-        ]
+    arbitrary = Servername <$> oneof [arbitraryIPV6, arbitraryIPV4, arbitraryHost]
       where
-        pos = abs <$> arbitrary
-        shortnames = listOf1 (listOf1 $ elements
-            (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']))
+        arbitraryIPV6 = intercalate ":" <$> replicateM 8 pos
+        arbitraryIPV4 = intercalate "." <$> replicateM 4 pos
+        arbitraryHost = undefined -- TODO: implement.
+        pos = (show . abs :: Integer -> String) <$> arbitrary
 
 {- | Convert Servername's to JSON. -}
 instance ToJSON Servername where
@@ -184,6 +150,9 @@ type Username = String
 {- | IRC hostname. -}
 type Hostname = String
 
+        {-shortnames = listOf1 (listOf1 $ elements-}
+            {-(['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']))-}
+
 {- | IRC mode. -}
 type Mode = Integer
 
@@ -198,6 +167,22 @@ data BotConfig = BotConfig
     , configChannel  :: Channel -- ^ Channel to connect to.
     , configPort     :: Integer -- ^ Port to use when connecting to server.
     } deriving (Show, Eq)
+
+{- | Construct a bot configuration from a servername, nickname, password,
+ - channel and port number. -}
+botConfig :: String
+    -- ^ Name or IP of server to connect to.
+    -> String
+    -- ^ Nickname of the bot.
+    -> String
+    -- ^ Password for NickServ.
+    -> String
+    -- ^ Channel to connect to.
+    -> Integer
+    -- ^ Port to connect to.
+    -> Maybe BotConfig
+botConfig serv nick pass chan port = BotConfig <$> servername serv <*>
+    nickname nick <*> return pass <*> channel chan <*> return port
 
 {- | The IRC bot parameters. -}
 data Bot = Bot
@@ -546,7 +531,7 @@ data ClientMessage = ClientPass Password
     | ClientWhoWas Username (Maybe Integer) (Maybe Servername)
     | ClientPing Servername
     | ClientPong Servername
-    deriving (Eq, Show, Read)
+  deriving (Eq, Show, Read)
 
 {- | Convert a ClientMessage to a JSON string. -}
 instance ToJSON ClientMessage where

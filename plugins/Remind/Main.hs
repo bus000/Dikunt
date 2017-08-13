@@ -1,6 +1,6 @@
 module Main (main) where
 
-import BotTypes (ServerMessage(..), IRCUser(..), getNickname)
+import Types.BotTypes (ServerMessage(..), IRCUser(..), getNickname)
 import Control.Concurrent (forkIO)
 import Control.Concurrent.Thread.Delay (delay)
 import Control.Monad (foldM_, void, unless)

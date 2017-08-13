@@ -1,6 +1,6 @@
 module Main (main) where
 
-import qualified BotTypes as BT
+import qualified Types.BotTypes as BT
 import Control.Monad (foldM_)
 import Data.Aeson (decode)
 import Data.Maybe (mapMaybe)

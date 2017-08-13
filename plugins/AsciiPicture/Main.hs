@@ -1,6 +1,6 @@
 module Main ( main ) where
 
-import qualified BotTypes as BT
+import qualified Types.BotTypes as BT
 import Control.Monad (forever)
 import Data.Aeson (decode)
 import qualified Data.Map as Map

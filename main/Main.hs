@@ -3,31 +3,19 @@
 module Main (main) where
 
 import Bot (connect, disconnect, runBot)
-import qualified BotTypes as BT
 import Control.Exception (bracket)
 import Data.Configurator (load, Worth(..), require)
-import Data.Either.Utils (maybeToEither)
 import Data.Version (showVersion)
 import Paths_Dikunt (getDataFileName, version)
-import System.Console.CmdArgs
-    ( Data
-    , Typeable
-    , helpArg
-    , explicit
-    , name
-    , (&=)
-    , help
-    , versionArg
-    , def
-    , summary
-    , cmdArgs
-    )
+import qualified System.Console.CmdArgs as CMD
+import System.Console.CmdArgs ((&=))
 import System.IO (stderr, hPutStrLn)
 import qualified System.Log.Formatter as Log
 import qualified System.Log.Handler as Log
 import qualified System.Log.Handler.Simple as Log
 import qualified System.Log.Logger
 import qualified System.Log.Logger as Log
+import qualified Types.BotTypes as BT
 
 data Dikunt = Dikunt
     { server     :: String
@@ -36,28 +24,26 @@ data Dikunt = Dikunt
     , channel    :: String
     , port       :: Integer
     , pluginArgs :: [String]
-    } deriving (Data, Typeable, Show, Eq)
+    } deriving (CMD.Data, CMD.Typeable, Show, Eq)
 
 dikunt :: String -> Dikunt
 dikunt vers = Dikunt
-    { server = "irc.freenode.org" &= help "Server to connect to"
-    , nickname = "dikunt" &= help "Nick to use"
-    , password = def &= help "Password to use"
-    , channel = "#dikufags" &= help "Channel to connect to"
-    , port = 6667 &= help "Port to connect to"
-    , pluginArgs = [] &= explicit &= name "plugin-arg" &=
-        help "Argument that is passed to all plugins started by Dikunt."
+    { server = "irc.freenode.org" &= CMD.help "Server to connect to"
+    , nickname = "dikunt" &= CMD.help "Nick to use"
+    , password = CMD.def &= CMD.help "Password to use"
+    , channel = "#dikufags" &= CMD.help "Channel to connect to"
+    , port = 6667 &= CMD.help "Port to connect to"
+    , pluginArgs = [] &= CMD.explicit &= CMD.name "plugin-arg" &=
+        CMD.help "Argument that is passed to all plugins started by Dikunt."
     } &=
-        help "Bot to run on IRC channels" &=
-        summary ("Dikunt v" ++ vers ++ " (C) Magnus Stavngaard") &=
-        helpArg [explicit, name "help", name "h"] &=
-        versionArg [explicit, name "version", name "v"]
+        CMD.help "Bot to run on IRC channels" &=
+        CMD.summary ("Dikunt v" ++ vers ++ " (C) Magnus Stavngaard") &=
+        CMD.helpArg [CMD.explicit, CMD.name "help", CMD.name "h"] &=
+        CMD.versionArg [CMD.explicit, CMD.name "version", CMD.name "v"]
 
-getBotConfig :: Dikunt -> Either String BT.BotConfig
-getBotConfig (Dikunt serv nickString pass chanString p _) = do
-    nick <- maybeToEither "Nickname incorrect" $ BT.nickname nickString
-    chan <-  maybeToEither "Channel incorrect" $ BT.channel chanString
-    return $ BT.BotConfig (BT.Servername serv) nick pass chan p
+getBotConfig :: Dikunt -> Maybe BT.BotConfig
+getBotConfig (Dikunt serv nick pass chan p _) =
+    BT.botConfig serv nick pass chan p
 
 {- | Allocate resources used by the bot. Setup logging and connection to IRC
  - server. -}
@@ -133,7 +119,7 @@ tearDown bot = do
 
 main :: IO ()
 main = do
-    arguments <- cmdArgs $ dikunt (showVersion version)
+    arguments <- CMD.cmdArgs $ dikunt (showVersion version)
     configName <- getDataFileName "data/dikunt.config"
     config <- load [ Required configName ]
     executables <- require config "pathPlugins" :: IO [String]
@@ -143,10 +129,10 @@ main = do
 
     -- Start, loop and stop bot.
     case getBotConfig arguments of
-        Right botConfig -> bracket (setup botConfig executables pluginArguments
+        Just botConfig -> bracket (setup botConfig executables pluginArguments
             dataFileLocations) tearDown runBot
         -- TODO: Consider how to log this with hslogger.
-        Left err -> hPutStrLn stderr err
+        Nothing -> hPutStrLn stderr "Something wrong with configuration"
 
 dataFiles :: IO [String]
 dataFiles = mapM getDataFileName

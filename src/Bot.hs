@@ -20,7 +20,7 @@ module Bot
     , disconnect
     ) where
 
-import qualified BotTypes as BT
+import qualified Types.BotTypes as BT
 import Control.Concurrent (threadDelay, forkFinally)
 import Control.Concurrent.MVar (newEmptyMVar, tryPutMVar, readMVar)
 import Control.Exception (Exception, throw)
@@ -32,7 +32,7 @@ import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
 import Data.Typeable (Typeable)
-import IRCParser.IRCMessageParser (parseMessage)
+import Parsers.IRCMessageParser (parseMessage)
 import IRCWriter.IRCWriter (writeMessage)
 import Monitoring (startMonitoring, writeAll, readContent, stopMonitoring)
 import Network (connectTo, PortID(..))
@@ -58,8 +58,8 @@ connect :: BT.BotConfig
     -> [String]
     -- ^ Extra plugin args.
     -> IO BT.Bot
-connect (BT.BotConfig (BT.Servername serv) nick pass chan port) execs args = do
-    h <- connectTo serv (PortNumber (fromIntegral port))
+connect (BT.BotConfig serv nick pass chan port) execs args = do
+    h <- connectTo (BT.getServerName serv) (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
 
     -- Start all plugins and a monitor for them.

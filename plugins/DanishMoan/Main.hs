@@ -1,6 +1,6 @@
 module Main where
 
-import qualified BotTypes as BT
+import qualified Types.BotTypes as BT
 import Safe (readMay)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))

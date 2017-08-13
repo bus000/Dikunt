@@ -1,5 +1,5 @@
 {- |
- - Module      : IRCParser.Parser
+ - Module      : Parsers.IRCMessageParser
  - Description : Parses IRC messages.
  - Copyright   : (c) Magnus Stavngaard, 2016
  - License     : BSD-3
@@ -14,17 +14,16 @@
  -
  - See https://tools.ietf.org/html/rfc2812 for details.
  -}
-module IRCParser.IRCMessageParser ( parseMessage ) where
+module Parsers.IRCMessageParser ( parseMessage ) where
 
-import qualified BotTypes as BT
 import qualified Data.Char as Char
 import Data.List (intercalate)
-import Data.Maybe (fromMaybe)
 import qualified Data.Text.Lazy as T
-import Numeric (showHex)
+import Parsers.Utils (ipV6, ipV4, hostname)
 import Text.Parsec ((<|>))
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Number as P
+import qualified Types.Internal as BT
 
 parseMessage :: T.Text -> Either P.ParseError BT.ServerMessage
 parseMessage = P.parse servermessage "(IRC message)"
@@ -101,18 +100,16 @@ nickname :: P.Parsec T.Text () BT.Nickname
 nickname =
     consNick <$> P.alphaNum <*> P.many (P.choice [P.alphaNum, P.char '-', special])
   where
-    consNick c1 str = fromMaybe (error "The parsed nickname should be correct.")
-        (BT.nickname (c1:str))
+    consNick c1 str = BT.Nickname (c1:str)
 
 servername :: P.Parsec T.Text () BT.Servername
-servername = BT.Servername <$> (P.try nickservHost <|> P.try hostname)
+servername = BT.Servername <$> (P.try nickservHost <|> P.try hostnameAddress)
 
 channel :: P.Parsec T.Text () BT.Channel
 channel = consChan <$> P.choice [P.char '#', P.char '+', P.char '&'] <*>
     P.many1 (P.noneOf "\0\a\r\n ,:")
   where
-    consChan c1 str = fromMaybe (error "The parsed channel should be correct.")
-        (BT.channel (c1:str))
+    consChan c1 str = BT.Channel (c1:str)
 
 targets :: P.Parsec T.Text () [BT.Target]
 targets = P.sepBy1 target (P.char ',')
@@ -130,24 +127,24 @@ nickUserHost :: P.Parsec T.Text () BT.IRCUser
 nickUserHost = BT.IRCUser <$> nickname <*> user <*> host
   where
     user = P.optionMaybe $ P.char '!' *> username
-    host = P.optionMaybe $ P.char '@' *> hostname
+    host = P.optionMaybe $ P.char '@' *> hostnameAddress
 
 forceNickUserNoHost :: P.Parsec T.Text () BT.IRCUser
 forceNickUserNoHost = BT.IRCUser <$> nickname <*> user <*> host
   where
     user = Just <$> (P.char '!' *> username)
-    host = P.optionMaybe $ P.char '@' *> hostname
+    host = P.optionMaybe $ P.char '@' *> hostnameAddress
 
 userHostServer :: P.Parsec T.Text () BT.UserServer
 userHostServer = BT.UserServer <$> username <*> host <*> server
   where
-    host = P.optionMaybe $ P.char '%' *> hostname
+    host = P.optionMaybe $ P.char '%' *> hostnameAddress
     server = P.optionMaybe $ P.char '@' *> servername
 
 forceUserHostNoServer :: P.Parsec T.Text () BT.UserServer
 forceUserHostNoServer = BT.UserServer <$> username <*> host <*> server
   where
-    host = Just <$> (P.char '%' *> hostname)
+    host = Just <$> (P.char '%' *> hostnameAddress)
     server = P.optionMaybe $ P.char '@' *> servername
 
 special :: P.Parsec T.Text () Char
@@ -159,73 +156,17 @@ args = P.sepBy arg (P.char ' ')
 arg :: P.Parsec T.Text () String
 arg = P.many (P.noneOf "\0\r\n ")
 
-shortname :: P.Parsec T.Text () String
-shortname = do
-    short <- P.many1 (P.choice [P.alphaNum, P.char '-'])
-    if Char.isAlphaNum (head short) && Char.isAlphaNum (last short)
-    then return short
-    else P.parserFail "Shortname cannot start or end with '-'"
-
 prefix :: P.Parsec T.Text () a -> P.Parsec T.Text () a
 prefix = P.between (P.char ':') (P.char ' ')
 
 username :: P.Parsec T.Text () BT.Username
 username = P.many1 (P.noneOf "\0\r\n @%")
 
-hostname :: P.Parsec T.Text () BT.Hostname
-hostname =  P.try hostAddress <|> P.try hostname'
-
-hostname' :: P.Parsec T.Text () BT.Hostname
-hostname' = intercalate "." <$> P.sepBy1 shortname (P.char '.')
+hostnameAddress :: P.Parsec T.Text () BT.Hostname
+hostnameAddress =  P.try hostAddress <|> P.try hostname
 
 nickservHost :: P.Parsec T.Text () BT.Hostname
 nickservHost = P.string "NickServ!NickServ@services."
 
 hostAddress :: P.Parsec T.Text () BT.Hostname
-hostAddress = (ipV4ToString <$> P.try ipV4) <|> (ipV6ToString <$> P.try ipV6)
-
-ipV4 :: P.Parsec T.Text () IPV4
-ipV4 = IPV4 <$> (P.decimal <* period) <*> (P.decimal <* period)
-    <*> (P.decimal <* period) <*> P.decimal
-  where
-    period = P.char '.'
-
-ipV6 :: P.Parsec T.Text () IPV6
-ipV6 = do
-    cons <- P.try withBridge <|> P.try noBridge
-    case ipV6Cons cons of
-        Just a -> return a
-        Nothing -> P.parserFail "Could not parse IPV6."
-  where
-    withBridge :: P.Parsec T.Text () [IPV6Con]
-    withBridge = (\x y -> x ++ [Zeros] ++ y) <$>
-        P.endBy1 (Num <$> P.hexnum) (P.char ':') <* P.char ':' <*> noBridge
-    noBridge = P.sepBy1 (Num <$> P.hexnum) (P.char ':')
-
-data IPV4 = IPV4 Int Int Int Int deriving (Show)
-
-ipV4ToString :: IPV4 -> String
-ipV4ToString (IPV4 a b c d) = intercalate "." $ map show [a, b, c, d]
-
-data IPV6 = IPV6 Int Int Int Int Int Int Int Int deriving (Show)
-
-data IPV6Con = Num Int | Zeros deriving (Eq, Show)
-
-ipV6Cons :: [IPV6Con] -> Maybe IPV6
-ipV6Cons cons
-    | bridges == 0 && length cons == 8 = fromList $ map (\(Num n) -> n) cons
-    | bridges == 1 = fromList $ foldr expand [] cons
-    | otherwise = Nothing
-  where
-    bridges = length . filter (== Zeros) $ cons
-    bridgeLen = 8 - length cons + 1
-
-    fromList [a, b, c, d, e, f, g, h] = Just $ IPV6 a b c d e f g h
-    fromList _ = Nothing
-
-    expand Zeros ls = replicate bridgeLen 0 ++ ls
-    expand (Num n) ls = n:ls
-
-ipV6ToString :: IPV6 -> String
-ipV6ToString (IPV6 a b c d e f g h) =
-    intercalate ":" $ map (`showHex` "") [a, b, c, d, e, f, g, h]
+hostAddress = P.try ipV4 <|> P.try ipV6
