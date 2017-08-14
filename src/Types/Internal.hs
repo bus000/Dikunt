@@ -155,7 +155,7 @@ username user = case P.parse (PU.username <* P.eof) "(username source)" user of
     Right u -> return $ Username u
     Left _ -> Nothing
 
-{- | Get the actual user name. -}
+{- | Get the actual username. -}
 getUsername :: Username -> String
 getUsername (Username user) = user
 
@@ -174,10 +174,37 @@ instance FromJSON Username where
     parseJSON = withText "user" $ return . Username . T.unpack
 
 {- | IRC hostname. -}
-type Hostname = String
+newtype Hostname = Hostname String deriving (Show, Read, Eq)
 
-        {-shortnames = listOf1 (listOf1 $ elements-}
-            {-(['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']))-}
+{- | Smart constructor for Hostname's. -}
+hostname :: String
+    -- ^ Source of Hostname.
+    -> Maybe Hostname
+hostname host = case P.parse (PU.hostname <* P.eof) "(hostname source)" host of
+    Right h -> return $ Hostname h
+    Left _ -> Nothing
+
+{- | Get the actual hostname. -}
+getHostname :: Hostname -> String
+getHostname (Hostname host) = host
+
+{- | Construct arbitrary IRC Hostname's. -}
+instance Arbitrary Hostname where
+    arbitrary = Hostname <$> suchThat arbitraryHostname (isJust . hostname)
+      where
+        arbitraryHostname = (intercalate "." <$> shortnames)
+        shortnames = listOf1 (listOf1 $ elements
+            (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']))
+
+    -- TODO: shrink.
+
+{- | Convert Hostname's to JSON. -}
+instance ToJSON Hostname where
+    toJSON (Hostname host) = Aeson.String . T.pack $ host
+
+{- | Parse Hostname's from JSON. -}
+instance FromJSON Hostname where
+    parseJSON = withText "user" $ return . Hostname . T.unpack
 
 {- | IRC mode. -}
 type Mode = Integer

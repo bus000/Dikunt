@@ -53,8 +53,12 @@ module Types.BotTypes
     , username
     , getUsername
 
-    , Password
+    -- Hostname type, smart constructor and getter.
     , Hostname
+    , hostname
+    , getHostname
+
+    , Password
     , Mode
     , Realname
     ) where

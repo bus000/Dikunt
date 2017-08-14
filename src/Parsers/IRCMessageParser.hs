@@ -101,7 +101,8 @@ nickname =
     consNick c1 str = BT.Nickname (c1:str)
 
 servername :: P.Parsec T.Text () BT.Servername
-servername = BT.Servername <$> (P.try nickservHost <|> P.try hostnameAddress)
+servername = BT.Servername <$> (P.try nickservHost <|>
+    (BT.getHostname <$> P.try hostnameAddress))
 
 channel :: P.Parsec T.Text () BT.Channel
 channel = consChan <$> P.choice [P.char '#', P.char '+', P.char '&'] <*>
@@ -161,10 +162,10 @@ username :: P.Parsec T.Text () BT.Username
 username = BT.Username <$> PU.username
 
 hostnameAddress :: P.Parsec T.Text () BT.Hostname
-hostnameAddress =  P.try hostAddress <|> P.try PU.hostname
+hostnameAddress = BT.Hostname <$> (P.try hostAddress <|> P.try PU.hostname)
 
-nickservHost :: P.Parsec T.Text () BT.Hostname
+nickservHost :: P.Parsec T.Text () String
 nickservHost = P.string "NickServ!NickServ@services."
 
-hostAddress :: P.Parsec T.Text () BT.Hostname
+hostAddress :: P.Parsec T.Text () String
 hostAddress = P.try PU.ipV4 <|> P.try PU.ipV6

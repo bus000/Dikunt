@@ -15,7 +15,7 @@ module IRCWriter.Impl where
 
 import Data.List (intercalate)
 import qualified Types.BotTypes as BT
-import Types.BotTypes (getNickname, getChannel, getServerName, getUsername)
+import Types.BotTypes (getNickname, getChannel, getServerName, getUsername, getHostname)
 
 {- | Convert client messages to strings that can be send to the IRC server. -}
 writeMessage :: BT.ClientMessage
@@ -119,11 +119,11 @@ writeUser :: BT.IRCUser -> String
 writeUser (BT.IRCUser nick Nothing Nothing) =
     getNickname nick
 writeUser (BT.IRCUser nick Nothing (Just host)) =
-    getNickname nick ++ "@" ++ host
+    getNickname nick ++ "@" ++ getHostname host
 writeUser (BT.IRCUser nick (Just user) Nothing) =
     getNickname nick ++ "!" ++ getUsername user
 writeUser (BT.IRCUser nick (Just user) (Just host)) =
-    getNickname nick ++ "!" ++ getUsername user ++ "@" ++ host
+    getNickname nick ++ "!" ++ getUsername user ++ "@" ++ getHostname host
 
 writeTargets :: [BT.Target] -> String
 writeTargets targets = intercalate "," (map writeTarget targets)
@@ -138,6 +138,6 @@ writeUserServer (BT.UserServer user Nothing Nothing) = getUsername user
 writeUserServer (BT.UserServer user Nothing (Just server)) =
     getUsername user ++ "@" ++ getServerName server
 writeUserServer (BT.UserServer user (Just host) Nothing) = getUsername user
-    ++ "%" ++ host
+    ++ "%" ++ getHostname host
 writeUserServer (BT.UserServer user (Just host) (Just server)) =
-    getUsername user ++ "%" ++ host ++ "@" ++ getServerName server
+    getUsername user ++ "%" ++ getHostname host ++ "@" ++ getServerName server
