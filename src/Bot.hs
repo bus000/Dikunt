@@ -112,7 +112,7 @@ listen :: BT.Bot
     -> IO ()
 listen bot@(BT.Bot h nick chan pass _ _) = do
     write h $ BT.ClientNick nick
-    write h $ BT.ClientUser (BT.getNickname nick) 0 "DikuntBot"
+    write h $ BT.ClientUser user 0 "DikuntBot"
     write h $ BT.ClientPrivMsg (BT.IRCUser BT.nickservNickname Nothing Nothing)
         ("IDENTIFY " ++ BT.getNickname nick ++ " " ++ pass)
     write h $ BT.ClientJoin [(chan, "")]
@@ -120,8 +120,8 @@ listen bot@(BT.Bot h nick chan pass _ _) = do
     s <- B.hGetContents h
     mapM_ (handleMessage bot) $ messages s
   where
-    messages :: B.ByteString -> [T.Text]
     messages = map (`T.append` "\n") . T.lines . T.decodeUtf8
+    Just user = BT.username $ BT.getNickname nick
 
 {- | Handle a message from the IRC channel. If the message is a ping a pong
  - response is sent otherwise the message is sent to all plugins. The message is

@@ -3,6 +3,7 @@ module Parsers.Utils
     ( ipV6
     , ipV4
     , hostname
+    , username
     ) where
 
 import qualified Data.Char as Char
@@ -70,3 +71,7 @@ shortname = do
     if Char.isAlphaNum (head short) && Char.isAlphaNum (last short)
     then return short
     else P.parserFail "Shortname cannot start or end with '-'"
+
+{- | Parse IRC username. -}
+username :: P.Stream s m Char => P.ParsecT s u m String
+username = P.many1 (P.noneOf "\0\r\n @%")

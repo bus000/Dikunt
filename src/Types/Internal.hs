@@ -20,7 +20,7 @@ import Data.Maybe (isJust)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Monitoring (DikuntMonitor)
-import Parsers.Utils (ipV4, ipV6, hostname)
+import qualified Parsers.Utils as PU
 import System.IO (Handle)
 import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
 import Test.QuickCheck.Gen (oneof, suchThat, listOf1, elements)
@@ -119,9 +119,9 @@ servername serv = case rights [ipV4Servername, ipV6Servername, hostServername] o
     (x:_) -> return $ Servername x
     _ -> Nothing
   where
-    ipV4Servername = P.parse ipV4 "(ipv4 source)" serv
-    ipV6Servername = P.parse ipV6 "(ipv6 source)" serv
-    hostServername = P.parse hostname "(hostname source)" serv
+    ipV4Servername = P.parse (PU.ipV4 <* P.eof) "(ipv4 source)" serv
+    ipV6Servername = P.parse (PU.ipV6 <* P.eof) "(ipv6 source)" serv
+    hostServername = P.parse (PU.hostname <* P.eof) "(hostname source)" serv
 
 {- | Get the actual server name. -}
 getServerName :: Servername -> String
@@ -145,7 +145,33 @@ instance FromJSON Servername where
     parseJSON = withText "server" $ return . Servername . T.unpack
 
 {- | IRC username. -}
-type Username = String
+newtype Username = Username String deriving (Show, Read, Eq)
+
+{- | Smart constructor for Username's. -}
+username :: String
+    -- ^ Source of username.
+    -> Maybe Username
+username user = case P.parse (PU.username <* P.eof) "(username source)" user of
+    Right u -> return $ Username u
+    Left _ -> Nothing
+
+{- | Get the actual user name. -}
+getUsername :: Username -> String
+getUsername (Username user) = user
+
+{- | Construct arbitrary IRC Username's. -}
+instance Arbitrary Username where
+    arbitrary = Username <$> suchThat arbitrary (isJust . username)
+
+    -- TODO: shrink.
+
+{- | Convert Username's to JSON. -}
+instance ToJSON Username where
+    toJSON (Username user) = Aeson.String . T.pack $ user
+
+{- | Parse Username's from JSON. -}
+instance FromJSON Username where
+    parseJSON = withText "user" $ return . Username . T.unpack
 
 {- | IRC hostname. -}
 type Hostname = String
@@ -609,14 +635,14 @@ instance ToJSON ClientMessage where
         [ "command" .= ("WHO" :: Text)
         , "mask" .= mask
         ]
-    toJSON (ClientWhoIs server username) = object
+    toJSON (ClientWhoIs server user) = object
         [ "command" .= ("WHOIS" :: Text)
         , "servername" .= server
-        , "username" .= username
+        , "username" .= user
         ]
-    toJSON (ClientWhoWas username count server) = object
+    toJSON (ClientWhoWas user count server) = object
         [ "command" .= ("WHOWAS" :: Text)
-        , "username" .= username
+        , "username" .= user
         , "count" .= count
         , "servername" .= server
         ]
@@ -641,10 +667,10 @@ instance FromJSON ClientMessage where
                 nick <- o .: "nickname"
                 return $ ClientNick nick
             "USER" -> do
-                username <- o .: "username"
+                user <- o .: "username"
                 mode <- o .: "mode"
                 realname <- o .: "realname"
-                return $ ClientUser username mode realname
+                return $ ClientUser user mode realname
             "OPER" -> do
                 user <- o .: "username"
                 pass <- o .: "password"

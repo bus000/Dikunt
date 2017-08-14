@@ -15,7 +15,7 @@ module IRCWriter.Impl where
 
 import Data.List (intercalate)
 import qualified Types.BotTypes as BT
-import Types.BotTypes (getNickname, getChannel, getServerName)
+import Types.BotTypes (getNickname, getChannel, getServerName, getUsername)
 
 {- | Convert client messages to strings that can be send to the IRC server. -}
 writeMessage :: BT.ClientMessage
@@ -28,9 +28,9 @@ writeMessage msg = writeMessage' msg ++ "\r\n"
     writeMessage' (BT.ClientNick nick) =
         "NICK " ++ getNickname nick
     writeMessage' (BT.ClientUser user mode realname) =
-        "USER " ++ user ++ " " ++ show mode ++ " * :" ++ realname
+        "USER " ++ getUsername user ++ " " ++ show mode ++ " * :" ++ realname
     writeMessage' (BT.ClientOper user pass) =
-        "OPER " ++ user ++ " " ++ pass
+        "OPER " ++ getUsername user ++ " " ++ pass
     writeMessage' (BT.ClientMode nick mode) =
         "MODE " ++ getNickname nick ++ " " ++ mode
     writeMessage' (BT.ClientQuit reason) =
@@ -60,15 +60,16 @@ writeMessage msg = writeMessage' msg ++ "\r\n"
     writeMessage' (BT.ClientWho mask) =
         "WHO " ++ mask
     writeMessage' (BT.ClientWhoIs (Just server) user) =
-        "WHOIS " ++ getServerName server ++ " " ++ user
+        "WHOIS " ++ getServerName server ++ " " ++ getUsername user
     writeMessage' (BT.ClientWhoIs Nothing user) =
-        "WHOIS " ++ user
+        "WHOIS " ++ getUsername user
     writeMessage' (BT.ClientWhoWas user Nothing Nothing) =
-        "WHOWAS " ++ user
+        "WHOWAS " ++ getUsername user
     writeMessage' (BT.ClientWhoWas user (Just size) Nothing) =
-        "WHOWAS " ++ user ++ " " ++ show size
+        "WHOWAS " ++ getUsername user ++ " " ++ show size
     writeMessage' (BT.ClientWhoWas user (Just size) (Just server)) =
-        "WHOWAS " ++ user ++ " " ++ show size ++ " " ++ getServerName server
+        "WHOWAS " ++ getUsername user ++ " " ++ show size ++ " " ++
+            getServerName server
     writeMessage' (BT.ClientPing servername) =
         "PING " ++ getServerName servername
     writeMessage' (BT.ClientPong servername) =
@@ -120,9 +121,9 @@ writeUser (BT.IRCUser nick Nothing Nothing) =
 writeUser (BT.IRCUser nick Nothing (Just host)) =
     getNickname nick ++ "@" ++ host
 writeUser (BT.IRCUser nick (Just user) Nothing) =
-    getNickname nick ++ "!" ++ user
+    getNickname nick ++ "!" ++ getUsername user
 writeUser (BT.IRCUser nick (Just user) (Just host)) =
-    getNickname nick ++ "!" ++ user ++ "@" ++ host
+    getNickname nick ++ "!" ++ getUsername user ++ "@" ++ host
 
 writeTargets :: [BT.Target] -> String
 writeTargets targets = intercalate "," (map writeTarget targets)
@@ -133,9 +134,10 @@ writeTarget (BT.UserTarget server) = writeUserServer server
 writeTarget (BT.NickTarget user) = writeUser user
 
 writeUserServer :: BT.UserServer -> String
-writeUserServer (BT.UserServer user Nothing Nothing) = user
+writeUserServer (BT.UserServer user Nothing Nothing) = getUsername user
 writeUserServer (BT.UserServer user Nothing (Just server)) =
-    user ++ "@" ++ getServerName server
-writeUserServer (BT.UserServer user (Just host) Nothing) = user ++ "%" ++ host
+    getUsername user ++ "@" ++ getServerName server
+writeUserServer (BT.UserServer user (Just host) Nothing) = getUsername user
+    ++ "%" ++ host
 writeUserServer (BT.UserServer user (Just host) (Just server)) =
-    user ++ "%" ++ host ++ "@" ++ getServerName server
+    getUsername user ++ "%" ++ host ++ "@" ++ getServerName server

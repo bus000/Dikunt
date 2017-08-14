@@ -16,10 +16,8 @@
  -}
 module Parsers.IRCMessageParser ( parseMessage ) where
 
-import qualified Data.Char as Char
-import Data.List (intercalate)
 import qualified Data.Text.Lazy as T
-import Parsers.Utils (ipV6, ipV4, hostname)
+import qualified Parsers.Utils as PU
 import Text.Parsec ((<|>))
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Number as P
@@ -160,13 +158,13 @@ prefix :: P.Parsec T.Text () a -> P.Parsec T.Text () a
 prefix = P.between (P.char ':') (P.char ' ')
 
 username :: P.Parsec T.Text () BT.Username
-username = P.many1 (P.noneOf "\0\r\n @%")
+username = BT.Username <$> PU.username
 
 hostnameAddress :: P.Parsec T.Text () BT.Hostname
-hostnameAddress =  P.try hostAddress <|> P.try hostname
+hostnameAddress =  P.try hostAddress <|> P.try PU.hostname
 
 nickservHost :: P.Parsec T.Text () BT.Hostname
 nickservHost = P.string "NickServ!NickServ@services."
 
 hostAddress :: P.Parsec T.Text () BT.Hostname
-hostAddress = P.try ipV4 <|> P.try ipV6
+hostAddress = P.try PU.ipV4 <|> P.try PU.ipV6

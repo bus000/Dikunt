@@ -48,8 +48,12 @@ module Types.BotTypes
     , servername
     , getServerName
 
-    , Password
+    -- Username type, smart constructor and getter.
     , Username
+    , username
+    , getUsername
+
+    , Password
     , Hostname
     , Mode
     , Realname
