@@ -30,10 +30,11 @@ main = do
         handleInput nick executables $ (decode . T.encodeUtf8) line
 
 handleInput :: String -> [String] -> Maybe BT.ServerMessage -> IO ()
-handleInput nick executables (Just (BT.ServerPrivMsg _ _ str))
+handleInput nick executables (Just (BT.ServerPrivMsg _ _ msg))
     | str =~ helpPattern = help nick
     | str =~ runPattern = moduleHelp executables nick
   where
+    str = BT.getMessage msg
     helpPattern = concat ["^", sp, nick, ":", ps, "help", ps, "help", sp, "$"]
     runPattern = concat ["^", sp, nick, ":", ps, "help", sp, "$"]
     sp = "[ \\t]*"

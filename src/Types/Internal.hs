@@ -129,7 +129,8 @@ getServerName (Servername server) = server
 
 {- | Construct arbitrary IRC servernames. -}
 instance Arbitrary Servername where
-    arbitrary = Servername <$> oneof [arbitraryIPV6, arbitraryIPV4, arbitraryHost]
+    {-arbitrary = Servername <$> oneof [arbitraryIPV6, arbitraryIPV4, arbitraryHost]-}
+    arbitrary = Servername <$> oneof [arbitraryIPV6, arbitraryIPV4]
       where
         arbitraryIPV6 = intercalate ":" <$> replicateM 8 pos
         arbitraryIPV4 = intercalate "." <$> replicateM 4 pos
@@ -211,6 +212,35 @@ type Mode = Integer
 
 {- | IRC real name. -}
 type Realname = String
+
+newtype Message = Message String deriving (Show, Read, Eq)
+
+{- | Smart constructor for Message's. -}
+message :: String
+    -- ^ Source of Message.
+    -> Maybe Message
+message [] = Nothing
+message msg
+    | not (any (`elem` ("\0\r\n" :: String)) msg) = Just $ Message msg
+    {-| not (any [elem '\0' msg, elem '\r' msg, elem '\n' msg]) = Just $ Message msg-}
+    | otherwise = Nothing
+
+{- | Get the actual message. -}
+getMessage :: Message -> String
+getMessage (Message msg) = msg
+
+{- | Construct arbitrary IRC Message's. -}
+instance Arbitrary Message where
+    arbitrary = Message <$> suchThat arbitrary (isJust . message)
+    -- TODO: shrink.
+
+{- | Convert Message's to JSON. -}
+instance ToJSON Message where
+    toJSON (Message msg) = Aeson.String . T.pack $ msg
+
+{- | Parse Message's from JSON. -}
+instance FromJSON Message where
+    parseJSON = withText "message" $ return . Message . T.unpack
 
 {- | Configuration used to create an IRC bot. -}
 data BotConfig = BotConfig
@@ -332,15 +362,15 @@ data ServerMessage
     -- | ServerNick <user> <nick> - user change nickname to nick.
     = ServerNick IRCUser Nickname
     -- | ServerQuit <user> <message> - user quit IRC.
-    | ServerQuit IRCUser String
+    | ServerQuit IRCUser Message
     -- | ServerJoin <user> <channel> - User joins channel.
     | ServerJoin IRCUser Channel
     -- | ServerPart <user> <channel> <message> - User leaves channel with the
     -- message.
-    | ServerPart IRCUser Channel String
+    | ServerPart IRCUser Channel Message
     -- | ServerTopic <user> <channel> <topic> - User set <topic> as topic for
     -- <channel>.
-    | ServerTopic IRCUser Channel String
+    | ServerTopic IRCUser Channel Message
     -- | ServerInite <user> <nick> <channel> - User invited <nick> to <channel>.
     | ServerInvite IRCUser Nickname Channel
     -- | ServerKick <user> <channel> <nick> - <nick> kicked from <channel> by
@@ -348,14 +378,14 @@ data ServerMessage
     | ServerKick IRCUser Channel Nickname
     -- | ServerPrivMsg <user> <targets> <message> - Write <message> to <targets>
     -- from <user>.
-    | ServerPrivMsg IRCUser [Target] String
+    | ServerPrivMsg IRCUser Targets Message
     -- | ServerNotice <server> <targets> <message> - Write message from <server>
     -- to <targets>.
-    | ServerNotice Servername [Target] String
+    | ServerNotice Servername Targets Message
     -- | ServerPing <server> - Ping coming from <server>.
     | ServerPing Servername
     -- | ServerMode <user> <nick> <mode> - User change mode <mode> for <nick>.
-    | ServerMode IRCUser Nickname String
+    | ServerMode IRCUser Nickname Message
     -- | ServerReply <server> <num> <args> - Numeric reply <num> from
     -- <server> with arguments <args>.
     | ServerReply Servername Integer [String]
@@ -526,7 +556,7 @@ instance Arbitrary ServerMessage where
 data Target = ChannelTarget Channel
     | UserTarget UserServer
     | NickTarget IRCUser
-  deriving (Show, Eq)
+  deriving (Show, Read, Eq)
 
 instance ToJSON Target where
     toJSON (ChannelTarget chan) = object
@@ -560,6 +590,26 @@ instance Arbitrary Target where
     shrink (ChannelTarget c) = [ChannelTarget c' | c' <- shrink c]
     shrink (UserTarget u) = [UserTarget u' | u' <- shrink u]
     shrink (NickTarget n) = [NickTarget n' | n' <- shrink n]
+
+newtype Targets = Targets [Target] deriving (Show, Read, Eq)
+
+targets :: [Target]
+    -- ^ Targets source.
+    -> Maybe Targets
+targets [] = Nothing
+targets ts = return $ Targets ts
+
+getTargets :: Targets -> [Target]
+getTargets (Targets ts) = ts
+
+instance ToJSON Targets where
+    toJSON (Targets targets) = toJSON targets
+
+instance FromJSON Targets where
+    parseJSON = \x -> Targets <$> parseJSON x
+
+instance Arbitrary Targets where
+    arbitrary = Targets <$> listOf1 arbitrary
 
 {- | Represent messages that can be send to the server. The messages can be
  - written as the string to be send to an IRC server with the function

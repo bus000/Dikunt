@@ -24,10 +24,11 @@ main = do
         handleMessage nick $ (decode . T.encodeUtf8) line
 
 handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
-handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
+handleMessage nick (Just (BT.ServerPrivMsg _ _ msg))
     | str =~ helpPattern = putStrLn $ help nick
     | containsCurse str = putStrLn =<< sample (choice responses)
   where
+    str = BT.getMessage msg
     helpPattern = concat ["^", sp, nick, ":", ps, "policeman", ps, "help", sp,
         "$"]
     sp = "[ \\t]*"

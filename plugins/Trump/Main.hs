@@ -28,9 +28,10 @@ main = do
 
 handleMessage :: String -> String -> Maybe BT.ServerMessage -> IO ()
 handleMessage nick trumpData (Just (BT.ServerPrivMsg BT.IRCUser{} _ msg))
-    | msg =~ helpPattern = putStrLn $ help nick
-    | msg =~ runPattern = newStdGen >>= \r -> putStrLn (trumpQuote trumpData r)
+    | str =~ helpPattern = putStrLn $ help nick
+    | str =~ runPattern = newStdGen >>= \r -> putStrLn (trumpQuote trumpData r)
   where
+    str = BT.getMessage msg
     helpPattern = concat ["^", sp, nick, ":", ps, "trump", ps, "help", sp, "$"]
     runPattern = concat ["^", sp, nick, ":", ps, "trump", sp, "$"]
     sp = "[ \\t]*"

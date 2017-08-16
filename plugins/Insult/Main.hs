@@ -52,8 +52,8 @@ insulter nick conn = do
 
 handleMessage :: DB.Connection -> String -> Maybe BT.ServerMessage -> IO ()
 handleMessage conn nick (Just (BT.ServerPrivMsg _ _ str))
-    | str =~ helpPattern nick = help nick
-    | [[_, usernick]] <- str =~ insultPattern nick = getInsult conn usernick
+    | BT.getMessage str =~ helpPattern nick = help nick
+    | [[_, usernick]] <- BT.getMessage str =~ insultPattern nick = getInsult conn usernick
 handleMessage _ _ _ = return ()
 
 getInsult :: DB.Connection -> String -> IO ()

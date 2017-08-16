@@ -23,11 +23,12 @@ main = do
         handleMessage nick $ (decode . T.encodeUtf8) line
 
 handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
-handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
+handleMessage nick (Just (BT.ServerPrivMsg _ _ msg))
     | str =~ helpPattern = putStrLn $ help nick
     | [[_, text]] <- str =~ runPattern1 = asciitext text
     | [[_, text]] <- str =~ runPattern2 = asciitext text
   where
+    str = BT.getMessage msg
     helpPattern = concat ["^", sp, nick, ":", ps, "asciitext", ps, "help", sp,
         "$"]
     runPattern1 = concat ["^", sp, "asciitext:", ps, "(.*)$"]

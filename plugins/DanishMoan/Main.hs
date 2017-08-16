@@ -23,8 +23,8 @@ main = do
 
 handleInput :: String -> Maybe BT.ServerMessage -> IO ()
 handleInput nick (Just (BT.ServerPrivMsg _ _ str))
-    | str =~ helpPattern = putStrLn $ help nick
-    | [[_, n]] <- str =~ runPattern = putStr $ getMoan (readMay n)
+    | BT.getMessage str =~ helpPattern = putStrLn $ help nick
+    | [[_, n]] <- BT.getMessage str =~ runPattern = putStr $ getMoan (readMay n)
   where
     helpPattern = concat ["^", sp, nick, ":", ps, "danishmoan", ps, "help", sp,
         "$"]

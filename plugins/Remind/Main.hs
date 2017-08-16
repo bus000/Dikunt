@@ -1,6 +1,6 @@
 module Main (main) where
 
-import Types.BotTypes (ServerMessage(..), IRCUser(..), getNickname)
+import Types.BotTypes (ServerMessage(..), IRCUser(..), getNickname, getMessage)
 import Control.Concurrent (forkIO)
 import Control.Concurrent.Thread.Delay (delay)
 import Control.Monad (foldM_, void, unless)
@@ -115,7 +115,7 @@ parseMessages botnick =
     concatMap getRequests . mapMaybe (decode . T.encodeUtf8) . T.lines
   where
     getRequests (ServerPrivMsg (IRCUser nick _ _) _ str) =
-        case parse (parseRequest botnick (getNickname nick)) "(unknown)" str of
+        case parse (parseRequest botnick (getNickname nick)) "(unknown)" (getMessage str) of
             Left _ -> [Message $ getNickname nick]
             Right request -> [Message (getNickname nick), request]
     getRequests _ = []

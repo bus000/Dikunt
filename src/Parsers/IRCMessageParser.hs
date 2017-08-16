@@ -50,7 +50,7 @@ nickMessage = BT.ServerNick <$> prefix nickUserHost <* P.string "NICK " <*>
 
 quitMessage :: P.Parsec T.Text () BT.ServerMessage
 quitMessage = BT.ServerQuit <$> prefix nickUserHost <* P.string "QUIT " <*>
-    trailing
+    message
 
 joinMessage :: P.Parsec T.Text () BT.ServerMessage
 joinMessage = BT.ServerJoin <$> prefix nickUserHost <* P.string "JOIN " <*>
@@ -58,11 +58,11 @@ joinMessage = BT.ServerJoin <$> prefix nickUserHost <* P.string "JOIN " <*>
 
 partMessage :: P.Parsec T.Text () BT.ServerMessage
 partMessage = BT.ServerPart <$> prefix nickUserHost <* P.string "PART " <*>
-    channel <* P.char ' ' <*> trailing
+    channel <* P.char ' ' <*> message
 
 topicMessage :: P.Parsec T.Text () BT.ServerMessage
 topicMessage = BT.ServerTopic <$> prefix nickUserHost <* P.string "TOPIC " <*>
-    channel <* P.char ' ' <*> trailing
+    channel <* P.char ' ' <*> message
 
 inviteMessage :: P.Parsec T.Text () BT.ServerMessage
 inviteMessage = BT.ServerInvite <$> prefix nickUserHost <* P.string "INVITE "
@@ -74,25 +74,28 @@ kickMessage = BT.ServerKick <$> prefix nickUserHost <* P.string "KICK " <*>
 
 privmsgMessage :: P.Parsec T.Text () BT.ServerMessage
 privmsgMessage = BT.ServerPrivMsg <$> prefix nickUserHost <* P.string "PRIVMSG "
-    <*> targets <* P.char ' ' <*> trailing
+    <*> targets <* P.char ' ' <*> message
 
 noticeMessage :: P.Parsec T.Text () BT.ServerMessage
 noticeMessage = BT.ServerNotice <$> prefix servername <* P.string "NOTICE " <*>
-    targets <* P.char ' ' <*> trailing
+    targets <* P.char ' ' <*> message
 
 pingMessage :: P.Parsec T.Text () BT.ServerMessage
 pingMessage = BT.ServerPing <$> (P.string "PING :" *> servername)
 
 modeMessage :: P.Parsec T.Text () BT.ServerMessage
 modeMessage = BT.ServerMode <$> prefix nickUserHost <* P.string "MODE " <*>
-    nickname <* P.char ' ' <*> trailing
+    nickname <* P.char ' ' <*> message
 
 replyMessage :: P.Parsec T.Text () BT.ServerMessage
 replyMessage = BT.ServerReply <$> prefix servername <*> P.decimal <* P.char ' '
     <*> args
 
+message :: P.Parsec T.Text () BT.Message
+message = BT.Message <$> trailing
+
 trailing :: P.Parsec T.Text () String
-trailing = P.char ':' >> P.many (P.noneOf "\0\r\n")
+trailing = P.char ':' >> P.many1 (P.noneOf "\0\r\n")
 
 nickname :: P.Parsec T.Text () BT.Nickname
 nickname =
@@ -110,8 +113,8 @@ channel = consChan <$> P.choice [P.char '#', P.char '+', P.char '&'] <*>
   where
     consChan c1 str = BT.Channel (c1:str)
 
-targets :: P.Parsec T.Text () [BT.Target]
-targets = P.sepBy1 target (P.char ',')
+targets :: P.Parsec T.Text () BT.Targets
+targets = BT.Targets <$> P.sepBy1 target (P.char ',')
 
 target :: P.Parsec T.Text () BT.Target
 target = P.choice

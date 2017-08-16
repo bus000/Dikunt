@@ -26,9 +26,10 @@ main = do
 
 handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
 handleMessage nick (Just (BT.ServerPrivMsg BT.IRCUser{} _ msg))
-    | msg =~ helpPattern = help nick
-    | msg =~ runPattern = giveNews
+    | str =~ helpPattern = help nick
+    | str =~ runPattern = giveNews
   where
+    str = BT.getMessage msg
     helpPattern = concat ["^", sp, nick, ":", ps, "news", ps, "help", sp, "$"]
     runPattern = concat ["^", sp, nick, ":", ps, "news", sp, "$"]
     sp = "[ \\t]*"

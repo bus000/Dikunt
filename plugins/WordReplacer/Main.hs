@@ -74,10 +74,10 @@ handleMessage :: DB.Connection
     -- ^ Message received from IRCServer.
     -> IO ()
 handleMessage conn nick (Just (BT.ServerPrivMsg _ _ str))
-    | str =~ helpPattern = help nick
-    | [[_, word, replacement]] <- str =~ addPattern =
+    | BT.getMessage str =~ helpPattern = help nick
+    | [[_, word, replacement]] <- BT.getMessage str =~ addPattern =
         addReplacement conn nick word replacement
-    | otherwise = replaceWords conn str
+    | otherwise = replaceWords conn (BT.getMessage str)
   where
     sp = "[ \\t]*"
     ps = "[ \\t]+"

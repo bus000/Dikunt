@@ -1,6 +1,5 @@
 module Main (main) where
 
-import qualified Types.BotTypes as BT
 import Control.Monad (foldM_)
 import Data.Aeson (decode)
 import Data.Maybe (mapMaybe)
@@ -12,6 +11,7 @@ import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import System.Random (randomRs, newStdGen)
 import Text.Regex.PCRE ((=~))
+import qualified Types.BotTypes as BT
 
 main :: IO ()
 main = do
@@ -28,7 +28,7 @@ main = do
 parseMessages :: T.Text -> [String]
 parseMessages = mapMaybe getMessage . mapMaybe (decode . T.encodeUtf8) . T.lines
   where
-    getMessage (BT.ServerPrivMsg _ _ str) = Just str
+    getMessage (BT.ServerPrivMsg _ _ msg) = Just $ BT.getMessage msg
     getMessage _ = Nothing
 
 handleMessage :: String -> Double -> (String, Double) -> IO Double

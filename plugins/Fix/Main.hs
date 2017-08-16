@@ -25,13 +25,14 @@ main = do
     return ()
 
 handleInput :: String -> Maybe BT.ServerMessage -> StateT String IO ()
-handleInput nick (Just (BT.ServerPrivMsg _ _ str))
+handleInput nick (Just (BT.ServerPrivMsg _ _ msg))
     | str =~ helpPattern = lift $ help nick
     | [[_, old, new]] <- str =~ runPattern = do
         m <- get
         lift $ putStrLn (replace old new m)
     | otherwise = put str
   where
+    str = BT.getMessage msg
     helpPattern = concat ["^", sp, nick, ":", ps, "fix", ps, "help", sp]
     runPattern = concat ["^", sp, "s/([a-zA-Z0-9 ]*)/([a-zA-Z0-9 ]*)", sp, "$"]
     sp = "[ \\t]*"

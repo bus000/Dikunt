@@ -58,6 +58,16 @@ module Types.BotTypes
     , hostname
     , getHostname
 
+    -- Targets type, smart constructor and getter.
+    , Targets
+    , targets
+    , getTargets
+
+    -- Message type, smart constructor and getter.
+    , Message
+    , message
+    , getMessage
+
     , Password
     , Mode
     , Realname

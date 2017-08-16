@@ -24,8 +24,8 @@ main = do
 
 handleInput :: String -> Maybe BT.ServerMessage -> IO ()
 handleInput nick (Just (BT.ServerPrivMsg _ _ str))
-    | str =~ helpPattern = putStrLn $ help nick
-    | str =~ runPattern = getGem
+    | BT.getMessage str =~ helpPattern = putStrLn $ help nick
+    | BT.getMessage str =~ runPattern = getGem
   where
     helpPattern = concat ["^", sp, nick, ":", ps, "biblegem", ps, "help", sp,
         "$"]

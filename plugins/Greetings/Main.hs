@@ -27,9 +27,10 @@ handleMessage _ (Just (BT.ServerQuit (BT.IRCUser nick _ _) _)) =
     putStrLn $ "Goodbye " ++ BT.getNickname nick
 handleMessage _ (Just (BT.ServerPart (BT.IRCUser nick _ _) _ _)) =
     putStrLn $ "Goodbye " ++ BT.getNickname nick
-handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
+handleMessage nick (Just (BT.ServerPrivMsg _ _ msg))
     | str =~ helpPattern = putStrLn $ help nick
   where
+    str = BT.getMessage msg
     helpPattern = concat ["^", sp, nick, ":", ps, "greetings", ps, "help", sp,
         "$"]
     sp = "[ \\t]*"

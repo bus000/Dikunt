@@ -24,13 +24,14 @@ main = do
         handleMessage nick $ (decode . T.encodeUtf8) line
 
 handleMessage :: String -> Maybe BT.ServerMessage -> IO ()
-handleMessage nick (Just (BT.ServerPrivMsg _ _ str))
+handleMessage nick (Just (BT.ServerPrivMsg _ _ msg))
     | str =~ helpPattern = help nick
     | [[_, url]] <- str =~ runPattern1 = asciipicture url
     | [[_, url]] <- str =~ runPattern2 = asciipicture url
     | [[_, url]] <- str =~ runPattern3 = asciipicture url
     | [[_, url]] <- str =~ runPattern4 = asciipicture url
   where
+    str = BT.getMessage msg
     helpPattern = concat ["^", sp, nick, ":", ps, "asciipicture", ps, "help",
         sp, "$"]
     runPattern1 = concat ["^", sp, "asciipicture:", ps, "(.*)$"]
