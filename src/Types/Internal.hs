@@ -440,7 +440,7 @@ instance ToJSON ServerMessage where
         ]
     toJSON (ServerNotice server targets message) = object
         [ "command" .= ("NOTICE" :: Text)
-        , "server" .= server
+        , "servername" .= server
         , "targets" .= targets
         , "message" .= message
         ]
@@ -610,6 +610,10 @@ instance FromJSON Targets where
 
 instance Arbitrary Targets where
     arbitrary = Targets <$> listOf1 arbitrary
+
+    shrink (Targets []) = []
+    shrink (Targets [t]) = []
+    shrink (Targets (t:ts)) = [Targets ts]
 
 {- | Represent messages that can be send to the server. The messages can be
  - written as the string to be send to an IRC server with the function
