@@ -31,12 +31,22 @@ library
   GHC-Options:         -Wall
   exposed-modules:     Bot,
                        Types.BotTypes,
-                       Utils,
                        Parsers.IRCMessageParser,
                        IRCWriter.IRCWriter
   other-modules:       IRCWriter.Impl,
                        Parsers.Utils
+                       Utils,
                        Types.Internal
+                       Types.Internal.Nickname
+                       Types.Internal.Channel
+                       Types.Internal.Servername
+                       Types.Internal.Hostname
+                       Types.Internal.Username
+                       Types.Internal.Message
+                       Types.Internal.IRCUser
+                       Types.Internal.UserServer
+                       Types.Internal.Target
+                       Types.Internal.ServerMessage
                        Monitoring
   hs-source-dirs:      src
   default-language:    Haskell2010

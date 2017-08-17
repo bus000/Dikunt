@@ -23,7 +23,6 @@ module Types.BotTypes
     , UserServer(..)
     , ServerMessage(..)
     , ClientMessage(..)
-    , Target(..)
     , getServerCommand
     , getClientCommand
 
@@ -68,9 +67,22 @@ module Types.BotTypes
     , message
     , getMessage
 
+    -- IRC Target type.
+    , Target(..)
+
     , Password
     , Mode
     , Realname
     ) where
 
 import Types.Internal
+import Types.Internal.Nickname
+import Types.Internal.Channel
+import Types.Internal.Servername
+import Types.Internal.Hostname
+import Types.Internal.Username
+import Types.Internal.Message
+import Types.Internal.IRCUser
+import Types.Internal.UserServer
+import Types.Internal.Target
+import Types.Internal.ServerMessage
