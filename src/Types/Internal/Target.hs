@@ -13,12 +13,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Types.Internal.Target where
 
+import Data.Aeson (ToJSON(..), FromJSON(..), withObject, (.=), (.:?), object)
 import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
 import Test.QuickCheck.Gen (oneof, listOf1)
 import Types.Internal.Channel (Channel)
-import Types.Internal.UserServer (UserServer)
 import Types.Internal.IRCUser (IRCUser)
-import Data.Aeson (ToJSON(..), FromJSON(..), withObject, (.=), (.:?), object)
+import Types.Internal.UserServer (UserServer)
 import Utils (shrink1)
 
 {- | Define an IRC target. -}
@@ -91,7 +91,7 @@ instance ToJSON Targets where
 
 {- | Parse a list of targets from JSON. -}
 instance FromJSON Targets where
-    parseJSON = \x -> Targets <$> parseJSON x
+    parseJSON x = Targets <$> parseJSON x
 
 {- | Construct an arbitrary non empty list of targets. -}
 instance Arbitrary Targets where

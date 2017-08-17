@@ -22,7 +22,6 @@ import Types.Internal.IRCUser (IRCUser(..))
 import Types.Internal.Nickname (Nickname, nickname)
 import Types.Internal.ServerMessage (ServerMessage(..))
 import Types.Internal.Servername (Servername, servername)
-import Types.Internal.Target (Targets)
 import Types.Internal.Username (Username)
 import Utils (shrink1, shrink2, shrink3)
 

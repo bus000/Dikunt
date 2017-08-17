@@ -11,15 +11,15 @@
  -}
 module Types.Internal.Hostname where
 
-import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary)
-import Test.QuickCheck.Gen (suchThat, listOf1, elements)
 import Data.Aeson (ToJSON(..), FromJSON(..), withText)
 import qualified Data.Aeson.Types as Aeson
-import qualified Parsers.Utils as PU
-import qualified Text.Parsec as P
-import Data.Maybe (isJust)
 import Data.List (intercalate)
+import Data.Maybe (isJust)
 import qualified Data.Text as T
+import qualified Parsers.Utils as PU
+import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary)
+import Test.QuickCheck.Gen (suchThat, listOf1, elements)
+import qualified Text.Parsec as P
 
 {- | IRC hostname. -}
 newtype Hostname = Hostname String deriving (Show, Read, Eq)
@@ -42,7 +42,7 @@ getHostname (Hostname host) = host
 instance Arbitrary Hostname where
     arbitrary = Hostname <$> suchThat arbitraryHostname (isJust . hostname)
       where
-        arbitraryHostname = (intercalate "." <$> shortnames)
+        arbitraryHostname = intercalate "." <$> shortnames
         shortnames = listOf1 (listOf1 $ elements
             (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']))
 

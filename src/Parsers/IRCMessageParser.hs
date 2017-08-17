@@ -22,15 +22,12 @@ import Text.Parsec ((<|>))
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Number as P
 import qualified Types.BotTypes as BT
-import qualified Types.Internal as BT
 import qualified Types.Internal.Nickname as BT
 import qualified Types.Internal.Channel as BT
 import qualified Types.Internal.Servername as BT
 import qualified Types.Internal.Hostname as BT
 import qualified Types.Internal.Username as BT
 import qualified Types.Internal.Message as BT
-import qualified Types.Internal.IRCUser as BT
-import qualified Types.Internal.UserServer as BT
 import qualified Types.Internal.Target as BT
 
 parseMessage :: T.Text -> Either P.ParseError BT.ServerMessage
