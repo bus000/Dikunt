@@ -1,22 +1,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main ( main ) where
 
-import Data.Maybe (fromMaybe)
-import qualified Types.BotTypes as BT
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad (foldM, forever, unless)
+import Data.Aeson (decode)
+import Data.Char (toLower)
+import Data.List.Split (split, oneOf)
+import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
+import qualified Data.Text.Lazy.Encoding as T
+import qualified Data.Text.Lazy.IO as T
 import qualified Database.SQLite.Simple as DB
 import Database.SQLite.Simple (NamedParam((:=)))
 import Paths_Dikunt
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import Text.Regex.PCRE ((=~))
-import Data.List.Split (split, oneOf)
-import Data.Char (toLower)
-import Data.Aeson (decode)
-import qualified Data.Text.Lazy.IO as T
-import qualified Data.Text.Lazy.Encoding as T
+import qualified Types.BotTypes as BT
 
 data Replacement = Replacement Int T.Text T.Text deriving (Show)
 
@@ -186,4 +186,4 @@ replacementList =
     ]
 
 wordsSpecial :: String -> [String]
-wordsSpecial = split (oneOf " \n\t.:?!")
+wordsSpecial = split (oneOf " \n\t.:?!()[]{},")
