@@ -115,10 +115,7 @@ servername = BT.Servername <$> (P.try nickservHost <|>
     (BT.getHostname <$> P.try hostnameAddress))
 
 channel :: P.Parsec T.Text () BT.Channel
-channel = consChan <$> P.choice [P.char '#', P.char '+', P.char '&'] <*>
-    P.many1 (P.noneOf "\0\a\r\n ,:")
-  where
-    consChan c1 str = BT.Channel (c1:str)
+channel = BT.Channel <$> PU.channel
 
 targets :: P.Parsec T.Text () BT.Targets
 targets = BT.Targets <$> P.sepBy1 target (P.char ',')

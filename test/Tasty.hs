@@ -1,7 +1,8 @@
 module Main where
 
-import qualified IRCMessageParser.Tests as IMPT
-import qualified Tests as T
+import qualified Parsers.Tests
+import qualified Types.Internal.ChannelTest
+import qualified Tests
 import Test.Tasty
     ( TestTree
     , testGroup
@@ -9,7 +10,11 @@ import Test.Tasty
     )
 
 allTests :: TestTree
-allTests = testGroup "Tasty Tests" [ IMPT.tests , T.tests ]
+allTests = testGroup "Tasty Tests"
+    [ Tests.tests
+    , Parsers.Tests.tests
+    , Types.Internal.ChannelTest.tests
+    ]
 
 main :: IO ()
 main = defaultMain allTests

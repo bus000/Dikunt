@@ -13,13 +13,14 @@
  -}
 module Types.Internal.Channel where
 
+import Data.Aeson (ToJSON(..), FromJSON(..), withText)
+import qualified Data.Aeson.Types as Aeson
 import Data.Maybe (isJust)
-import Text.Regex.PCRE ((=~))
+import qualified Data.Text as T
+import qualified Parsers.Utils as PU
 import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
 import Test.QuickCheck.Gen (suchThat)
-import Data.Aeson (ToJSON(..), FromJSON(..), withText)
-import qualified Data.Text as T
-import qualified Data.Aeson.Types as Aeson
+import qualified Text.Parsec as P
 
 {- | IRC channel. -}
 newtype Channel = Channel String deriving (Show, Read, Eq)
@@ -27,13 +28,11 @@ newtype Channel = Channel String deriving (Show, Read, Eq)
 {- | Smart constructor for Channels, only allow correct IRC channels to be
  - constructed. -}
 channel :: String
-    -- ^ Text to construct Channel from.
+    -- ^ Source text of Channel.
     -> Maybe Channel
-channel chan
-    | chan =~ channelRegex = Just . Channel $ chan
-    | otherwise = Nothing
-  where
-    channelRegex = "^[#+&][^\\0\\a\\r\\n ,:]+$" :: String
+channel chan = case P.parse (PU.channel <* P.eof) "(channel source)" chan of
+    Right c -> return $ Channel c
+    Left _ -> Nothing
 
 {- | Get the actual channel from the Channel type. -}
 getChannel :: Channel

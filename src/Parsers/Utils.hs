@@ -4,6 +4,7 @@ module Parsers.Utils
     , ipV4
     , hostname
     , username
+    , channel
     ) where
 
 import qualified Data.Char as Char
@@ -75,3 +76,8 @@ shortname = do
 {- | Parse IRC username. -}
 username :: P.Stream s m Char => P.ParsecT s u m String
 username = P.many1 (P.noneOf "\0\r\n @%")
+
+{- | Parse an IRC channel name. -}
+channel :: P.Stream s m Char => P.ParsecT s u m String
+channel = (:) <$> P.choice [P.char '#', P.char '+', P.char '&'] <*>
+    P.many1 (P.noneOf "\0\a\r\n ,:")
