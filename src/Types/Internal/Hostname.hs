@@ -14,10 +14,11 @@ module Types.Internal.Hostname where
 import Data.Aeson (ToJSON(..), FromJSON(..), withText)
 import qualified Data.Aeson.Types as Aeson
 import Data.List (intercalate)
-import Data.Maybe (isJust)
+import Data.List.Split (splitOn)
+import Data.Maybe (isJust, mapMaybe)
 import qualified Data.Text as T
 import qualified Parsers.Utils as PU
-import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary)
+import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
 import Test.QuickCheck.Gen (suchThat, listOf1, elements)
 import qualified Text.Parsec as P
 
@@ -46,7 +47,9 @@ instance Arbitrary Hostname where
         shortnames = listOf1 (listOf1 $ elements
             (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']))
 
-    -- TODO: shrink.
+    shrink (Hostname host) = mapMaybe (hostname . intercalate ".") shortnames
+      where
+        shortnames = shrink $ splitOn "." host
 
 {- | Convert Hostname's to JSON. -}
 instance ToJSON Hostname where

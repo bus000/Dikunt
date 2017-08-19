@@ -56,4 +56,3 @@ instance ToJSON Channel where
 {- | Parse Channel's from JSON. -}
 instance FromJSON Channel where
     parseJSON = withText "channel" $ return . Channel . T.unpack
-
