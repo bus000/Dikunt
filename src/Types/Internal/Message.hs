@@ -12,12 +12,12 @@
  -}
 module Types.Internal.Message where
 
-import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary)
-import Test.QuickCheck.Gen (suchThat)
 import Data.Aeson (ToJSON(..), FromJSON(..), withText)
 import qualified Data.Aeson.Types as Aeson
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, mapMaybe)
 import qualified Data.Text as T
+import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
+import Test.QuickCheck.Gen (suchThat)
 
 {- | The IRC message type. -}
 newtype Message = Message String deriving (Show, Read, Eq)
@@ -41,7 +41,7 @@ getMessage (Message msg) = msg
 instance Arbitrary Message where
     arbitrary = Message <$> suchThat arbitrary (isJust . message)
 
-    -- TODO: shrink.
+    shrink (Message msg) = mapMaybe message $ shrink msg
 
 {- | Convert Message's to JSON. -}
 instance ToJSON Message where

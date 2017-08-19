@@ -6,7 +6,7 @@ import Test.Tasty.QuickCheck (testProperty)
 import Types.Internal.Channel (Channel, getChannel, channel)
 
 tests :: TestTree
-tests = testGroup "Channel Tests"
+tests = testGroup "Types.Internal.ChannelTest"
     [ testProperty "jsonIdent" jsonIdent
     , testProperty "startsWith" startsWith
     , testProperty "minSize" minSize

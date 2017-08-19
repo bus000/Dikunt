@@ -8,7 +8,7 @@ import Test.Tasty.QuickCheck (testProperty)
 import Types.Internal.Hostname (Hostname(..), getHostname, hostname)
 
 tests :: TestTree
-tests = testGroup "Hostname Tests"
+tests = testGroup "Types.Internal.HostnameTest"
     [ testProperty "jsonIdent" jsonIdent
     , testProperty "startsWith" startsWith
     , testProperty "minSize" minSize
@@ -26,7 +26,7 @@ startsWith :: Hostname -> Bool
 startsWith host = Char.isAlphaNum $ (head . getHostname) host
 
 minSize :: Hostname -> Bool
-minSize host = (length . getHostname) host >= 1
+minSize host = not (null (getHostname host))
 
 getHostnameIdent :: Hostname -> Bool
 getHostnameIdent host = Just host == (hostname . getHostname) host
