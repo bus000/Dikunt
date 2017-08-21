@@ -14,13 +14,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Types.Internal.Nickname where
 
-import Text.Regex.PCRE ((=~))
+import Data.Aeson (ToJSON(..), FromJSON(..), withText)
+import qualified Data.Aeson.Types as Aeson
 import Data.Maybe (isJust)
+import qualified Data.Text as T
+import qualified Parsers.Utils as PU
 import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
 import Test.QuickCheck.Gen (suchThat)
-import qualified Data.Aeson.Types as Aeson
-import Data.Aeson (ToJSON(..), FromJSON(..), withText)
-import qualified Data.Text as T
+import qualified Text.Parsec as P
 
 {- | IRC nickname that starts with a letter and after that is followed by string
  - of letters, numbers and any of the symbols [-, [, ], \, `, ^, {, }]. -}
@@ -31,11 +32,9 @@ newtype Nickname = Nickname String deriving (Show, Eq, Read)
 nickname :: String
     -- ^ Nickname source.
     -> Maybe Nickname
-nickname nick
-    | nick =~ nicknameRegex = Just . Nickname $ nick
-    | otherwise = Nothing
-  where
-    nicknameRegex = "^[A-z]([0-9A-z\\-\\[\\]\\\\\\`\\^\\{\\}])*$" :: String
+nickname nick = case P.parse (PU.nickname <* P.eof) "(nickname source)" nick of
+    Right n -> return $ Nickname n
+    Left _ -> Nothing
 
 {- | Get the actual nickname from the Nickname type. -}
 getNickname :: Nickname
@@ -49,7 +48,7 @@ nickservNickname = Nickname "NickServ"
 
 {- | Construct arbitrary IRC nicknames. -}
 instance Arbitrary Nickname where
-    arbitrary = Nickname <$> suchThat arbitrary (isJust . nickname)
+    arbitrary = Nickname <$> arbitrary `suchThat` (isJust . nickname)
 
     shrink (Nickname nick) =
         [ Nickname nick' | nick' <- shrink nick

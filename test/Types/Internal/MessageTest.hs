@@ -19,7 +19,7 @@ jsonIdent :: Message -> Bool
 jsonIdent msg = Just msg == (decode . encode) msg
 
 minSize :: Message -> Bool
-minSize msg = (length . getMessage) msg > 0
+minSize = not . null . getMessage
 
 getIdent :: Message -> Bool
 getIdent msg = Just msg == (message . getMessage) msg

@@ -5,6 +5,7 @@ import qualified Types.Internal.ChannelTest
 import qualified Types.Internal.HostnameTest
 import qualified Types.Internal.IRCUserTest
 import qualified Types.Internal.MessageTest
+import qualified Types.Internal.NicknameTest
 import qualified Tests
 import Test.Tasty
     ( TestTree
@@ -20,6 +21,7 @@ allTests = testGroup "Tasty Tests"
     , Types.Internal.HostnameTest.tests
     , Types.Internal.IRCUserTest.tests
     , Types.Internal.MessageTest.tests
+    , Types.Internal.NicknameTest.tests
     ]
 
 main :: IO ()

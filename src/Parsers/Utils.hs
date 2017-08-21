@@ -5,6 +5,7 @@ module Parsers.Utils
     , hostname
     , username
     , channel
+    , nickname
     ) where
 
 import qualified Data.Char as Char
@@ -81,3 +82,10 @@ username = P.many1 (P.noneOf "\0\r\n @%")
 channel :: P.Stream s m Char => P.ParsecT s u m String
 channel = (:) <$> P.choice [P.char '#', P.char '+', P.char '&'] <*>
     P.many1 (P.noneOf "\0\a\r\n ,:")
+
+{- | Parse an IRC nickname. -}
+nickname :: P.Stream s m Char => P.ParsecT s u m String
+nickname = (:) <$> P.alphaNum <*> P.many (P.choice [P.alphaNum, P.char '-', special])
+
+special :: P.Stream s m Char => P.ParsecT s u m Char
+special = P.choice $ map P.char ['[', ']', '\\', '`', '_', '^', '{', '}', '|']

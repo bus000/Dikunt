@@ -105,10 +105,7 @@ trailing :: P.Parsec T.Text () String
 trailing = P.char ':' >> P.many1 (P.noneOf "\0\r\n")
 
 nickname :: P.Parsec T.Text () BT.Nickname
-nickname =
-    consNick <$> P.alphaNum <*> P.many (P.choice [P.alphaNum, P.char '-', special])
-  where
-    consNick c1 str = BT.Nickname (c1:str)
+nickname = BT.Nickname <$> PU.nickname
 
 servername :: P.Parsec T.Text () BT.Servername
 servername = BT.Servername <$> (P.try nickservHost <|>
@@ -152,9 +149,6 @@ forceUserHostNoServer = BT.UserServer <$> username <*> host <*> server
   where
     host = Just <$> (P.char '%' *> hostnameAddress)
     server = P.optionMaybe $ P.char '@' *> servername
-
-special :: P.Parsec T.Text () Char
-special = P.choice $ map P.char ['[', ']', '\\', '`', '_', '^', '{', '}', '|']
 
 args :: P.Parsec T.Text () [String]
 args = P.sepBy arg (P.char ' ')
