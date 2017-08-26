@@ -83,7 +83,7 @@ writeServerMessage (BT.ServerNick user newnick) =
 writeServerMessage (BT.ServerJoin user chan) =
     ":" ++ writeUser user ++ " JOIN " ++ getChannel chan ++ "\r\n"
 writeServerMessage (BT.ServerPart user chan message) =
-    ":" ++ writeUser user ++ " PRIVMSG " ++ getChannel chan ++ " :"
+    ":" ++ writeUser user ++ " PART " ++ getChannel chan ++ " :"
         ++ getMessage message ++ "\r\n"
 writeServerMessage (BT.ServerQuit user reason) =
     ":" ++ writeUser user ++ " QUIT :" ++ getMessage reason ++ "\r\n"
@@ -100,7 +100,7 @@ writeServerMessage (BT.ServerNotice server targets message) =
     ":" ++ getServerName server ++ " NOTICE " ++ writeTargets targets ++ " :"
         ++ getMessage message ++ "\r\n"
 writeServerMessage (BT.ServerPing server) =
-    ":" ++ getServerName server ++ " PING\r\n"
+    "PING :" ++ getServerName server ++ "\r\n"
 writeServerMessage (BT.ServerKick user chan nick) =
     ":" ++ writeUser user ++ " KICK " ++ getChannel chan ++ " "
         ++ getNickname nick ++ "\r\n"

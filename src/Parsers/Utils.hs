@@ -76,7 +76,7 @@ shortname = do
 
 {- | Parse IRC username. -}
 username :: P.Stream s m Char => P.ParsecT s u m String
-username = P.many1 (P.noneOf "\0\r\n @%")
+username = P.many1 (P.noneOf "\0\r\n @%,")
 
 {- | Parse an IRC channel name. -}
 channel :: P.Stream s m Char => P.ParsecT s u m String

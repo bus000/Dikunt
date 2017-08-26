@@ -13,16 +13,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Types.Internal.ServerMessage where
 
-import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
-import Test.QuickCheck.Gen (oneof)
-import Types.Internal.Channel (Channel)
-import Types.Internal.Message (Message)
-import Types.Internal.IRCUser (IRCUser)
-import Types.Internal.Target (Targets)
-import Types.Internal.Servername (Servername)
-import Types.Internal.Nickname (Nickname)
-import Data.Text (Text)
 import Data.Aeson (ToJSON(..), FromJSON(..), withObject, (.=), (.:), object)
+import Data.Text (Text)
+import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
+import Test.QuickCheck.Gen (oneof, listOf, listOf1)
+import Types.Internal.Channel (Channel)
+import Types.Internal.IRCUser (IRCUser)
+import Types.Internal.Message (Message)
+import Types.Internal.Nickname (Nickname)
+import Types.Internal.Servername (Servername)
+import Types.Internal.Target (Targets)
 import Utils (shrink1, shrink2, shrink3)
 
 {- | Messages that are received by the bot from the IRC server is parsed to this
@@ -59,7 +59,7 @@ data ServerMessage
     -- | ServerReply <server> <num> <args> - Numeric reply <num> from
     -- <server> with arguments <args>.
     | ServerReply Servername Integer [String]
-  deriving (Show, Eq)
+  deriving (Show, Read, Eq)
 
 {- | Convert a ServerMessage to a JSON string. -}
 instance ToJSON ServerMessage where
@@ -207,7 +207,8 @@ instance Arbitrary ServerMessage where
         , ServerNotice <$> arbitrary <*> arbitrary <*> arbitrary
         , ServerPing <$> arbitrary
         , ServerMode <$> arbitrary <*> arbitrary <*> arbitrary
-        , ServerReply <$> arbitrary <*> arbitrary <*> arbitrary
+        , ServerReply <$> arbitrary <*> (abs <$> arbitrary)
+            <*> listOf (listOf1 arbitrary)
         ]
 
     shrink (ServerNick user nick) = shrink2 ServerNick user nick
@@ -221,4 +222,5 @@ instance Arbitrary ServerMessage where
     shrink (ServerNotice server ts msg) = shrink3 ServerNotice server ts msg
     shrink (ServerPing server) = shrink1 ServerPing server
     shrink (ServerMode user nick mode) = shrink3 ServerMode user nick mode
-    shrink (ServerReply server num args) = shrink3 ServerReply server num args
+    {-shrink (ServerReply server num args) = shrink3 ServerReply server num args-}
+    shrink (ServerReply server num args) = []

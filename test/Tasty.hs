@@ -6,6 +6,7 @@ import qualified Types.Internal.HostnameTest
 import qualified Types.Internal.IRCUserTest
 import qualified Types.Internal.MessageTest
 import qualified Types.Internal.NicknameTest
+import qualified Types.Internal.ServerMessageTest
 import qualified Tests
 import Test.Tasty
     ( TestTree
@@ -22,6 +23,7 @@ allTests = testGroup "Tasty Tests"
     , Types.Internal.IRCUserTest.tests
     , Types.Internal.MessageTest.tests
     , Types.Internal.NicknameTest.tests
+    , Types.Internal.ServerMessageTest.tests
     ]
 
 main :: IO ()

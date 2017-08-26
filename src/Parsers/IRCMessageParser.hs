@@ -14,8 +14,9 @@
  -
  - See https://tools.ietf.org/html/rfc2812 for details.
  -}
-module Parsers.IRCMessageParser ( parseMessage ) where
+module Parsers.IRCMessageParser ( parseMessage, replyMessage, prefix, servername, args ) where
 
+import Prelude hiding (last)
 import qualified Data.Text.Lazy as T
 import qualified Parsers.Utils as PU
 import Text.Parsec ((<|>))
@@ -95,8 +96,17 @@ modeMessage = BT.ServerMode <$> prefix nickUserHost <* P.string "MODE " <*>
     nickname <* P.char ' ' <*> message
 
 replyMessage :: P.Parsec T.Text () BT.ServerMessage
-replyMessage = BT.ServerReply <$> prefix servername <*> P.decimal <* P.char ' '
-    <*> args
+replyMessage = P.try withArgs <|> P.try withoutArgs
+  where
+    withArgs = BT.ServerReply <$> prefix servername <*> P.decimal <*>
+        (P.char ' ' *> args)
+    withoutArgs = BT.ServerReply <$> prefix servername <*> P.decimal <*>
+        return []
+
+args :: P.Parsec T.Text () [String]
+args = P.sepBy arg $ P.char ' '
+  where
+    arg = P.many1 (P.noneOf " \0\r\n")
 
 message :: P.Parsec T.Text () BT.Message
 message = BT.Message <$> trailing
@@ -149,12 +159,6 @@ forceUserHostNoServer = BT.UserServer <$> username <*> host <*> server
   where
     host = Just <$> (P.char '%' *> hostnameAddress)
     server = P.optionMaybe $ P.char '@' *> servername
-
-args :: P.Parsec T.Text () [String]
-args = P.sepBy arg (P.char ' ')
-
-arg :: P.Parsec T.Text () String
-arg = P.many (P.noneOf "\0\r\n ")
 
 prefix :: P.Parsec T.Text () a -> P.Parsec T.Text () a
 prefix = P.between (P.char ':') (P.char ' ')
