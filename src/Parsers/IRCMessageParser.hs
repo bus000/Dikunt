@@ -16,7 +16,6 @@
  -}
 module Parsers.IRCMessageParser ( parseMessage, replyMessage, prefix, servername, args ) where
 
-import Prelude hiding (last)
 import qualified Data.Text.Lazy as T
 import qualified Parsers.Utils as PU
 import Text.Parsec ((<|>))
@@ -96,17 +95,16 @@ modeMessage = BT.ServerMode <$> prefix nickUserHost <* P.string "MODE " <*>
     nickname <* P.char ' ' <*> message
 
 replyMessage :: P.Parsec T.Text () BT.ServerMessage
-replyMessage = P.try withArgs <|> P.try withoutArgs
-  where
-    withArgs = BT.ServerReply <$> prefix servername <*> P.decimal <*>
-        (P.char ' ' *> args)
-    withoutArgs = BT.ServerReply <$> prefix servername <*> P.decimal <*>
-        return []
+replyMessage = BT.ServerReply <$> prefix servername <*> P.decimal <*
+    P.char ' ' <*> args
 
 args :: P.Parsec T.Text () [String]
-args = P.sepBy arg $ P.char ' '
+args = P.try noTrailing <|> P.try withTrailing <|> return []
   where
-    arg = P.many1 (P.noneOf " \0\r\n")
+    noTrailing = P.sepBy arg space
+    withTrailing = (\xs x -> xs ++ [x]) <$> P.endBy arg space <*> trailing
+    arg = (:) <$> P.noneOf " \0\r\n:" <*> P.many (P.noneOf " \0\r\n")
+    space = P.char ' '
 
 message :: P.Parsec T.Text () BT.Message
 message = BT.Message <$> trailing
