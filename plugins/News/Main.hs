@@ -1,19 +1,19 @@
 module Main (main) where
 
-import qualified Types.BotTypes as BT
 import Control.Error.Util (note, hush)
+import Data.Aeson (decode)
 import Data.Maybe (mapMaybe)
+import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy.Encoding as T
+import qualified Data.Text.Lazy.IO as T
 import Network.Download (openAsFeed)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import Text.Feed.Query (feedItems, getItemTitle, getItemLink, getItemDescription)
 import Text.Feed.Types (Item)
-import Data.Aeson (decode)
-import qualified Data.Text.Lazy as T
-import qualified Data.Text.Lazy.IO as T
-import qualified Data.Text.Lazy.Encoding as T
 import qualified Text.Parsec as P
 import Text.Parsec ((<|>))
+import qualified Types.BotTypes as BT
 
 type User = String
 
