@@ -6,6 +6,9 @@ import Data.Aeson (decode)
 import Data.Char (isSpace)
 import Data.List (isInfixOf)
 import Data.Maybe (mapMaybe)
+import qualified Data.Random as Rand
+import qualified Data.Random.Extras as Rand
+import Data.Random.Source.DevRandom (DevRandom(..))
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
@@ -51,7 +54,9 @@ giveHelp botnick = do
 giveMundHeld :: [Mundheld] -> SearchString -> IO ()
 giveMundHeld mundheld search = case filter (search `isInfixOf`) mundheld of
     [] -> putStrLn "Jeg fandt ingen mundheld der matchede din søge streng."
-    (x:_) -> putStrLn x
+    matching -> do
+        randomMundheld <- Rand.runRVar (Rand.choice matching) DevURandom
+        putStrLn randomMundheld
 
 parseRequests :: User -> T.Text -> [Request]
 parseRequests botnick =
@@ -74,7 +79,7 @@ helpRequest :: User -> P.Parsec String () Request
 helpRequest botnick = token (P.string "help") *> return (Help botnick)
 
 mundHeldRequest :: P.Parsec String () Request
-mundHeldRequest = GetMundHeld . trim <$> P.many1 (P.noneOf "\r\n")
+mundHeldRequest = GetMundHeld . trim <$> P.many (P.noneOf "\r\n")
 
 token :: P.Parsec String () a -> P.Parsec String () a
 token tok = P.spaces *> tok <* P.spaces
