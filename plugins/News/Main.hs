@@ -19,7 +19,7 @@ import qualified Types.BotTypes as BT
 
 type User = String
 
-data Source = BBC | SlashDot | DRAll
+data Source = BBC | SlashDot | DRAll | DRInternal | DRExternal
   deriving (Show, Read, Eq)
 
 data Request
@@ -47,7 +47,7 @@ giveHelp nick = do
     putStrLn $ nick ++ ": news help - Display this help message"
     putStrLn $ nick ++ ": news - Display news from default source"
     putStrLn $ nick ++ ": news <source> - Display news from given source. " ++
-        "Source can be one of [BBC, /., DR]"
+        "Source can be one of [BBC, /., DR, DR indland, DR udland]"
 
 giveNews :: Source -> IO ()
 giveNews src = do
@@ -71,6 +71,8 @@ sourceURL :: Source -> String
 sourceURL BBC = "http://feeds.bbci.co.uk/news/world/rss.xml"
 sourceURL SlashDot = "http://rss.slashdot.org/Slashdot/slashdotMain"
 sourceURL DRAll = "http://www.dr.dk/nyheder/service/feeds/allenyheder"
+sourceURL DRInternal = "http://www.dr.dk/nyheder/service/feeds/indland"
+sourceURL DRExternal = "http://www.dr.dk/nyheder/service/feeds/udland"
 
 parseMessages :: User -> T.Text -> [Request]
 parseMessages botnick =
@@ -89,11 +91,16 @@ helpRequest nick = token (P.string "help") *> return (Help nick)
 
 newsRequest :: P.Parsec String () Request
 newsRequest = P.choice $ map P.try
-    [ token (P.string "BBC") *> return (GetNews BBC)
-    , token (P.string "/.") *> return (GetNews SlashDot)
-    , token (P.string "DR") *> return (GetNews DRAll)
+    [ stringToken "BBC" *> return (GetNews BBC)
+    , stringToken "/." *> return (GetNews SlashDot)
+    , stringToken "DR" *> stringToken "indland" *> return (GetNews DRInternal)
+    , stringToken "DR" *> stringToken "udland" *> return (GetNews DRExternal)
+    , stringToken "DR" *> return (GetNews DRAll)
     , return (GetNews BBC)
     ]
 
 token :: P.Parsec String () a -> P.Parsec String () a
 token tok = P.spaces *> tok <* P.spaces
+
+stringToken :: String -> P.Parsec String () String
+stringToken str = token (P.string str)
