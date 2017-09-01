@@ -19,7 +19,7 @@ import qualified Types.BotTypes as BT
 
 type User = String
 
-data Source = BBC | SlashDot | DRAll | DRInternal | DRExternal
+data Source = BBC | SlashDot | DRAll | DRInternal | DRExternal | DRPenge
   deriving (Show, Read, Eq)
 
 data Request
@@ -47,7 +47,7 @@ giveHelp nick = do
     putStrLn $ nick ++ ": news help - Display this help message"
     putStrLn $ nick ++ ": news - Display news from default source"
     putStrLn $ nick ++ ": news <source> - Display news from given source. " ++
-        "Source can be one of [BBC, /., DR, DR indland, DR udland]"
+        "Source can be one of [BBC, /., DR, DR indland, DR udland, DR penge]"
 
 giveNews :: Source -> IO ()
 giveNews src = do
@@ -73,6 +73,7 @@ sourceURL SlashDot = "http://rss.slashdot.org/Slashdot/slashdotMain"
 sourceURL DRAll = "http://www.dr.dk/nyheder/service/feeds/allenyheder"
 sourceURL DRInternal = "http://www.dr.dk/nyheder/service/feeds/indland"
 sourceURL DRExternal = "http://www.dr.dk/nyheder/service/feeds/udland"
+sourceURL DRPenge = "http://www.dr.dk/nyheder/service/feeds/penge"
 
 parseMessages :: User -> T.Text -> [Request]
 parseMessages botnick =
@@ -95,6 +96,7 @@ newsRequest = P.choice $ map P.try
     , stringToken "/." *> return (GetNews SlashDot)
     , stringToken "DR" *> stringToken "indland" *> return (GetNews DRInternal)
     , stringToken "DR" *> stringToken "udland" *> return (GetNews DRExternal)
+    , stringToken "DR" *> stringToken "penge" *> return (GetNews DRPenge)
     , stringToken "DR" *> return (GetNews DRAll)
     , return (GetNews BBC)
     ]
