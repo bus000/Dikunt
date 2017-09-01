@@ -1,23 +1,25 @@
 module Main (main) where
 
-import Control.Error.Util (note, hush)
+import Control.Error.Util (hush)
 import Data.Aeson (decode)
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, listToMaybe, fromMaybe)
+import qualified Data.Text as TS
+import qualified Data.Text.Encoding as TS
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
-import Network.Download (openAsFeed)
+import Network.Download (openURI)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
+import Text.Feed.Import (parseFeedString)
 import Text.Feed.Query (feedItems, getItemTitle, getItemLink, getItemDescription)
-import Text.Feed.Types (Item)
 import qualified Text.Parsec as P
 import Text.Parsec ((<|>))
 import qualified Types.BotTypes as BT
 
 type User = String
 
-data Source = BBC | SlashDot
+data Source = BBC | SlashDot | DRAll
   deriving (Show, Read, Eq)
 
 data Request
@@ -45,20 +47,20 @@ giveHelp nick = do
     putStrLn $ nick ++ ": news help - Display this help message"
     putStrLn $ nick ++ ": news - Display news from default source"
     putStrLn $ nick ++ ": news <source> - Display news from given source. " ++
-        "Source can be one of [BBC, /.]"
+        "Source can be one of [BBC, /., DR]"
 
 giveNews :: Source -> IO ()
 giveNews src = do
-    feed <- openAsFeed $ sourceURL src
-    either putStrLn putStrLn (giveNews' feed)
-  where
-    giveNews' f = do -- % TODO: refactor.
-        f' <- f
-        note "Feed analysis failed" $ analyseFeed (feedItems f')
+    contents <- openURI $ sourceURL src
+    case contents of
+        Left _ -> putStrLn "Jeg kunne ikke hente nyheder"
+        Right feed -> putStrLn $ fromMaybe "Jeg kunne ikke analysere feed"
+            (analyseFeed $ (TS.unpack . TS.decodeUtf8) feed)
 
-analyseFeed :: [Item] -> Maybe String
-analyseFeed [] = Nothing
-analyseFeed (item:_) = do
+analyseFeed :: String -> Maybe String
+analyseFeed feedStr = do
+    feed <- parseFeedString feedStr
+    item <- listToMaybe $ feedItems feed
     title <- getItemTitle item
     link <- getItemLink item
     description <- head . lines <$> getItemDescription item
@@ -68,6 +70,7 @@ analyseFeed (item:_) = do
 sourceURL :: Source -> String
 sourceURL BBC = "http://feeds.bbci.co.uk/news/world/rss.xml"
 sourceURL SlashDot = "http://rss.slashdot.org/Slashdot/slashdotMain"
+sourceURL DRAll = "http://www.dr.dk/nyheder/service/feeds/allenyheder"
 
 parseMessages :: User -> T.Text -> [Request]
 parseMessages botnick =
@@ -85,10 +88,12 @@ helpRequest :: User -> P.Parsec String () Request
 helpRequest nick = token (P.string "help") *> return (Help nick)
 
 newsRequest :: P.Parsec String () Request
-newsRequest = P.try bbcSource <|> P.try slashDotSource <|> return (GetNews BBC)
-  where
-    bbcSource = token (P.string "BBC") *> return (GetNews BBC)
-    slashDotSource = token (P.string "/.") *> return (GetNews SlashDot)
+newsRequest = P.choice $ map P.try
+    [ token (P.string "BBC") *> return (GetNews BBC)
+    , token (P.string "/.") *> return (GetNews SlashDot)
+    , token (P.string "DR") *> return (GetNews DRAll)
+    , return (GetNews BBC)
+    ]
 
 token :: P.Parsec String () a -> P.Parsec String () a
 token tok = P.spaces *> tok <* P.spaces
