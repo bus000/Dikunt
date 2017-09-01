@@ -14,9 +14,10 @@
 module Types.Internal.ServerMessage where
 
 import Data.Aeson (ToJSON(..), FromJSON(..), withObject, (.=), (.:), object)
+import Data.Maybe (mapMaybe, isJust)
 import Data.Text (Text)
 import Test.QuickCheck.Arbitrary (Arbitrary, arbitrary, shrink)
-import Test.QuickCheck.Gen (oneof, listOf, listOf1)
+import Test.QuickCheck.Gen (oneof, listOf1, suchThat)
 import Types.Internal.Channel (Channel)
 import Types.Internal.IRCUser (IRCUser)
 import Types.Internal.Message (Message)
@@ -58,7 +59,7 @@ data ServerMessage
     | ServerMode IRCUser Nickname Message
     -- | ServerReply <server> <num> <args> - Numeric reply <num> from
     -- <server> with arguments <args>.
-    | ServerReply Servername Integer [String]
+    | ServerReply Servername Integer Arguments
   deriving (Show, Read, Eq)
 
 {- | Convert a ServerMessage to a JSON string. -}
@@ -207,8 +208,7 @@ instance Arbitrary ServerMessage where
         , ServerNotice <$> arbitrary <*> arbitrary <*> arbitrary
         , ServerPing <$> arbitrary
         , ServerMode <$> arbitrary <*> arbitrary <*> arbitrary
-        , ServerReply <$> arbitrary <*> (abs <$> arbitrary)
-            <*> listOf (listOf1 arbitrary)
+        , ServerReply <$> arbitrary <*> (abs <$> arbitrary) <*> arbitrary
         ]
 
     shrink (ServerNick user nick) = shrink2 ServerNick user nick
@@ -222,5 +222,30 @@ instance Arbitrary ServerMessage where
     shrink (ServerNotice server ts msg) = shrink3 ServerNotice server ts msg
     shrink (ServerPing server) = shrink1 ServerPing server
     shrink (ServerMode user nick mode) = shrink3 ServerMode user nick mode
-    {-shrink (ServerReply server num args) = shrink3 ServerReply server num args-}
-    shrink (ServerReply server num args) = []
+    shrink (ServerReply server num args) =
+        (ServerReply <$> shrink server <*> return num <*> return args) ++
+        (ServerReply <$> return server <*> shrink num <*> return args) ++
+        (ServerReply <$> return server <*> return num <*> shrink args)
+
+newtype Arguments = Arguments [String] deriving (Show, Read, Eq)
+
+arguments :: [String] -> Maybe Arguments
+arguments args | null args = Nothing
+arguments args | any null args = Nothing
+arguments args | any (any (`elem` (" \r\n\0" :: String))) args = Nothing
+arguments args | otherwise = Just $ Arguments args
+
+getArguments :: Arguments -> [String]
+getArguments (Arguments args) = args
+
+instance Arbitrary Arguments where
+    arbitrary = Arguments <$> listOf1 (listOf1 arbitrary) `suchThat`
+        (isJust . arguments)
+
+    shrink = mapMaybe arguments . shrink . getArguments
+
+instance ToJSON Arguments where
+    toJSON (Arguments args) = toJSON args
+
+instance FromJSON Arguments where
+    parseJSON x = Arguments <$> parseJSON x

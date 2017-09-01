@@ -97,6 +97,4 @@ instance FromJSON Targets where
 instance Arbitrary Targets where
     arbitrary = Targets <$> listOf1 arbitrary
 
-    shrink (Targets []) = []
-    shrink (Targets [_]) = []
-    shrink (Targets (_:ts)) = [Targets ts]
+    shrink = map Targets . filter (not . null) . shrink . getTargets

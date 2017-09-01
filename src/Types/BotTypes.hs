@@ -70,6 +70,11 @@ module Types.BotTypes
     -- IRC Target type.
     , Target(..)
 
+    -- Arguments type, smart constructor and getter.
+    , Arguments
+    , arguments
+    , getArguments
+
     , Password
     , Mode
     , Realname

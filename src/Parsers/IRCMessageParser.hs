@@ -14,7 +14,7 @@
  -
  - See https://tools.ietf.org/html/rfc2812 for details.
  -}
-module Parsers.IRCMessageParser ( parseMessage, replyMessage, prefix, servername, args ) where
+module Parsers.IRCMessageParser ( parseMessage ) where
 
 import qualified Data.Text.Lazy as T
 import qualified Parsers.Utils as PU
@@ -29,6 +29,7 @@ import qualified Types.Internal.Hostname as BT
 import qualified Types.Internal.Username as BT
 import qualified Types.Internal.Message as BT
 import qualified Types.Internal.Target as BT
+import qualified Types.Internal.ServerMessage as BT
 
 parseMessage :: T.Text -> Either P.ParseError BT.ServerMessage
 parseMessage = P.parse servermessage "(IRC message)"
@@ -98,11 +99,13 @@ replyMessage :: P.Parsec T.Text () BT.ServerMessage
 replyMessage = BT.ServerReply <$> prefix servername <*> P.decimal <*
     P.char ' ' <*> args
 
-args :: P.Parsec T.Text () [String]
-args = P.try noTrailing <|> P.try withTrailing <|> return []
+args :: P.Parsec T.Text () BT.Arguments
+args = BT.Arguments <$> (P.try noTrailing <|> P.try withTrailing <|>
+    P.try onlyTrailing)
   where
-    noTrailing = P.sepBy arg space
+    noTrailing = P.sepBy1 arg space
     withTrailing = (\xs x -> xs ++ [x]) <$> P.endBy arg space <*> trailing
+    onlyTrailing = (\x -> [x]) <$> trailing
     arg = (:) <$> P.noneOf " \0\r\n:" <*> P.many (P.noneOf " \0\r\n")
     space = P.char ' '
 
