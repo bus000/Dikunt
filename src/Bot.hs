@@ -20,7 +20,6 @@ module Bot
     , disconnect
     ) where
 
-import qualified Types.BotTypes as BT
 import Control.Concurrent (threadDelay, forkFinally)
 import Control.Concurrent.MVar (newEmptyMVar, tryPutMVar, readMVar)
 import Control.Exception (Exception, throw)
@@ -32,12 +31,13 @@ import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
 import Data.Typeable (Typeable)
-import Parsers.IRCMessageParser (parseMessage)
 import IRCWriter.IRCWriter (writeMessage)
 import Monitoring (startMonitoring, writeAll, readContent, stopMonitoring)
 import Network (connectTo, PortID(..))
+import Parsers.IRCMessageParser (parseMessage)
 import System.IO (hClose, hSetBuffering, BufferMode(..), Handle, hPutStr, stdin, hFlush, stdout)
 import qualified System.Log.Logger as Log
+import qualified Types.BotTypes as BT
 
 {- | Custom dikunt bot errors. -}
 data BotThreadStopped
@@ -111,6 +111,7 @@ listen :: BT.Bot
     -- ^ Bot to listen for messages for.
     -> IO ()
 listen bot@(BT.Bot h nick chan pass _ _) = do
+    write h $ BT.ClientPass pass
     write h $ BT.ClientNick nick
     write h $ BT.ClientUser user 0 "DikuntBot"
     write h $ BT.ClientPrivMsg (BT.IRCUser BT.nickservNickname Nothing Nothing)
