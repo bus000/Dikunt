@@ -141,6 +141,6 @@ writeUserServer (BT.UserServer user (Just host) (Just server)) =
 writeArgs :: BT.Arguments -> String
 writeArgs arguments
     | length args == 1 = ":" ++ head args
-    | otherwise = intercalate " " (init args) ++ " :" ++ last args
+    | otherwise = unwords (init args) ++ " :" ++ last args
   where
     args = getArguments arguments

@@ -258,7 +258,7 @@ executable remind
                        text >=1.2.2.1,
                        unbounded-delays >=0.1.0.10,
                        parsec >=3.1.11,
-                       parsec-numbers >=0.1.0,
+                       parsec3-numbers >=0.1.0,
                        Dikunt
   GHC-Options:         -Wall
   hs-source-dirs:      plugins/Remind/

@@ -94,7 +94,7 @@ help :: String
 help nick = putStrLn $ unlines
     [ concat [nick, ": wordreplacer add <word1>=<word2> - add word1=word2 to "
         , "database"]
-    , concat [nick, ": wordreplacer help - display this message "]
+    , nick ++  ": wordreplacer help - display this message "
     , "otherwise replaces words from database in messages"
     ]
 

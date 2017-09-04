@@ -73,7 +73,7 @@ giveHelp nick = do
     putStrLn $ nick ++ ": news <source> - Display news from given source. " ++
         "Source can be one of " ++ show sourceNames
   where
-    sourceNames = map (\(Source _ key) -> intercalate " " key) sources
+    sourceNames = map (\(Source _ key) -> unwords key) sources
 
 giveNews :: Source -> IO ()
 giveNews (Source url _) = do
@@ -112,7 +112,7 @@ newsRequest :: P.Parsec String () Request
 newsRequest = P.choice $ map (P.try . parseSource) sources
   where
     parseSource source@(Source _ key) =
-        foldr (*>) (return $ GetNews source) (map stringToken key)
+        foldr ((*>) . stringToken) (return $ GetNews source) key
 
 token :: P.Parsec String () a -> P.Parsec String () a
 token tok = P.spaces *> tok <* P.spaces

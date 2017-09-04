@@ -110,7 +110,7 @@ args = BT.Arguments <$> (P.try noTrailing <|> P.try withTrailing <|>
   where
     noTrailing = P.sepBy1 arg space
     withTrailing = (\xs x -> xs ++ [x]) <$> P.endBy arg space <*> trailing
-    onlyTrailing = (\x -> [x]) <$> trailing
+    onlyTrailing = (: []) <$> trailing
     arg = (:) <$> P.noneOf " \0\r\n:" <*> P.many (P.noneOf " \0\r\n")
     space = P.char ' '
 

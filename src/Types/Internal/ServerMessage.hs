@@ -233,7 +233,7 @@ arguments :: [String] -> Maybe Arguments
 arguments args | null args = Nothing
 arguments args | any null args = Nothing
 arguments args | any (any (`elem` (" \r\n\0" :: String))) args = Nothing
-arguments args | otherwise = Just $ Arguments args
+arguments args = Just $ Arguments args
 
 getArguments :: Arguments -> [String]
 getArguments (Arguments args) = args
