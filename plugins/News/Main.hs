@@ -2,7 +2,6 @@ module Main (main) where
 
 import Control.Error.Util (hush)
 import Data.Aeson (decode)
-import Data.List (intercalate)
 import Data.Maybe (mapMaybe, listToMaybe, fromMaybe)
 import qualified Data.Text as TS
 import qualified Data.Text.Encoding as TS
