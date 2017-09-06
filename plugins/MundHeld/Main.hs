@@ -3,6 +3,7 @@ module Main (main) where
 import Control.Error.Util (hush)
 import Control.Monad (void)
 import Data.Aeson (decode)
+import qualified Data.Char as Char
 import Data.Char (isSpace)
 import Data.List (isInfixOf)
 import Data.Maybe (mapMaybe)
@@ -52,11 +53,13 @@ giveHelp botnick = do
         "the database that matches the search string given."
 
 giveMundHeld :: [Mundheld] -> SearchString -> IO ()
-giveMundHeld mundheld search = case filter (search `isInfixOf`) mundheld of
+giveMundHeld mundheld search = case filter (matches search) mundheld of
     [] -> putStrLn "Jeg fandt ingen mundheld der matchede din søge streng."
     matching -> do
         randomMundheld <- Rand.runRVar (Rand.choice matching) DevURandom
         putStrLn randomMundheld
+  where
+    matches search m = search `isInfixOf` (map Char.toLower m)
 
 parseRequests :: User -> T.Text -> [Request]
 parseRequests botnick =
