@@ -96,7 +96,7 @@ helpRequest botnick = stringToken "bcprice" *> stringToken "help" *>
 
 buyCoinsRequest :: RequestParser Request
 buyCoinsRequest = stringToken "bcprice" *> stringToken "buy" *>
-    (token $ P.many P.digit) *> (token cardNumber) *> (token csc) *>
+    token (P.many P.digit) *> token cardNumber *> token csc *>
     return BuyCoins
   where
     cardNumber = P.count 4 $ P.count 4 P.digit <* P.optional (P.char ' ')

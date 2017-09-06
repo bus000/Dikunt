@@ -53,13 +53,13 @@ giveHelp botnick = do
         "the database that matches the search string given."
 
 giveMundHeld :: [Mundheld] -> SearchString -> IO ()
-giveMundHeld mundheld search = case filter (matches search) mundheld of
+giveMundHeld mundheld search = case filter matches mundheld of
     [] -> putStrLn "Jeg fandt ingen mundheld der matchede din søge streng."
     matching -> do
         randomMundheld <- Rand.runRVar (Rand.choice matching) DevURandom
         putStrLn randomMundheld
   where
-    matches search m = search `isInfixOf` (map Char.toLower m)
+    matches m = search `isInfixOf` map Char.toLower m
 
 parseRequests :: User -> T.Text -> [Request]
 parseRequests botnick =
