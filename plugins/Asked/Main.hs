@@ -23,7 +23,7 @@ main = do
     randoms <- randomRs (0.0, 1.0) <$> newStdGen
     messages <- parseMessages <$> T.hGetContents stdin
 
-    foldM_ (handleMessage nick) 0.01 $ zip messages randoms
+    foldM_ (handleMessage nick) 0.001 $ zip messages randoms
 
 parseMessages :: T.Text -> [String]
 parseMessages = mapMaybe getMessage . mapMaybe (decode . T.encodeUtf8) . T.lines

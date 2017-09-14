@@ -2,7 +2,6 @@
 module Main (main) where
 
 import Control.Error.Util (hush)
-import Control.Monad (mapM_)
 import Data.Aeson (decode, FromJSON(..), withObject, (.:))
 import Data.ByteString.Builder (toLazyByteString, byteString)
 import Data.Maybe (mapMaybe)
