@@ -1,14 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main ( main ) where
 
-import Prelude hiding (Word)
-import Control.Applicative ((<$>), (<*>))
+import Prelude hiding (Word, words)
 import Control.Error.Util (hush)
-import Control.Monad (mapM, mapM_, unless, void)
-import Control.Monad.State (StateT, liftIO, put, get, runStateT)
+import Control.Monad (void)
+import Control.Monad.State (StateT, liftIO, get, runStateT, modify)
 import Data.Aeson (decode)
 import qualified Data.Char as Char
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (mapMaybe)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
@@ -64,18 +63,30 @@ handleRequests :: DB.Connection
     -> [(Probability, Request)]
     -- ^ Connections together with the probability of writing message.
     -> IO ()
-handleRequests conn reqs = void $ runStateT (mapM_ (handleRequest conn) reqs) 0.1
+handleRequests conn reqs =
+    void $ runStateT (mapM_ handleRequest reqs) initialState
+  where
+    initialState = (0.1, conn)
 
-handleRequest :: DB.Connection -> (Probability, Request) -> StateT Probability IO ()
-handleRequest _ (_, HelpRequest botnick) =
+{- | State we run the wordreplacer in. The state contains a database connection
+ - and the current probability. Words are only replaced if a generated number is
+ - lower than the current probability. -}
+type WordReplacerState a = StateT (Probability, DB.Connection) IO a
+
+{- | Handle a single request. -}
+handleRequest :: (Probability, Request)
+    -- ^ The request and the probability that the request should be served.
+    -> WordReplacerState ()
+handleRequest (_, HelpRequest botnick) =
     liftIO $ giveHelp botnick
-handleRequest conn (_, AddReplacement botnick word withString) =
-    liftIO $ addReplacement conn botnick word withString
-handleRequest conn (_, SetProbability newProb) = do
-    put newProb
+handleRequest (_, AddReplacement botnick word withString) =
+    addReplacement botnick word withString
+handleRequest (_, SetProbability newProb) = do
+    setProbability newProb
     liftIO $ putStrLn "Sandsynlighed er sat!"
-handleRequest conn (prob , WordSequence words) = do
-    threshold <- get
+handleRequest (prob , WordSequence words) = do
+    threshold <- getCurrentProbability
+    conn <- getConnection
     replacements <- liftIO $ getReplacements conn words
     case replacements of
         (Replacement _ w rep:_) | prob < threshold ->
@@ -83,14 +94,23 @@ handleRequest conn (prob , WordSequence words) = do
                 (T.concat ["Jeg tror ikke du mener ", w, " men ", rep])
         _ -> return ()
 
-addReplacement :: DB.Connection -> BotNick -> Word -> String -> IO ()
-addReplacement conn botnick word replacement
-    | (map Char.toLower botnick) == (map Char.toLower word) =
-        putStrLn "Din naughty dreng"
+{- | Add a replacement to the database if the word is not the nickname of the
+ - bot. -}
+addReplacement :: BotNick
+    -- ^ Nickname of bot.
+    -> Word
+    -- ^ Word to replace.
+    -> String
+    -- ^ String to replace with.
+    -> WordReplacerState ()
+addReplacement botnick word replacement
+    | map Char.toLower botnick == map Char.toLower word =
+        liftIO $ putStrLn "Din naughty dreng"
     | otherwise = do
-        insertReplacement conn word replacement
-        putStrLn $ "Fra nu af ved jeg at " ++ word ++ " er det samme som "
-            ++ replacement
+        conn <- getConnection
+        liftIO $ insertReplacement conn word replacement
+        liftIO $ putStrLn ("Fra nu af ved jeg at " ++ word ++ " er det samme som "
+            ++ replacement)
 
 {- | Print help message. -}
 giveHelp :: BotNick
@@ -104,7 +124,13 @@ giveHelp nick = do
     putStrLn $ nick ++  ": wordreplacer help - display this message"
     putStrLn "otherwise replaces words from database in messages"
 
-parseRequests :: BotNick -> T.Text -> [Request]
+{- | Parse requests to the plugin from a text string. A new potential request
+ - is assumed to be on each line. -}
+parseRequests :: BotNick
+    -- ^ The nickname of the bot.
+    -> T.Text
+    -- ^ The text to parse requests from.
+    -> [Request]
 parseRequests botnick =
     mapMaybe parseRequest . mapMaybe (decode . T.encodeUtf8) . T.lines
   where
@@ -112,9 +138,14 @@ parseRequests botnick =
         hush $ P.parse (request botnick) "" (BT.getMessage msg)
     parseRequest _ = Nothing
 
+{- | Type to use when parsing requests. -}
 type RequestParser a = P.Parsec String () a
 
-request :: BotNick -> RequestParser Request
+{- | Parse a request from a line of text. A request is one of HelpRequest,
+ - AddReplacement, SetProbability or WordSequence. -}
+request :: BotNick
+    -- ^ The nickname of the bot.
+    -> RequestParser Request
 request botnick = P.choice requestTypes <* P.eof
   where
     requestTypes = map P.try
@@ -124,12 +155,18 @@ request botnick = P.choice requestTypes <* P.eof
         , wordListRequest
         ]
 
-helpRequest :: BotNick -> RequestParser Request
+{- | Parse a help request. -}
+helpRequest :: BotNick
+    -- ^ Nickname of the bot.
+    -> RequestParser Request
 helpRequest botnick = stringToken (botnick ++ ": ")
     *> stringToken "wordreplacer " *> stringToken "help"
     *> return (HelpRequest botnick)
 
-addReplacementRequest :: BotNick -> RequestParser Request
+{- | Parse a request to add a replacement. -}
+addReplacementRequest :: BotNick
+    -- ^ Nickname of the bot.
+    -> RequestParser Request
 addReplacementRequest botnick = do
     void $ stringToken (botnick ++ ": ")
     void $ stringToken "wordreplacer "
@@ -139,7 +176,10 @@ addReplacementRequest botnick = do
 
     return $ AddReplacement botnick word replacement
 
-setProbabilityRequest :: BotNick -> RequestParser Request
+{- | Parse a request to set the current probability. -}
+setProbabilityRequest :: BotNick
+    -- ^ Nickname of the bot.
+    -> RequestParser Request
 setProbabilityRequest botnick = do
     void $ stringToken (botnick ++ ": ")
     void $ stringToken "wordreplacer "
@@ -151,41 +191,78 @@ setProbabilityRequest botnick = do
         then return $ SetProbability newprob
         else P.unexpected "Probability should be between 0 and 1"
 
+{- | Parses anything to a list of words separated by spaces and special
+ - characters. -}
 wordListRequest :: RequestParser Request
 wordListRequest = WordSequence <$> token (word `P.sepBy` separator)
   where
     word = P.many1 $ P.noneOf " \n\t.:?!()[]{},"
     separator = P.many1 $ P.oneOf " \n\t.:?!()[]{},"
 
-{- | Initialize a database by creating it if it does not exist and inserting
- - default mappings. -}
+{- | Initialize a database by creating it if it does not exist. -}
 initDatabase :: DB.Connection
     -- ^ Connection to database to initialize.
     -> IO ()
-initDatabase conn = do
+initDatabase conn =
     DB.execute_ conn "CREATE TABLE IF NOT EXISTS replacements \
         \(id INTEGER PRIMARY KEY, word TEXT UNIQUE, replacement TEXT)"
 
-insertReplacement :: DB.Connection -> Word -> String -> IO ()
+{- | Insert or replace a replacement in the database of replacements. -}
+insertReplacement :: DB.Connection
+    -- ^ Database connection.
+    -> Word
+    -- ^ Word to replace.
+    -> String
+    -- ^ String to replace with.
+    -> IO ()
 insertReplacement conn word replacement =
     DB.executeNamed conn "INSERT OR REPLACE INTO replacements \
         \(word, replacement) VALUES (:word, :replacement)"
         [":word" := map Char.toLower word, ":replacement" := replacement]
 
-getReplacements :: DB.Connection -> [Word] -> IO [Replacement]
+{- | Get list of all replacements for words given. The function looks up each
+ - word in the database and concatenates the result. -}
+getReplacements :: DB.Connection
+    -- ^ Database connection.
+    -> [Word]
+    -- ^ List of words to find replacements for.
+    -> IO [Replacement]
 getReplacements conn words = concat <$> mapM getReplacement words
   where
     getReplacement word = DB.queryNamed conn "SELECT id, word, replacement \
         \FROM replacements WHERE word = :word"
             [":word" := word] :: IO [Replacement]
 
-token :: RequestParser a -> RequestParser a
+{- | Get the current probability from the state. -}
+getCurrentProbability :: WordReplacerState Probability
+getCurrentProbability = fst <$> get
+
+{- | Get the database connection from the state. -}
+getConnection :: WordReplacerState DB.Connection
+getConnection = snd <$> get
+
+{- | Set the probability in the state. -}
+setProbability :: Probability
+    -- ^ The new probability.
+    -> WordReplacerState ()
+setProbability newprob = modify (\(_, conn) -> (newprob, conn))
+
+{- | Skips space on both sides of the parser. -}
+token :: RequestParser a
+    -- ^ Parser to skip spaces around.
+    -> RequestParser a
 token tok = P.spaces *> tok <* P.spaces
 
-stringToken :: String -> RequestParser String
+{- | Parses the string given and skips all whitespace around it. -}
+stringToken :: String
+    -- ^ String to parse.
+    -> RequestParser String
 stringToken = token . P.string
 
-trim :: String -> String
+{- | Remove trailing whitespace and whitespace before string. -}
+trim :: String
+    -- ^ String to trim.
+    -> String
 trim = f . f
   where
     f = reverse . dropWhile Char.isSpace
