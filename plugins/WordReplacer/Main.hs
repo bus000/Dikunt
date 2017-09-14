@@ -1,13 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main ( main ) where
 
+import Prelude hiding (Word)
 import Control.Applicative ((<$>), (<*>))
-import Control.Monad (foldM, forever, unless)
+import Control.Error.Util (hush)
+import Control.Monad (mapM, mapM_, unless, void)
+import Control.Monad.State (StateT, liftIO, put, get, runStateT)
 import Data.Aeson (decode)
-import Data.Char (toLower)
-import Data.List.Split (split, oneOf)
-import Data.Maybe (fromMaybe)
-import qualified Data.Text as T
+import qualified Data.Char as Char
+import Data.Maybe (fromMaybe, mapMaybe)
+import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
 import qualified Database.SQLite.Simple as DB
@@ -15,9 +17,12 @@ import Database.SQLite.Simple (NamedParam((:=)))
 import Paths_Dikunt
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
-import Text.Regex.PCRE ((=~))
+import System.Random (randomRs, newStdGen)
+import qualified Text.Parsec as P
+import qualified Text.Parsec.Number as P
 import qualified Types.BotTypes as BT
 
+{- | The type replacements are stored under in the database. -}
 data Replacement = Replacement Int T.Text T.Text deriving (Show)
 
 instance DB.FromRow Replacement where
@@ -26,15 +31,131 @@ instance DB.FromRow Replacement where
 instance DB.ToRow Replacement where
     toRow (Replacement id_ word replacement) = DB.toRow (id_, word, replacement)
 
+type BotNick = String
+type Word = String
+type Probability = Double
+
+{- | Lines from stdin are parsed to this structure which represents a request to
+ - the plugin. -}
+data Request
+    = HelpRequest BotNick
+    | AddReplacement BotNick Word String
+    | SetProbability Probability
+    | WordSequence [Word]
+
 main :: IO ()
 main = do
-    (nick:_) <- getArgs
+    (botnick:_) <- getArgs
 
     hSetBuffering stdout LineBuffering
     hSetBuffering stdin LineBuffering
 
+    randoms <- randomRs (0.0, 1.0) <$> newStdGen
+    requests <- parseRequests botnick <$> T.hGetContents stdin
+
     dbFile <- getDataFileName "data/WordReplacerData.db"
-    DB.withConnection dbFile (\c -> initDatabase c >> wordReplacer nick c)
+    DB.withConnection dbFile (\c -> do
+        initDatabase c
+        handleRequests c (zip randoms requests))
+
+{- | Handle a list of requests by performing the action requested. -}
+handleRequests :: DB.Connection
+    -- ^ Database connection.
+    -> [(Probability, Request)]
+    -- ^ Connections together with the probability of writing message.
+    -> IO ()
+handleRequests conn reqs = void $ runStateT (mapM_ (handleRequest conn) reqs) 0.1
+
+handleRequest :: DB.Connection -> (Probability, Request) -> StateT Probability IO ()
+handleRequest _ (_, HelpRequest botnick) =
+    liftIO $ giveHelp botnick
+handleRequest conn (_, AddReplacement botnick word withString) =
+    liftIO $ addReplacement conn botnick word withString
+handleRequest conn (_, SetProbability newProb) = do
+    put newProb
+    liftIO $ putStrLn "Sandsynlighed er sat!"
+handleRequest conn (prob , WordSequence words) = do
+    threshold <- get
+    replacements <- liftIO $ getReplacements conn words
+    case replacements of
+        (Replacement _ w rep:_) | prob < threshold ->
+            liftIO $ T.putStrLn
+                (T.concat ["Jeg tror ikke du mener ", w, " men ", rep])
+        _ -> return ()
+
+addReplacement :: DB.Connection -> BotNick -> Word -> String -> IO ()
+addReplacement conn botnick word replacement
+    | (map Char.toLower botnick) == (map Char.toLower word) =
+        putStrLn "Din naughty dreng"
+    | otherwise = do
+        insertReplacement conn word replacement
+        putStrLn $ "Fra nu af ved jeg at " ++ word ++ " er det samme som "
+            ++ replacement
+
+{- | Print help message. -}
+giveHelp :: BotNick
+    -- ^ Nickname of Dikunt bot.
+    -> IO ()
+giveHelp nick = do
+    putStrLn $ nick ++ ": wordreplacer add <word1>=<word2> - add word1=word2 "
+        ++ "to database"
+    putStrLn $ nick ++ ": wordreplacer set probability <d> - set the "
+        ++ "probability of writing replacements"
+    putStrLn $ nick ++  ": wordreplacer help - display this message"
+    putStrLn "otherwise replaces words from database in messages"
+
+parseRequests :: BotNick -> T.Text -> [Request]
+parseRequests botnick =
+    mapMaybe parseRequest . mapMaybe (decode . T.encodeUtf8) . T.lines
+  where
+    parseRequest (BT.ServerPrivMsg _ _ msg) =
+        hush $ P.parse (request botnick) "" (BT.getMessage msg)
+    parseRequest _ = Nothing
+
+type RequestParser a = P.Parsec String () a
+
+request :: BotNick -> RequestParser Request
+request botnick = P.choice requestTypes <* P.eof
+  where
+    requestTypes = map P.try
+        [ helpRequest botnick
+        , addReplacementRequest botnick
+        , setProbabilityRequest botnick
+        , wordListRequest
+        ]
+
+helpRequest :: BotNick -> RequestParser Request
+helpRequest botnick = stringToken (botnick ++ ": ")
+    *> stringToken "wordreplacer " *> stringToken "help"
+    *> return (HelpRequest botnick)
+
+addReplacementRequest :: BotNick -> RequestParser Request
+addReplacementRequest botnick = do
+    void $ stringToken (botnick ++ ": ")
+    void $ stringToken "wordreplacer "
+    void $ stringToken "add "
+    word <- P.many1 (P.noneOf " \n\t=")
+    replacement <- trim <$> (P.char '=' *> P.many1 P.anyChar)
+
+    return $ AddReplacement botnick word replacement
+
+setProbabilityRequest :: BotNick -> RequestParser Request
+setProbabilityRequest botnick = do
+    void $ stringToken (botnick ++ ": ")
+    void $ stringToken "wordreplacer "
+    void $ stringToken "set "
+    void $ stringToken "probability "
+    newprob <- P.floating
+
+    if newprob >= 0.0 && newprob <= 1.0
+        then return $ SetProbability newprob
+        else P.unexpected "Probability should be between 0 and 1"
+
+wordListRequest :: RequestParser Request
+wordListRequest = WordSequence <$> token (word `P.sepBy` separator)
+  where
+    word = P.many1 $ P.noneOf " \n\t.:?!()[]{},"
+    separator = P.many1 $ P.oneOf " \n\t.:?!()[]{},"
 
 {- | Initialize a database by creating it if it does not exist and inserting
  - default mappings. -}
@@ -44,146 +165,27 @@ initDatabase :: DB.Connection
 initDatabase conn = do
     DB.execute_ conn "CREATE TABLE IF NOT EXISTS replacements \
         \(id INTEGER PRIMARY KEY, word TEXT UNIQUE, replacement TEXT)"
-    mapM_ insertDefault replacementList
+
+insertReplacement :: DB.Connection -> Word -> String -> IO ()
+insertReplacement conn word replacement =
+    DB.executeNamed conn "INSERT OR REPLACE INTO replacements \
+        \(word, replacement) VALUES (:word, :replacement)"
+        [":word" := map Char.toLower word, ":replacement" := replacement]
+
+getReplacements :: DB.Connection -> [Word] -> IO [Replacement]
+getReplacements conn words = concat <$> mapM getReplacement words
   where
-    insertDefault (word, replacement) =
-        DB.executeNamed conn "INSERT OR REPLACE INTO replacements \
-            \(word, replacement) VALUES (:word, :replacement)"
-                [":word" := word
-                , ":replacement" := replacement
-                ]
-
-{- | Do the word replacements. Reads lines from stdin replaces words and prints
- - the replacement if any to stdout. -}
-wordReplacer :: String
-    -- ^ Nickname of Dikunt bot.
-    -> DB.Connection
-    -- ^ Database connection with replacements.
-    -> IO ()
-wordReplacer nick conn = forever $ do
-    line <- T.getLine
-    handleMessage conn nick $ (decode . T.encodeUtf8) line
-
-{- | Parse message and determine if it is a help message, an add message or if
- - the words should be replaced. -}
-handleMessage :: DB.Connection
-    -- ^ Database connection.
-    -> String
-    -- ^ Nickname of Dikunt bot.
-    -> Maybe BT.ServerMessage
-    -- ^ Message received from IRCServer.
-    -> IO ()
-handleMessage conn nick (Just (BT.ServerPrivMsg _ _ str))
-    | BT.getMessage str =~ helpPattern = help nick
-    | [[_, word, replacement]] <- BT.getMessage str =~ addPattern =
-        addReplacement conn nick word replacement
-    | otherwise = replaceWords conn (BT.getMessage str)
-  where
-    sp = "[ \\t]*"
-    ps = "[ \\t]+"
-    helpPattern = concat ["^", sp, nick, ":", ps, "wordreplacer", ps, "help",
-        sp, "$"]
-    addPattern = concat ["^", sp, nick, ":", ps, "wordreplacer", ps, "add", ps,
-        "([^= ]+)=([^=]*)", sp, "$"]
-handleMessage _ _ _ = return ()
-
-{- | Print help message. -}
-help :: String
-    -- ^ Nickname of Dikunt bot.
-    -> IO ()
-help nick = putStrLn $ unlines
-    [ concat [nick, ": wordreplacer add <word1>=<word2> - add word1=word2 to "
-        , "database"]
-    , nick ++  ": wordreplacer help - display this message "
-    , "otherwise replaces words from database in messages"
-    ]
-
-{- | Add a new replacement to the database. -}
-addReplacement :: DB.Connection
-    -- ^ Connection to database.
-    -> String
-    -- ^ Nick of the bot.
-    -> String
-    -- ^ The word to replace.
-    -> String
-    -- ^ The replacement for the word.
-    -> IO ()
-addReplacement conn nick word replacement
-    | nick == word' = putStrLn "Not allowed to bind nickname"
-    | otherwise = do
-        DB.executeNamed conn "INSERT OR REPLACE INTO replacements \
-            \(word, replacement) VALUES (:word, :replacement)"
-            [":word" := word', ":replacement" := replacement]
-
-        putStrLn "Added replacement"
-  where
-    word' = map toLower word
-
-{- | Replace all words present in the database with their replacements. -}
-replaceWords :: DB.Connection
-    -- ^ Database connection.
-    -> String
-    -- ^ String to replace in.
-    -> IO ()
-replaceWords conn line = do
-    replacements <- foldM getReplacements [] (wordsSpecial . map toLower $ line)
-    unless (null replacements) $ putStrLn (replaceStrings replacements line)
-  where
-    getReplacements replacements word = do
-        r <- DB.queryNamed conn "SELECT id, word, replacement FROM \
-            \replacements WHERE word = :word"
+    getReplacement word = DB.queryNamed conn "SELECT id, word, replacement \
+        \FROM replacements WHERE word = :word"
             [":word" := word] :: IO [Replacement]
-        if null r then return replacements else return $ head r:replacements
 
-{- | Replace words in string with their replacement in the replacementlist
- - given. -}
-replaceStrings :: [Replacement]
-    -- ^ Word replacements.
-    -> String
-    -- ^ The string to replace in.
-    -> String
-replaceStrings replacements = concatMap maybeReplace . wordsSpecial
+token :: RequestParser a -> RequestParser a
+token tok = P.spaces *> tok <* P.spaces
+
+stringToken :: String -> RequestParser String
+stringToken = token . P.string
+
+trim :: String -> String
+trim = f . f
   where
-    replacements' = map getReplacement replacements
-    maybeReplace word = fromMaybe word (lookup (map toLower word) replacements')
-
-{- | Utility function converting Replacement's to tuples of replacement. -}
-getReplacement :: Replacement
-    -- ^ The replacements.
-    -> (String, String)
-getReplacement (Replacement _ word replacement) =
-    (T.unpack word, T.unpack replacement)
-
-{- | List of default replacements. -}
-replacementList :: [(String, String)]
-replacementList =
-    [ ("mark", "ShortGuy")
-    , ("jan", "Tjekkeren")
-    , ("magnus", "Glorious")
-    , ("august", "Motherless")
-    , ("oleks", "Joleks")
-    , ("10/10", "knæhøj karse")
-    , ("ha!", "HAHAHAHAHAHHAHA!")
-    , ("haha", "hilarious, just hilarious")
-    , ("mads", "Twin")
-    , ("troels", "Twin")
-    , ("tjekker", "kontrollerer")
-    , ("tjekke", "kontrollere")
-    , ("vim", "best editor")
-    , ("emacs", "worst editor")
-    , ("helvede", "himlen")
-    , ("0/10", "Mark's Bot")
-    , ("danmark", "I DANMARK ER JEG FØDT DER HAR JEG HJEEEEEME")
-    , ("usa", "Murica'")
-    , ("margrethe", "Hendes Majestæt Dronning Margrethe II")
-    , ("henrik", "Hans Kongelige Højhed Prins Henrik")
-    , ("frederik", "Hans Kongelige Højhed Kronprins Frederik, Prins til Danmark, greve af Monpezat")
-    , ("joakim", "Hans Kongelige Højhed Prins Joachim")
-    , ("mary", "Hendes Kongelige Højhed Kronprinsesse Mary")
-    , ("python", "python2.7")
-    , ("latex", "LaTeX")
-    , ("tex", "Tex")
-    ]
-
-wordsSpecial :: String -> [String]
-wordsSpecial = split (oneOf " \n\t.:?!()[]{},")
+    f = reverse . dropWhile Char.isSpace
