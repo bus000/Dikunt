@@ -49,6 +49,7 @@ responses =
     [ "Watch your mouth boy!"
     , "Do you kiss your mother with that mouth?"
     , "Go and wash your mouth with soap!"
+    , "Thats 1$ in the swear jar."
     ]
 
 curseWords :: [String]
