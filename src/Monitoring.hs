@@ -156,7 +156,7 @@ monitorProcesses monitorMVar args = forever $ do
         case exitCodeMay of
             Just code -> do
                 Log.errorM "monitoring.monitorProcesses" $ loc ++
-                    " execited with exit code " ++ show code
+                    " exited with exit code " ++ show code
                 start pipe args loc
             Nothing -> return process
 
