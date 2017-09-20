@@ -12,7 +12,9 @@ plugin is send as a PRIVMSG to the channel the bot is connected to.
 The installation depends on a couple of external tools
 
  * jp2a - Jpeg To Ascii https://github.com/cslarsen/jp2a
- * TOIlet - display large colourful characters
+ * TOIlet - Display large colourful characters
+ * mueval - Evaluate safe Haskell expressions
+    https://hackage.haskell.org/package/mueval.
 
 To install the bot start by cloning the git project
 
