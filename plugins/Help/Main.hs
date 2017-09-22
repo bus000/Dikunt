@@ -2,7 +2,6 @@
 module Main (main) where
 
 import qualified Types.BotTypes as BT
-import Control.Applicative ((<$>))
 import Control.Monad (forever)
 import Data.Char (toLower)
 import Data.Configurator (load, Worth(..), require)

@@ -5,7 +5,7 @@ import Control.Monad (forever)
 import qualified Data.MarkovChain as MC
 import Paths_Dikunt
 import System.Environment (getArgs)
-import System.IO (stdout, stdin, hSetBuffering, BufferMode(..), readFile)
+import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import System.Random (newStdGen, StdGen)
 import Text.Regex.PCRE ((=~))
 import Data.Aeson (decode)

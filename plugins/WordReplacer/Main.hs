@@ -3,7 +3,7 @@ module Main ( main ) where
 
 import Prelude hiding (Word, words)
 import Control.Error.Util (hush)
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Control.Monad.State (StateT, liftIO, get, runStateT, modify)
 import Data.Aeson (decode)
 import qualified Data.Char as Char
@@ -78,32 +78,24 @@ handleRequest :: (Probability, Request)
     -- ^ The request and the probability that the request should be served.
     -> WordReplacerState ()
 handleRequest (_, HelpRequest botnick) =
-    liftIO $ giveHelp botnick
+    handleHelp botnick
 handleRequest (_, AddReplacement botnick word withString) =
-    addReplacement botnick word withString
-handleRequest (_, SetProbability newProb) = do
-    setProbability newProb
-    liftIO $ putStrLn "Sandsynlighed er sat!"
-handleRequest (prob , WordSequence words) = do
-    threshold <- getCurrentProbability
-    conn <- getConnection
-    replacements <- liftIO $ getReplacements conn words
-    case replacements of
-        (Replacement _ w rep:_) | prob < threshold ->
-            liftIO $ T.putStrLn
-                (T.concat ["Jeg tror ikke du mener ", w, " men ", rep])
-        _ -> return ()
+    handleAdd botnick word withString
+handleRequest (_, SetProbability newProb) =
+    handleSetProbability newProb
+handleRequest (prob , WordSequence words) =
+    handleWordReplacement words prob
 
 {- | Add a replacement to the database if the word is not the nickname of the
  - bot. -}
-addReplacement :: BotNick
+handleAdd :: BotNick
     -- ^ Nickname of bot.
     -> Word
     -- ^ Word to replace.
     -> String
     -- ^ String to replace with.
     -> WordReplacerState ()
-addReplacement botnick word replacement
+handleAdd botnick word replacement
     | map Char.toLower botnick == map Char.toLower word =
         liftIO $ putStrLn "Din naughty dreng"
     | otherwise = do
@@ -113,16 +105,42 @@ addReplacement botnick word replacement
             ++ replacement)
 
 {- | Print help message. -}
-giveHelp :: BotNick
+handleHelp :: BotNick
     -- ^ Nickname of Dikunt bot.
-    -> IO ()
-giveHelp nick = do
-    putStrLn $ nick ++ ": wordreplacer add <word1>=<word2> - add word1=word2 "
+    -> WordReplacerState ()
+handleHelp nick = liftIO $ sequence_
+    [ putStrLn $ nick ++ ": wordreplacer add <word1>=<word2> - add word1=word2 "
         ++ "to database"
-    putStrLn $ nick ++ ": wordreplacer set probability <d> - set the "
+    , putStrLn $ nick ++ ": wordreplacer set probability <d> - set the "
         ++ "probability of writing replacements"
-    putStrLn $ nick ++  ": wordreplacer help - display this message"
-    putStrLn "otherwise replaces words from database in messages"
+    , putStrLn $ nick ++  ": wordreplacer help - display this message"
+    , putStrLn "otherwise replaces words from database in messages"
+    ]
+
+{- | Set the current probability in the state. -}
+handleSetProbability :: Probability
+    -- ^ The new probability.
+    -> WordReplacerState ()
+handleSetProbability newprob = do
+    setProbability newprob
+    liftIO $ putStrLn "Sandsynlighed er sat!"
+
+{- | Look up each word in the database and find replacements. -}
+handleWordReplacement :: [Word]
+    -- ^ Words to find and output replacements for.
+    -> Probability
+    -- ^ The probability of printing the replacements.
+    -> WordReplacerState ()
+handleWordReplacement words prob = do
+    threshold <- getCurrentProbability
+    conn <- getConnection
+    replacements <- liftIO $ getReplacements conn words
+
+    when ((not . null) replacements && prob < threshold) $
+        liftIO (T.putStrLn $ replacementString (head replacements))
+  where
+    replacementString (Replacement _ w rep) = T.concat
+        ["Jeg tror ikke du mener " , w , " men " , rep]
 
 {- | Parse requests to the plugin from a text string. A new potential request
  - is assumed to be on each line. -}
@@ -230,7 +248,7 @@ getReplacements :: DB.Connection
 getReplacements conn words = concat <$> mapM getReplacement words
   where
     getReplacement word = DB.queryNamed conn "SELECT id, word, replacement \
-        \FROM replacements WHERE word = :word"
+        \FROM replacements WHERE word = :word COLLATE NOCASE"
             [":word" := word] :: IO [Replacement]
 
 {- | Get the current probability from the state. -}

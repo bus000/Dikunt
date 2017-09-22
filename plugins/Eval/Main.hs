@@ -6,7 +6,6 @@ import Data.Maybe (mapMaybe)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
-import GHC.IO.Exception (ExitCode(..))
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import System.Process (readProcessWithExitCode)
@@ -34,7 +33,7 @@ main = do
 
 handleRequest :: Request -> IO ()
 handleRequest (HelpRequest botnick) = giveHelp botnick
-handleRequest (EvalRequest request) = evalRequest request
+handleRequest (EvalRequest req) = evalRequest req
 
 giveHelp :: BotNick -> IO ()
 giveHelp botnick = do
@@ -43,11 +42,11 @@ giveHelp botnick = do
         ++ "Haskell expression"
 
 evalRequest :: Expression -> IO ()
-evalRequest request = do
+evalRequest req = do
     (_, out, _) <- readProcessWithExitCode "mueval" args ""
     putStrLn out
   where
-    args = ["--expression", request]
+    args = ["--expression", req]
 
 parseRequests :: BotNick -> T.Text -> [Request]
 parseRequests botnick =
