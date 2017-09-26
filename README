@@ -9,13 +9,6 @@ plugin is send as a PRIVMSG to the channel the bot is connected to.
 
 --------------------------------- INSTALLATION ---------------------------------
 
-The installation depends on a couple of external tools
-
- * jp2a - Jpeg To Ascii https://github.com/cslarsen/jp2a
- * TOIlet - Display large colourful characters
- * mueval - Evaluate safe Haskell expressions
-    https://hackage.haskell.org/package/mueval.
-
 To install the bot start by cloning the git project
 
     $ git clone https://github.com/bus000/Dikunt/
@@ -31,11 +24,24 @@ the package run
     $ cabal install --only-dependencies --enable-tests
     $ cabal test
 
-To run the bot make sure that the executables is on your PATH and type
+To run the bot either make sure that the executables is on your PATH or specify
+the path to the plugins on the command line. Type,
 
     $ dikunt --nickname=somenick \
              --server=someserver \
-             --channel=somechannel
+             --channel=somechannel \
+             --plugin-location=somepath
+
+By default all plugins having external dependencies are disabled. To enable the
+plugins either change the configuration file ./data/dikunt.config before an
+install or specify the extra plugins on the command line,
+
+    --with-plugin=path-to-plugin
+
+If a specific plugin is unwanted or does not work it can be disabled by changing
+./data/dikunt.config before an install or by passing the command line argument,
+
+    --without-plugin=path-to-plugin
 
 To generate documentation install the bot with the flag --enable-documentation.
 
@@ -46,9 +52,13 @@ To generate documentation install the bot with the flag --enable-documentation.
 AsciiPicture:
     Takes URL's to jpg's and print asciiart version of the images using jp2a.
 
+    Dependencies: jp2a - https://github.com/cslarsen/jp2a
+
 AsciiText:
     Takes a text string and print an asciiart version of the text with big
     letters.
+
+    Dependencies: TOIlet
 
 BibleGem:
     Print a random quote from the bible.
@@ -89,3 +99,8 @@ Asked:
 
 Remind:
     Print reminders to users from other users on time or on message.
+
+Eval:
+    Evaluate all pure Haskell expressions.
+
+    Dependencies: mueval - https://hackage.haskell.org/package/mueval
