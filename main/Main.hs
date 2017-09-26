@@ -4,11 +4,14 @@ module Main (main) where
 
 import Bot (connect, disconnect, runBot)
 import Control.Exception (bracket)
+import Control.Monad (when)
 import Data.Configurator (load, Worth(..), require)
+import Data.List (intercalate)
 import Data.Version (showVersion)
 import Paths_Dikunt (getDataFileName, version)
 import qualified System.Console.CmdArgs as CMD
 import System.Console.CmdArgs ((&=))
+import System.Environment (getEnv, setEnv)
 import System.IO (stderr, hPutStrLn)
 import qualified System.Log.Formatter as Log
 import qualified System.Log.Handler as Log
@@ -18,12 +21,15 @@ import qualified System.Log.Logger as Log
 import qualified Types.BotTypes as BT
 
 data Dikunt = Dikunt
-    { server     :: String
-    , nickname   :: String
-    , password   :: String
-    , channel    :: String
-    , port       :: Integer
-    , pluginArgs :: [String]
+    { server          :: String
+    , nickname        :: String
+    , password        :: String
+    , channel         :: String
+    , port            :: Integer
+    , pluginArgs      :: [String]
+    , withPlugins     :: [FilePath]
+    , withoutPlugins  :: [FilePath]
+    , pluginLocations :: [FilePath]
     } deriving (CMD.Data, CMD.Typeable, Show, Eq)
 
 dikunt :: String -> Dikunt
@@ -35,6 +41,15 @@ dikunt vers = Dikunt
     , port = 6667 &= CMD.help "Port to connect to"
     , pluginArgs = [] &= CMD.explicit &= CMD.name "plugin-arg" &=
         CMD.help "Argument that is passed to all plugins started by Dikunt."
+    , withPlugins = [] &= CMD.explicit &= CMD.name "with-plugin" &=
+        CMD.help "Path to plugins to run besides what is specified in the \
+            \configuration"
+    , withoutPlugins = [] &= CMD.explicit &= CMD.name "without-plugin" &=
+        CMD.help "Path to plugins to ignore i.e. they are not run even though \
+            \they are specified in the configuration"
+    , pluginLocations = [] &= CMD.explicit &= CMD.name "plugin-location" &=
+        CMD.help "Path to folder containing plugins that are not on the \
+            \current $PATH"
     } &=
         CMD.help "Bot to run on IRC channels" &=
         CMD.summary ("Dikunt v" ++ vers ++ " (C) Magnus Stavngaard") &=
@@ -42,7 +57,7 @@ dikunt vers = Dikunt
         CMD.versionArg [CMD.explicit, CMD.name "version", CMD.name "v"]
 
 getBotConfig :: Dikunt -> Maybe BT.BotConfig
-getBotConfig (Dikunt serv nick pass chan p _) =
+getBotConfig (Dikunt serv nick pass chan p _ _ _ _) =
     BT.botConfig serv nick pass chan p
 
 {- | Allocate resources used by the bot. Setup logging and connection to IRC
@@ -122,10 +137,17 @@ main = do
     arguments <- CMD.cmdArgs $ dikunt (showVersion version)
     configName <- getDataFileName "data/dikunt.config"
     config <- load [ Required configName ]
-    executables <- require config "pathPlugins" :: IO [String]
+    config_executables <- require config "pathPlugins" :: IO [String]
     dataFileLocations <- dataFiles
 
+    -- Extend $PATH with the extra locations.
+    when (not . null $ pluginLocations arguments) $ do
+        path <- getEnv "PATH"
+        setEnv "PATH" (path ++ ":" ++ intercalate ":" (pluginLocations arguments))
+
     let pluginArguments = pluginArgs arguments
+        executables = filter (\x -> not (x `elem` withoutPlugins arguments))
+            (config_executables ++ withPlugins arguments)
 
     -- Start, loop and stop bot.
     case getBotConfig arguments of

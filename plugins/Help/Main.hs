@@ -1,53 +1,73 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
+import Control.Error.Util (hush)
 import qualified Types.BotTypes as BT
-import Control.Monad (forever)
 import Data.Char (toLower)
-import Data.Configurator (load, Worth(..), require)
-import Paths_Dikunt
+import Data.List.Split (splitOn)
+import Data.Maybe (mapMaybe)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
-import Text.Regex.PCRE ((=~))
 import Data.Aeson (decode)
+import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
 import qualified Data.Text.Lazy.Encoding as T
+import qualified Text.Parsec as P
+
+type BotNick = String
+type Plugins = [FilePath]
+
+data Request = HelpRequest | PluginHelpRequest
 
 main :: IO ()
 main = do
-    (nick:_) <- getArgs
+    (botnick:_:plugins:_) <- getArgs
 
-    configName <- getDataFileName "data/dikunt.config"
-    config <- load [ Required configName ]
-    executables <- (map . map $ toLower) <$> require config "pathPlugins"
+    let executables = splitOn ";" . map toLower $ plugins
 
     hSetBuffering stdout LineBuffering
     hSetBuffering stdin LineBuffering
 
-    forever $ do
-        line <- T.getLine
-        handleInput nick executables $ (decode . T.encodeUtf8) line
+    requests <- parseRequests botnick <$> T.hGetContents stdin
 
-handleInput :: String -> [String] -> Maybe BT.ServerMessage -> IO ()
-handleInput nick executables (Just (BT.ServerPrivMsg _ _ msg))
-    | str =~ helpPattern = help nick
-    | str =~ runPattern = moduleHelp executables nick
-  where
-    str = BT.getMessage msg
-    helpPattern = concat ["^", sp, nick, ":", ps, "help", ps, "help", sp, "$"]
-    runPattern = concat ["^", sp, nick, ":", ps, "help", sp, "$"]
-    sp = "[ \\t]*"
-    ps = "[ \\t]+"
-handleInput _ _ _ = return ()
+    mapM_ (handleRequest botnick executables) requests
 
-help :: String -> IO ()
-help nick = putStrLn $ unlines
-    [ nick ++ ": help help - Display this message"
-    , nick ++ ": help - Display how to get help for other modules"
-    ]
+handleRequest :: BotNick -> Plugins -> Request -> IO ()
+handleRequest botnick _ HelpRequest = giveHelp botnick
+handleRequest botnick plugins PluginHelpRequest = givePluginHelp botnick plugins
 
-moduleHelp :: [String] -> String -> IO ()
-moduleHelp executables nick = putStrLn . unlines $
+giveHelp :: BotNick -> IO ()
+giveHelp botnick = do
+    putStrLn $ botnick ++ ": help help - Display this message"
+    putStrLn $ botnick ++ ": help - Display how to get help for other modules"
+
+givePluginHelp :: BotNick -> Plugins -> IO ()
+givePluginHelp botnick executables = putStrLn . unlines $
     "Try one of the commands":map helpPlugin executables
   where
-    helpPlugin pluginName = "    " ++ nick ++ ": " ++ pluginName ++ " help"
+    helpPlugin pluginName = "    " ++ botnick ++ ": " ++ pluginName ++ " help"
+
+parseRequests :: BotNick -> T.Text -> [Request]
+parseRequests botnick =
+    mapMaybe getRequest . mapMaybe (decode . T.encodeUtf8) . T.lines
+  where
+    getRequest (BT.ServerPrivMsg _ _ msg) =
+        hush $ P.parse (request botnick) "" (BT.getMessage msg)
+    getRequest _ = Nothing
+
+type RequestParser a = P.Parsec String () a
+
+request :: BotNick -> RequestParser Request
+request botnick = stringToken (botnick ++ ": ") *> stringToken "help" *>
+    P.choice requests <* P.eof
+  where
+    requests =
+        [ stringToken "help" *> return HelpRequest
+        , return PluginHelpRequest
+        ]
+
+token :: RequestParser a -> RequestParser a
+token tok = P.spaces *> tok <* P.spaces
+
+stringToken :: String -> RequestParser String
+stringToken = token . P.string

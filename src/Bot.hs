@@ -26,6 +26,7 @@ import Control.Exception (Exception, throw)
 import Control.Monad (forever, mapM_, void)
 import Data.Aeson (encode, decode, FromJSON, ToJSON)
 import qualified Data.ByteString.Lazy as B
+import Data.List (intercalate)
 import Data.Maybe (fromMaybe)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
@@ -63,8 +64,7 @@ connect (BT.BotConfig serv nick pass chan port) execs args = do
     hSetBuffering h NoBuffering
 
     -- Start all plugins and a monitor for them.
-    monitor <- startMonitoring execs
-        (BT.getNickname nick:BT.getChannel chan:args)
+    monitor <- startMonitoring execs arguments
 
     -- Create MVar used to stop the bot when any bot thread terminates.
     closedMVar <- newEmptyMVar
@@ -84,6 +84,8 @@ connect (BT.BotConfig serv nick pass chan port) execs args = do
     return bot
   where
     reportStopped mvar _ = void $ tryPutMVar mvar ()
+    execArg = intercalate ";" execs
+    arguments = BT.getNickname nick:BT.getChannel chan:execArg:args
 
 {- | Keeps track of the running of the bot. Raises an exception if any thread
  - connected to the bot dies. -}
