@@ -1,10 +1,10 @@
 #!/usr/bin/python3
 
 import json
+import random
+import re
 import sys
 import time
-import re
-import random
 
 # Setup.
 botnick = sys.argv[1]
