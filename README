@@ -104,3 +104,22 @@ Eval:
     Evaluate all pure Haskell expressions.
 
     Dependencies: mueval - https://hackage.haskell.org/package/mueval
+
+Mark:
+    Replace faces between a source image and The Mark.
+
+    Dependencies: open-cv2 - https://pypi.python.org/pypi/opencv-python
+        dlib - http://dlib.net/python/index.html
+        numpy - https://docs.scipy.org/doc/numpy-1.13.0/user/install.html
+        dropbox - https://www.dropbox.com/developers-v1/core/sdks/python
+        parsy - https://github.com/python-parsy/parsy
+        Trained face detector machine learning model - http://sourceforge.net/projects/dclib/files/dlib/v18.10/shape_predictor_68_face_landmarks.dat.bz2
+
+    To get the plugin running a couple of command line arguments need to be
+    given to Dikunt. The plugin needs the path to an image containing a face it
+    can insert over other images, the path to the trained machine learning model
+    and a token to connect to dropbox. Therefore dikunt should be run with,
+
+        --plugin-arg="--predictor-path=<path-to-face-model>"
+        --plugin-arg="--mark-image-path=<path-to-face>"
+        --plugin-arg="--dropbox-token=<token>"

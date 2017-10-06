@@ -18,6 +18,8 @@ main = defaultMainWithHooks simpleUserHooks
 myPostCopy :: Args -> CopyFlags -> PackageDescription -> LocalBuildInfo -> IO ()
 myPostCopy args flags description buildInfo = do
     putStrLn "Moving non Haskell plugins"
+
     copyFile "./plugins/TicTacToe/main.py" $ binaryDir ++ "/tictactoe"
+    copyFile "./plugins/Mark/main.py" $ binaryDir ++ "/mark"
   where
     binaryDir = (fromPathTemplate . bindir . installDirTemplates) buildInfo
