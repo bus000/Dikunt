@@ -40,15 +40,6 @@ import System.IO (hClose, hSetBuffering, BufferMode(..), Handle, hPutStr, stdin,
 import qualified System.Log.Logger as Log
 import qualified Types.BotTypes as BT
 
-{- | Custom dikunt bot errors. -}
-data BotThreadStopped
-    -- | Exception thrown when any bot thread has stopped.
-    = BotThreadStopped
-  deriving (Show, Typeable)
-
-{- | Make bot exception an actual Haskell exception. -}
-instance Exception BotThreadStopped
-
 {- | Connect the bot to an IRC server with the channel, nick, pass and port
  - given. Starts a monitor for the list of plugins given which will maintain a
  - running copy of each plugin. -}
@@ -94,7 +85,6 @@ runBot :: BT.Bot
     -> IO ()
 runBot (BT.Bot _ _ _ _ _ closedMVar) = do
     void $ readMVar closedMVar
-    throw BotThreadStopped
 
 {- | Disconnect a bot from the server it is connected to. The function should
  - be called when a bot is no longer used. -}
