@@ -23,7 +23,7 @@ module Bot
 import Control.Concurrent (threadDelay, forkFinally)
 import Control.Concurrent.MVar (newEmptyMVar, tryPutMVar, readMVar)
 import Control.Exception (Exception, throw)
-import Control.Monad (forever, mapM_, void)
+import Control.Monad (forever, mapM_, void, unless)
 import Data.Aeson (encode, decode, FromJSON, ToJSON)
 import qualified Data.ByteString.Lazy as B
 import Data.List (intercalate)
@@ -96,7 +96,7 @@ runBot (BT.Bot _ _ _ _ _ closedMVar) = do
     void $ readMVar closedMVar
     throw BotThreadStopped
 
-{- | Disconnect a bot from the server it is connected to. The functions should
+{- | Disconnect a bot from the server it is connected to. The function should
  - be called when a bot is no longer used. -}
 disconnect :: BT.Bot
     -- ^ Bot to disconnect.
@@ -152,8 +152,8 @@ handleMessage (BT.Bot h _ _ _ monitor _) str = case parseMessage str of
 respond :: BT.Bot
     -- ^ Bot to respond for.
     -> IO ()
-respond (BT.Bot h _ chan _ monitor _) = do
-    messages <- map decodeOrPriv . T.lines <$> readContent monitor
+respond (BT.Bot h _ chan _ mon _) = do
+    messages <- map decodeOrPriv . filter (not . T.null) . T.lines <$> readContent mon
     mapM_ (\mes -> write h mes >> threadDelay 1000000) messages
   where
     decodeOrPriv str = fromMaybe (BT.ClientPrivMsgChan chan (T.unpack str)) $
@@ -165,9 +165,10 @@ respondAdmin :: BT.Bot -> IO ()
 respondAdmin (BT.Bot h _ chan _ _ _) = forever $ do
     putStr " > " >> hFlush stdout
     line <- T.hGetLine stdin
-    case jsonDecode line of
-        Just message -> write h message
-        Nothing -> write h $ BT.ClientPrivMsgChan chan (T.unpack line)
+    unless (T.null line) $
+        case jsonDecode line of
+            Just message -> write h message
+            Nothing -> write h $ BT.ClientPrivMsgChan chan (T.unpack line)
 
 {- | Write a clientmessage to a server handle. -}
 write :: Handle

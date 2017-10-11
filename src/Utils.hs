@@ -14,6 +14,8 @@ module Utils
       shrink1
     , shrink2
     , shrink3
+
+    , extractTwo
     ) where
 
 import Test.QuickCheck (Arbitrary, shrink)
@@ -55,3 +57,14 @@ shrink3 f a b c = [f a b c' | c' <- shrink c] ++
     [f a' b c' | (a', c') <- shrink (a, c)] ++
     [f a' b' c | (a', b') <- shrink (a, b)] ++
     [f a' b' c' | (a', b', c') <- shrink (a, b, c)]
+
+{- | Utility function to call two functions on an argument and return both
+ - results.-}
+extractTwo :: (a -> b)
+    -- ^ First function to call.
+    -> (a -> c)
+    -- ^ Second function to call.
+    -> a
+    -- ^ Value to call function on.
+    -> (b, c)
+extractTwo f g x = (f x, g x)
