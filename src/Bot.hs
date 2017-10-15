@@ -22,7 +22,6 @@ module Bot
 
 import Control.Concurrent (threadDelay, forkFinally)
 import Control.Concurrent.MVar (newEmptyMVar, tryPutMVar, readMVar)
-import Control.Exception (Exception, throw)
 import Control.Monad (forever, mapM_, void, unless)
 import Data.Aeson (encode, decode, FromJSON, ToJSON)
 import qualified Data.ByteString.Lazy as B
@@ -31,7 +30,6 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
-import Data.Typeable (Typeable)
 import IRCWriter.IRCWriter (writeMessage)
 import Monitoring (startMonitoring, writeAll, readContent, stopMonitoring)
 import Network (connectTo, PortID(..))

@@ -24,7 +24,6 @@ module Monitoring
     ) where
 
 import qualified Control.Concurrent as C
-import qualified Control.Concurrent.MVar as C
 import Control.Exception (catch, IOException)
 import Control.Monad (forever)
 import qualified Data.Text.Lazy as T

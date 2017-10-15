@@ -2,26 +2,56 @@
 module Main (main) where
 
 import Control.Error.Util (hush)
-import Data.Aeson (decode, FromJSON(..), withObject, (.:))
-import Data.ByteString.Builder (toLazyByteString, byteString)
+import Data.Aeson (decode, eitherDecodeStrict, FromJSON(..), withObject, (.:))
+import qualified Data.List as L
+import qualified Data.List.Split as L
 import Data.Maybe (mapMaybe)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
+import qualified Data.Time as Time
 import Network.Download (openURI)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import qualified Text.Parsec as P
+import qualified Text.Parsec.Number as P
+import Text.Printf (printf)
 import qualified Types.BotTypes as BT
+import qualified Control.Monad.Except as E
+import Control.Exception (Exception, throw)
+import qualified Control.Monad.State as S
 
 type BotNick = String
 
+{- | Incoming request to the bot. -}
 data Request
     = Help BotNick
     | GetPrice
     | BuyCoins
   deriving (Show, Read, Eq)
 
+{- | Bitcoin price. The 4 least significant digits in base 10 is cents. -}
+newtype BCPrice = BCPrice Int deriving (Show, Read, Eq, Ord)
+
+instance FromJSON BCPrice where
+    parseJSON = withObject "whole" $ \whole -> do
+        bpi <- whole .: "bpi"
+        usd <- bpi .: "USD"
+        priceText <- usd .: "rate"
+
+        case P.parse P.int "" (filter (`elem` ['0'..'9']) priceText) of
+            Right price -> return $ BCPrice price
+            Left err -> fail $ show err
+
+{- | Stores the price of a bitcoin at a specific time. -}
+data BCState = BCState BCPrice Time.UTCTime
+
+{- | Thrown if initialization of the plugin fails. -}
+data InitializationError = InitializationError deriving Show
+
+instance Exception InitializationError
+
+{- | Supplier of the bitcoin price. -}
 priceSource :: String
 priceSource = "http://api.coindesk.com/v1/bpi/currentprice.json"
 
@@ -34,13 +64,18 @@ main = do
 
     messages <- parseMessages botnick <$> T.hGetContents stdin
 
-    mapM_ handleRequest messages
+    initialPrice <- either (const $ throw InitializationError) id <$> getPrice
+    currentTime <- Time.getCurrentTime
+    let initialState = BCState initialPrice currentTime
 
-handleRequest :: Request -> IO ()
-handleRequest (Help botnick) = giveHelp botnick
-handleRequest GetPrice = getPrice
-handleRequest BuyCoins = buyCoins
+    S.evalStateT (mapM_ handleRequest messages) initialState
 
+handleRequest :: Request -> S.StateT BCState IO ()
+handleRequest (Help botnick) = S.liftIO $ giveHelp botnick
+handleRequest GetPrice = printPrice
+handleRequest BuyCoins = S.liftIO buyCoins
+
+{- | Print plugin help. -}
 giveHelp :: BotNick -> IO ()
 giveHelp botnick = do
     putStrLn $ botnick ++ ": bcprice help - Display this message"
@@ -48,27 +83,63 @@ giveHelp botnick = do
         "<amount> bitcoins using the credit card information given"
     putStrLn $ botnick ++ ": bcprice - Print current bitcoin price"
 
-getPrice :: IO ()
-getPrice = do
-    priceJSON <- openURI priceSource
-    case priceJSON of
-        Left _ -> putStrLn "Kunne ikke hente prisen"
-        Right json -> case (decode . toLazyByteString . byteString) json of
-            Nothing -> putStrLn "Kunne ikke parse JSON"
-            Just (BCPrice price) -> putStrLn price
+{- | Get and print the current price of the bitcoin. Update the state with the
+ - new price and new timestamp. -}
+printPrice :: S.StateT BCState IO ()
+printPrice = do
+    (BCState oldPrice time) <- S.get
+    newPrice <- S.liftIO getPrice
+    currentTime <- S.liftIO Time.getCurrentTime
+    let timeDiff = Time.diffUTCTime currentTime time
+
+    case newPrice of
+        Right t -> do
+            S.put $ BCState t currentTime
+            S.liftIO . putStrLn . (format timeDiff oldPrice) $ t
+        Left err -> S.liftIO $ putStrLn err
+  where
+    format time oldPrice newPrice | oldPrice < newPrice = unwords
+        ["Prisen er steget fra"
+        , formatPrice oldPrice
+        , "til"
+        , formatPrice newPrice
+        , "i de sidste"
+        , show $ (realToFrac (time / Time.nominalDay) :: Double)
+        , "dage"
+        ]
+    format time oldPrice newPrice | oldPrice > newPrice = unwords
+        ["Prisen er faldet fra"
+        , formatPrice oldPrice
+        , "til"
+        , formatPrice newPrice
+        , "i de sidste"
+        , show $ (realToFrac (time / Time.nominalDay) :: Double)
+        , "dage"
+        ]
+    format time oldPrice _ | otherwise = unwords
+        ["Prisen er forblevet på"
+        , formatPrice oldPrice
+        , "i de sidste"
+        , show $ (realToFrac (time / Time.nominalDay) :: Double)
+        , "dage"
+        ]
+
+{- | Format the price of a bitcoin in US Dollar. -}
+formatPrice :: BCPrice -> String
+formatPrice (BCPrice price) = "$" ++ withCommas wholePart ++ "." ++ decimalPart
+  where
+    wholePart = show (price `div` 10000)
+    decimalPart = printf "%04u" (price `mod` 10000)
+    withCommas = reverse . L.intercalate "," . L.chunksOf 3 . reverse
+
+{- | Get the current bitcoin price or return an error. -}
+getPrice :: IO (Either String BCPrice)
+getPrice = E.runExceptT $ do
+    json <- E.ExceptT (openURI priceSource)
+    E.ExceptT $ return (eitherDecodeStrict json)
 
 buyCoins :: IO ()
 buyCoins = putStrLn "Tak for dit køb. Dine BitCoins vil ankomme den 9/11."
-
-newtype BCPrice = BCPrice String deriving (Show, Read, Eq)
-
-instance FromJSON BCPrice where
-    parseJSON = withObject "whole" $ \whole -> do
-        bpi <- whole .: "bpi"
-        usd <- bpi .: "USD"
-        price <- usd .: "rate"
-
-        return (BCPrice price)
 
 parseMessages :: BotNick -> T.Text -> [Request]
 parseMessages botnick =
