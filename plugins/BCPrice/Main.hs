@@ -2,6 +2,9 @@
 module Main (main) where
 
 import Control.Error.Util (hush)
+import Control.Exception (Exception, throw)
+import qualified Control.Monad.Except as E
+import qualified Control.Monad.State as S
 import Data.Aeson (decode, eitherDecodeStrict, FromJSON(..), withObject, (.:))
 import qualified Data.List as L
 import qualified Data.List.Split as L
@@ -17,9 +20,6 @@ import qualified Text.Parsec as P
 import qualified Text.Parsec.Number as P
 import Text.Printf (printf)
 import qualified Types.BotTypes as BT
-import qualified Control.Monad.Except as E
-import Control.Exception (Exception, throw)
-import qualified Control.Monad.State as S
 
 type BotNick = String
 
@@ -95,7 +95,7 @@ printPrice = do
     case newPrice of
         Right t -> do
             S.put $ BCState t currentTime
-            S.liftIO . putStrLn . (format timeDiff oldPrice) $ t
+            S.liftIO . putStrLn . format timeDiff oldPrice $ t
         Left err -> S.liftIO $ putStrLn err
   where
     format time oldPrice newPrice | oldPrice < newPrice = unwords
@@ -104,7 +104,7 @@ printPrice = do
         , "til"
         , formatPrice newPrice
         , "i de sidste"
-        , show $ (realToFrac (time / Time.nominalDay) :: Double)
+        , show (realToFrac (time / Time.nominalDay) :: Double)
         , "dage"
         ]
     format time oldPrice newPrice | oldPrice > newPrice = unwords
@@ -113,14 +113,14 @@ printPrice = do
         , "til"
         , formatPrice newPrice
         , "i de sidste"
-        , show $ (realToFrac (time / Time.nominalDay) :: Double)
+        , show (realToFrac (time / Time.nominalDay) :: Double)
         , "dage"
         ]
-    format time oldPrice _ | otherwise = unwords
+    format time oldPrice _ = unwords
         ["Prisen er forblevet på"
         , formatPrice oldPrice
         , "i de sidste"
-        , show $ (realToFrac (time / Time.nominalDay) :: Double)
+        , show (realToFrac (time / Time.nominalDay) :: Double)
         , "dage"
         ]
 
