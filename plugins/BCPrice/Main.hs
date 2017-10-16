@@ -104,7 +104,7 @@ printPrice = do
         , "til"
         , formatPrice newPrice
         , "i de sidste"
-        , show (realToFrac (time / Time.nominalDay) :: Double)
+        , show $ dayNumber time
         , "dage"
         ]
     format time oldPrice newPrice | oldPrice > newPrice = unwords
@@ -113,14 +113,14 @@ printPrice = do
         , "til"
         , formatPrice newPrice
         , "i de sidste"
-        , show (realToFrac (time / Time.nominalDay) :: Double)
+        , show $ dayNumber time
         , "dage"
         ]
     format time oldPrice _ = unwords
         ["Prisen er forblevet på"
         , formatPrice oldPrice
         , "i de sidste"
-        , show (realToFrac (time / Time.nominalDay) :: Double)
+        , show $ dayNumber time
         , "dage"
         ]
 
@@ -131,6 +131,10 @@ formatPrice (BCPrice price) = "$" ++ withCommas wholePart ++ "." ++ decimalPart
     wholePart = show (price `div` 10000)
     decimalPart = printf "%04u" (price `mod` 10000)
     withCommas = reverse . L.intercalate "," . L.chunksOf 3 . reverse
+
+{- | Get the floor of the number of days in a time period. -}
+dayNumber :: Time.NominalDiffTime -> Integer
+dayNumber time = floor (realToFrac (time / Time.nominalDay) :: Double)
 
 {- | Get the current bitcoin price or return an error. -}
 getPrice :: IO (Either String BCPrice)
