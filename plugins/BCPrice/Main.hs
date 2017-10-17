@@ -93,9 +93,9 @@ printPrice = do
     let timeDiff = Time.diffUTCTime currentTime time
 
     case newPrice of
-        Right t -> do
-            S.put $ BCState t currentTime
-            S.liftIO . putStrLn . format timeDiff oldPrice $ t
+        Right price -> do
+            S.put $ BCState price currentTime
+            S.liftIO . putStrLn . format timeDiff oldPrice $ price
         Left err -> S.liftIO $ putStrLn err
   where
     format time oldPrice newPrice | oldPrice < newPrice = unwords
