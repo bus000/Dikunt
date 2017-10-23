@@ -2,17 +2,18 @@
 module Main (main) where
 
 import Control.Error.Util (hush)
-import qualified Types.BotTypes as BT
+import Data.Aeson (decode)
 import Data.Char (toLower)
-import Data.List.Split (splitOn)
+import Data.List as L
+import Data.List.Split as L
 import Data.Maybe (mapMaybe)
+import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy.Encoding as T
+import qualified Data.Text.Lazy.IO as T
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
-import Data.Aeson (decode)
-import qualified Data.Text.Lazy as T
-import qualified Data.Text.Lazy.IO as T
-import qualified Data.Text.Lazy.Encoding as T
 import qualified Text.Parsec as P
+import qualified Types.BotTypes as BT
 
 type BotNick = String
 type Plugins = [FilePath]
@@ -23,7 +24,7 @@ main :: IO ()
 main = do
     (botnick:_:plugins:_) <- getArgs
 
-    let executables = splitOn ";" . map toLower $ plugins
+    let executables = L.splitOn ";" . map toLower $ plugins
 
     hSetBuffering stdout LineBuffering
     hSetBuffering stdin LineBuffering
@@ -42,10 +43,9 @@ giveHelp botnick = do
     putStrLn $ botnick ++ ": help - Display how to get help for other modules"
 
 givePluginHelp :: BotNick -> Plugins -> IO ()
-givePluginHelp botnick executables = putStrLn . unlines $
-    "Try one of the commands":map helpPlugin executables
-  where
-    helpPlugin pluginName = "    " ++ botnick ++ ": " ++ pluginName ++ " help"
+givePluginHelp botnick executables = do
+    putStrLn $ "Try the command \"" ++ botnick ++ ": <plugin> help\"."
+    putStrLn $ "Where <plugin> is one of " ++ L.intercalate ", " executables
 
 parseRequests :: BotNick -> T.Text -> [Request]
 parseRequests botnick =
