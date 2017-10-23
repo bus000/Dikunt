@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main ( main ) where
 
-import Prelude hiding (Word, words)
 import Control.Error.Util (hush)
 import Control.Monad (void, when)
 import Control.Monad.State (StateT, liftIO, get, runStateT, modify)
 import Data.Aeson (decode)
 import qualified Data.Char as Char
+import qualified Data.Configurator as Conf
 import Data.Maybe (mapMaybe)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
@@ -14,6 +14,7 @@ import qualified Data.Text.Lazy.IO as T
 import qualified Database.SQLite.Simple as DB
 import Database.SQLite.Simple (NamedParam((:=)))
 import Paths_Dikunt
+import Prelude hiding (Word, words)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
 import System.Random (randomRs, newStdGen)
@@ -49,24 +50,31 @@ main = do
     hSetBuffering stdout LineBuffering
     hSetBuffering stdin LineBuffering
 
+    -- Load configuration.
+    configName <- getDataFileName "data/dikunt.config"
+    config <- Conf.load [ Conf.Required configName ]
+    replacerProb <- Conf.require config "wordreplacer-probability"
+
     randoms <- randomRs (0.0, 1.0) <$> newStdGen
     requests <- parseRequests botnick <$> T.hGetContents stdin
 
     dbFile <- getDataFileName "data/WordReplacerData.db"
     DB.withConnection dbFile (\c -> do
         initDatabase c
-        handleRequests c (zip randoms requests))
+        handleRequests c replacerProb (zip randoms requests))
 
 {- | Handle a list of requests by performing the action requested. -}
 handleRequests :: DB.Connection
     -- ^ Database connection.
+    -> Probability
+    -- ^ Initial probability of replacing.
     -> [(Probability, Request)]
     -- ^ Connections together with the probability of writing message.
     -> IO ()
-handleRequests conn reqs =
+handleRequests conn initProb reqs =
     void $ runStateT (mapM_ handleRequest reqs) initialState
   where
-    initialState = (0.1, conn)
+    initialState = (initProb, conn)
 
 {- | State we run the wordreplacer in. The state contains a database connection
  - and the current probability. Words are only replaced if a generated number is

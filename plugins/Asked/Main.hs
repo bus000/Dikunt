@@ -1,11 +1,14 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
 import Control.Monad (foldM_)
 import Data.Aeson (decode)
+import qualified Data.Configurator as Conf
 import Data.Maybe (mapMaybe)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
+import Paths_Dikunt
 import Prelude hiding (lines)
 import System.Environment (getArgs)
 import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
@@ -20,10 +23,15 @@ main = do
     hSetBuffering stdout LineBuffering
     hSetBuffering stdin LineBuffering
 
+    -- Load configuration.
+    configName <- getDataFileName "data/dikunt.config"
+    config <- Conf.load [ Conf.Required configName ]
+    initialProb <- Conf.require config "asked-probability"
+
     randoms <- randomRs (0.0, 1.0) <$> newStdGen
     messages <- parseMessages <$> T.hGetContents stdin
 
-    foldM_ (handleMessage nick) 0.001 $ zip messages randoms
+    foldM_ (handleMessage nick) initialProb $ zip messages randoms
 
 parseMessages :: T.Text -> [String]
 parseMessages = mapMaybe getMessage . mapMaybe (decode . T.encodeUtf8) . T.lines
