@@ -1,20 +1,27 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
-import Control.Monad (foldM_, void)
-import Data.Aeson (decode)
+import Control.Error.Util (hush)
+import Control.Monad (unless, void, (>=>), when, forever)
+import qualified Control.Monad.RWS as RWS
+import qualified Data.Aeson as JSON
+import qualified Data.ByteString as B
 import qualified Data.Configurator as Conf
-import Data.Maybe (mapMaybe)
-import qualified Data.Text.Lazy as T
-import qualified Data.Text.Lazy.Encoding as T
-import qualified Data.Text.Lazy.IO as T
+import Data.Maybe (fromJust, fromMaybe, isNothing)
+import qualified Data.Random as R
+import qualified Data.Random.Distribution.Bernoulli as R
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import Paths_Dikunt
+import Pipes ((>->))
+import qualified Pipes as P
+import qualified Pipes.Prelude as P
+import qualified Pipes.Prelude.Text as PT
 import Prelude hiding (lines)
-import System.Environment (getArgs)
-import System.IO (stdout, stdin, hSetBuffering, BufferMode(..))
-import System.Random (randomRs, newStdGen)
-import qualified Text.Parsec as P
-import qualified Text.Parsec.Number as P
+import qualified System.Environment as S
+import qualified System.IO as S
+import qualified Text.Parsec as Parse
+import qualified Text.Parsec.Number as Parse
 import qualified Types.BotTypes as BT
 
 type BotNick = String
@@ -24,59 +31,82 @@ data Request
     = HelpRequest
     | ChangeProbabilityRequest Probability
     | OtherMessage
+  deriving (Show, Eq)
 
 main :: IO ()
 main = do
-    (botnick:_) <- getArgs
+    (botnick:_) <- S.getArgs
 
-    hSetBuffering stdout LineBuffering
-    hSetBuffering stdin LineBuffering
+    S.hSetBuffering S.stdout S.LineBuffering
+    S.hSetBuffering S.stdin S.LineBuffering
 
     -- Load configuration.
     configName <- getDataFileName "data/dikunt.config"
     config <- Conf.load [ Conf.Required configName ]
     initialProb <- Conf.require config "asked-probability"
 
-    randoms <- randomRs (0.0, 1.0) <$> newStdGen
-    messages <- parseRequests botnick <$> T.hGetContents stdin
+    let pipe = PT.stdinLn >-> P.map T.encodeUtf8 >-> parseRequest >->
+            handleRequest >-> PT.stdoutLn
+    runAsked botnick initialProb $ P.runEffect pipe
 
-    foldM_ (handleRequest botnick) initialProb $ zip messages randoms
+type Asked = RWS.RWST BotNick () (R.RVar Bool) (R.RVarT IO)
 
-handleRequest :: BotNick -> Probability -> (Request, Probability) -> IO Probability
-handleRequest botnick threshold (HelpRequest, _) =
-    giveHelp botnick *> return threshold
-handleRequest _ _ (ChangeProbabilityRequest newprob, _) =
-    putStrLn "Updated probability" *> return newprob
-handleRequest _ threshold (OtherMessage, p)
-    | p <= threshold = putStrLn "Spurgt!" *> return threshold
-    | otherwise = return threshold
+runAsked :: BotNick -> Probability -> Asked a -> IO a
+runAsked botnick initialProb a =
+    R.runRVarT (fst <$> RWS.evalRWST a botnick (R.bernoulli initialProb))
+        R.StdRandom
 
-giveHelp :: BotNick -> IO ()
-giveHelp botnick = do
-    putStrLn $ botnick ++ ": asked help - Display this message"
-    putStrLn $ botnick ++ ": asked set probability <0-1> - Set probability to "
-        ++ "a number between 0 and 1"
-    putStrLn $ "Otherwise prints \"Spurgt\" with the current probability to "
-        ++ "each message"
-
-type RequestParser a = P.Parsec String () a
-
-parseRequests :: BotNick -> T.Text -> [Request]
-parseRequests botnick =
-    mapMaybe parseRequest . mapMaybe (decode . T.encodeUtf8) . T.lines
+parseRequest :: P.Pipe B.ByteString Request Asked ()
+parseRequest = forever $ do
+    botnick <- RWS.ask
+    req <- (JSON.decodeStrict >=> parse botnick) <$> P.await
+    unless (isNothing req) $ P.yield (fromJust req)
   where
-    parseRequest (BT.ServerPrivMsg _ _ msg) = plugDefault OtherMessage $
-        P.parse (request botnick) "" (BT.getMessage msg)
-    parseRequest _ = Nothing
+    parse botnick (BT.ServerPrivMsg _ _ msg) = Just . fromMaybe OtherMessage .
+        hush . Parse.parse (request botnick) "" . BT.getMessage $ msg
+    parse _ _ = Nothing
 
-    plugDefault d (Left _) = Just d
-    plugDefault _ (Right b) = Just b
+handleRequest :: P.Pipe Request T.Text Asked ()
+handleRequest = forever $ do
+    req <- P.await
+    case req of
+        HelpRequest -> giveHelp
+        ChangeProbabilityRequest newProb -> updateProb newProb
+        OtherMessage -> handleOther
+
+giveHelp :: P.Pipe Request T.Text Asked ()
+giveHelp = do
+    botnick <- RWS.ask
+    P.yield $ T.concat
+        [ T.pack botnick
+        , ": asked help - Display this message"
+        ]
+    P.yield $ T.concat
+        [ T.pack botnick
+        , ": asked set probability <0-1> - Set probability to "
+        , "a number between 0 and 1"
+        ]
+    P.yield $ T.concat
+        [ "Otherwise prints \"Spurgt\" with the current probability to "
+        , "each message"
+        ]
+
+updateProb :: Probability -> P.Pipe Request T.Text Asked ()
+updateProb = RWS.put . R.bernoulli >=> const (P.yield "Updated probability")
+
+handleOther :: P.Pipe Request T.Text Asked ()
+handleOther = do
+    b <- RWS.get
+    shouldAsk <- P.lift . RWS.lift $ R.sample b
+    when shouldAsk $ P.yield "Spurgt!"
+
+type RequestParser a = Parse.Parsec String () a
 
 request :: BotNick -> RequestParser Request
 request botnick = do
     void $ stringToken (botnick ++ ": ")
     void $ stringToken "asked "
-    P.choice [helpRequest, changeRequest] <* P.eof
+    Parse.choice [helpRequest, changeRequest] <* Parse.eof
 
 helpRequest :: RequestParser Request
 helpRequest = stringToken "help" *> return HelpRequest
@@ -85,14 +115,14 @@ changeRequest :: RequestParser Request
 changeRequest = do
     void $ stringToken "set "
     void $ stringToken "probability "
-    newprob <- P.floating
+    newprob <- Parse.floating
 
     if newprob >= 0.0 && newprob <= 1.0
         then return $ ChangeProbabilityRequest newprob
-        else P.unexpected "Probability should be between 0 and 1"
+        else Parse.unexpected "Probability should be between 0 and 1"
 
 token :: RequestParser a -> RequestParser a
-token tok = P.spaces *> tok <* P.spaces
+token tok = Parse.spaces *> tok <* Parse.spaces
 
 stringToken :: String -> RequestParser String
-stringToken = token . P.string
+stringToken = token . Parse.string
