@@ -10,6 +10,7 @@ import qualified Data.Configurator as Conf
 import Data.Maybe (fromJust, fromMaybe, isNothing)
 import qualified Data.Random as R
 import qualified Data.Random.Distribution.Bernoulli as R
+import Data.Semigroup ((<>))
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Paths_Dikunt
@@ -77,19 +78,11 @@ handleRequest = forever $ do
 giveHelp :: P.Pipe Request T.Text Asked ()
 giveHelp = do
     botnick <- RWS.ask
-    P.yield $ T.concat
-        [ T.pack botnick
-        , ": asked help - Display this message"
-        ]
-    P.yield $ T.concat
-        [ T.pack botnick
-        , ": asked set probability <0-1> - Set probability to "
-        , "a number between 0 and 1"
-        ]
-    P.yield $ T.concat
-        [ "Otherwise prints \"Spurgt\" with the current probability to "
-        , "each message"
-        ]
+    P.yield $ T.pack botnick <> ": asked help - Display this message"
+    P.yield $ T.pack botnick <> ": asked set probability <0-1> - Set " <>
+        "probability to a number between 0 and 1"
+    P.yield $ T.pack "Otherwise prints \"Spurgt\" with the current " <>
+        "probability to each message"
 
 updateProb :: Probability -> P.Pipe Request T.Text Asked ()
 updateProb = RWS.put . R.bernoulli >=> const (P.yield "Updated probability")
