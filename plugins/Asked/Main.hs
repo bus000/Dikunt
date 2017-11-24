@@ -63,8 +63,13 @@ parseRequest = forever $ do
     req <- (JSON.decodeStrict >=> parse botnick) <$> P.await
     unless (isNothing req) $ P.yield (fromJust req)
   where
-    parse botnick (BT.ServerPrivMsg _ _ msg) = Just . fromMaybe OtherMessage .
-        hush . Parse.parse (request botnick) "" . BT.getMessage $ msg
+    parse botnick (BT.ServerPrivMsg _ _ msg)
+        = Just
+        . fromMaybe OtherMessage
+        . hush
+        . Parse.parse (request botnick) ""
+        . BT.getMessage
+        $ msg
     parse _ _ = Nothing
 
 handleRequest :: P.Pipe Request T.Text Asked ()
