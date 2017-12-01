@@ -123,3 +123,13 @@ Mark:
         --plugin-arg="--predictor-path=<path-to-face-model>"
         --plugin-arg="--mark-image-path=<path-to-face>"
         --plugin-arg="--dropbox-token=<token>"
+
+BCPrice:
+    Get the current price of one bitcoin in US $.
+
+Merry:
+    Responds to certain greetings such as good morning, merry christmas, happy
+    newyear, (...).
+
+Mundheld:
+    A database of danish "sayings" that can be queried.
