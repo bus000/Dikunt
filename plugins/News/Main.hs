@@ -3,6 +3,7 @@ module Main (main) where
 import Control.Error.Util (hush)
 import Data.Aeson (decode)
 import Data.Maybe (mapMaybe, listToMaybe, fromMaybe)
+import Data.Semigroup ((<>))
 import qualified Data.Text as TS
 import qualified Data.Text.Encoding as TS
 import qualified Data.Text.Lazy as T
@@ -78,7 +79,7 @@ giveNews :: Source -> IO ()
 giveNews (Source url _) = do
     contents <- openURI url
     case contents of
-        Left _ -> putStrLn "Jeg kunne ikke hente nyheder"
+        Left err -> putStrLn $ "Jeg kunne ikke hente nyheder " <> err
         Right feed -> putStrLn $ fromMaybe "Jeg kunne ikke analysere feed"
             (analyseFeed $ (TS.unpack . TS.decodeUtf8) feed)
 
