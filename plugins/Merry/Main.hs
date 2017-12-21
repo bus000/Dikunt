@@ -74,11 +74,15 @@ handleMessage msg
     | "godt nytår" `T.isInfixOf` lower = P.yield merryChristmas
     | "godt nytaar" `T.isInfixOf` lower = P.yield merryChristmas
     | "godmorgen" `T.isInfixOf` lower = P.yield goodMorning
+    | "mojn" `T.isInfixOf` lower = P.yield mojn
+    | "godaften" `T.isInfixOf` lower = P.yield godaften
     | otherwise = return ()
   where
     lower = T.toLower msg
     merryChristmas = "Glædelig jul og godt nytår til dig!"
     goodMorning = "Godmorgen!"
+    mojn = "Mojn mojn"
+    godaften = "Godaften"
 
 type RequestParser a = Parse.Parsec String () a
 
