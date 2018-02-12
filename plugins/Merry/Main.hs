@@ -81,8 +81,8 @@ handleMessage msg
     lower = T.toLower msg
     merryChristmas = "Glædelig jul og godt nytår til dig!"
     goodMorning = "Godmorgen!"
-    mojn = "Mojn mojn"
-    godaften = "Godaften"
+    mojn = "Mojn, mojn!"
+    godaften = "Godaften!"
 
 type RequestParser a = Parse.Parsec String () a
 
